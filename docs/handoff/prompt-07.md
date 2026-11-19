@@ -49,6 +49,7 @@
 - **404, not 403, for other tenants.** A non-member can't tell "exists" from "doesn't exist". 403 is only for members lacking a permission.
 - **`ON DELETE RESTRICT` raises SQLSTATE 23001**, not 23503. The branch-delete path handles both; noted in [database.md](../development/database.md).
 - **Branch deletion** clears the branch from closed invitations and is refused while members or open invitations use it.
+- **Faster test databases:** CI's first run timed out (60 s hook) on the new e2e file. Booting PGlite + PostGIS and migrating took about 50–60 s per file on a loaded runner. `createTestDatabase()` now loads a migrated snapshot, built once per run by a Vitest `globalSetup`, cached in the OS temp dir and keyed by the migration files and PGlite versions. Locally the API suite went from 13.3 s to 6.7 s. `migrate: false` still gives an empty database, so the migration chain is still tested from zero.
 - **Leaving** is `DELETE …/members/<own membershipId>`; any member may do it, except the last owner.
 - **Migration notes:** `0005_organizations` creates the four tables and adds the `audit_events.organization_id` FK. Safe on existing data, because all existing audit rows have a null organization. `0006` adds the `updated_at` triggers. Forward-only, like every migration.
 

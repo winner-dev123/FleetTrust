@@ -55,6 +55,8 @@ Migrations are **forward-only** (drizzle-kit has no down migrations, by design).
 
 ## PGlite vs real Postgres
 
+`createTestDatabase()` starts from a migrated snapshot (`src/testing/template.ts`) cached in the OS temp directory and keyed by the content of `migrations/` and the PGlite versions. Changing a migration rebuilds it automatically. Delete `<tmp>/fleettrust-pglite-templates` to force a rebuild.
+
 `createTestDatabase()` gives each test file a fresh, fully migrated Postgres + PostGIS in WebAssembly: no Docker, about 6 s to start. Limits:
 
 - **It runs Postgres 18.6**, not 17. Don't depend on 18-only features (e.g. built-in `uuidv7()`).
