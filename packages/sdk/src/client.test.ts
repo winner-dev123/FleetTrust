@@ -52,3 +52,90 @@ describe("createApiClient", () => {
     expect((error as ApiError).code).toBe("network_error");
   });
 });
+
+const me = {
+  id: "0190f4a6-1c2b-7d3e-8f40-123456789abc",
+  email: "driver@example.test",
+  emailVerified: true,
+  displayName: null,
+  profileComplete: false,
+  createdAt: "2026-11-19T10:00:00.000Z",
+};
+
+describe("authenticated requests", () => {
+  it("sends the current ID token and App Check token, and parses the profile", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(jsonResponse(me));
+    const client = createApiClient({
+      baseUrl: "https://api.example.test",
+      fetch,
+      getIdToken: () => Promise.resolve("id-token-123"),
+      getAppCheckToken: () => "app-check-456",
+    });
+
+    await expect(client.me()).resolves.toEqual(me);
+    const init = fetch.mock.calls[0]?.[1];
+    expect(init?.headers).toMatchObject({
+      Authorization: "Bearer id-token-123",
+      "X-Firebase-AppCheck": "app-check-456",
+    });
+  });
+
+  it("never sends tokens to public endpoints", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(jsonResponse(healthy));
+    const client = createApiClient({
+      baseUrl: "https://x.test",
+      fetch,
+      getIdToken: () => "id-token",
+    });
+    await client.health();
+    expect(fetch.mock.calls[0]?.[1]?.headers).not.toHaveProperty("Authorization");
+  });
+
+  it("surfaces the API's reason code so apps know whether to refresh or re-authenticate", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(
+        jsonResponse({ statusCode: 401, error: "unauthenticated", reason: "expired_token" }, 401),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "old" });
+
+    const error = (await client.me().catch((caught: unknown) => caught)) as ApiError;
+    expect(error.reason).toBe("expired_token");
+    expect(error.requiresSignIn).toBe(true);
+  });
+
+  it("reports Retry-After on 429", async () => {
+    const response = new Response(JSON.stringify({ error: "rate_limited" }), {
+      status: 429,
+      headers: { "Content-Type": "application/json", "Retry-After": "42" },
+    });
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(response);
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+
+    const error = (await client.revokeAllSessions().catch((caught: unknown) => caught)) as ApiError;
+    expect(error).toMatchObject({ status: 429, retryAfterSeconds: 42 });
+  });
+
+  it("validates updates before sending them", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    await expect(client.updateMe({ displayName: "x".repeat(51) })).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("PATCHes a trimmed display name and handles 204 for session revocation", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(jsonResponse({ ...me, displayName: "Ana", profileComplete: true }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+
+    await client.updateMe({ displayName: "  Ana " });
+    expect(fetch.mock.calls[0]?.[1]).toMatchObject({
+      method: "PATCH",
+      body: JSON.stringify({ displayName: "Ana" }),
+    });
+    await expect(client.revokeAllSessions()).resolves.toBeUndefined();
+    expect(fetch.mock.calls[1]?.[0]).toBe("https://x.test/v1/me/sessions/revoke");
+  });
+});

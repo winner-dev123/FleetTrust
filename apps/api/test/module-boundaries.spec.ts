@@ -57,4 +57,26 @@ describe("module boundaries", () => {
     );
     expect(messages).toEqual([]);
   });
+
+  it("allows the shared kernel outside src/modules (config, database, observability, platform)", async () => {
+    const messages = await lint(
+      "src/modules/identity/auth.guard.ts",
+      [
+        'import { API_ENV } from "../../config/config.module.js";',
+        'import { DATABASE } from "../../database/database.module.js";',
+        'import { currentRequestContext } from "../../observability/request-context.js";',
+        'import { RateLimit } from "../../platform/rate-limit/index.js";',
+        "export { API_ENV, DATABASE, currentRequestContext, RateLimit };",
+      ].join("\n"),
+    );
+    expect(messages).toEqual([]);
+  });
+
+  it("still blocks deep imports into modules via the long path", async () => {
+    const messages = await lint(
+      "src/modules/identity/users.service.ts",
+      'import { repo } from "../../modules/providers/provider.repository.js";\nexport { repo };\n',
+    );
+    expect(messages.join("\n")).toMatch(/adr\/0002/);
+  });
 });

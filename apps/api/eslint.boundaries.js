@@ -9,9 +9,20 @@
 
 const ENTITLEMENTS = ["**/entitlements", "**/entitlements/**", "**/modules/entitlements*"];
 
-/** Deep imports into a sibling module, e.g. "../billing/billing.repository.js". */
+/**
+ * Deep imports into a sibling module, e.g. "../billing/billing.repository.js".
+ * gitignore semantics, last match wins: "../*\/*" also matches "../../config/…", so the shared
+ * kernel outside src/modules (config, database, observability, platform) is re-allowed, then
+ * deep paths into src/modules are excluded again.
+ */
 const crossModuleDeepImport = {
-  group: ["../*/*", "!../*/index.js", "../../modules/*/*", "!../../modules/*/index.js"],
+  group: [
+    "../*/*",
+    "!../*/index.js",
+    "!../../**",
+    "../../modules/*/*",
+    "!../../modules/*/index.js",
+  ],
   message:
     "Import other modules only through their public index.js (docs/adr/0002-modular-monolith-api.md).",
 };

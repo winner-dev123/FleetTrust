@@ -4,10 +4,13 @@ import { Controller, Get, Inject, Logger, ServiceUnavailableException } from "@n
 import { API_ENV } from "../config/config.module.js";
 import type { ApiEnv } from "../config/env.js";
 import { DATABASE, type DatabaseProvider } from "../database/database.module.js";
+import { Public } from "../modules/identity/index.js";
 
 /** Readiness must answer quickly even when the database hangs. */
 const DEPENDENCY_TIMEOUT_MS = 2_000;
 
+/** Health probes are called by load balancers and uptime checks without credentials. */
+@Public()
 @Controller("health")
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);

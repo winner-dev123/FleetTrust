@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module.js";
 import { loadApiEnv } from "../src/config/env.js";
+import { Public } from "../src/modules/identity/index.js";
 import { NestPinoLogger } from "../src/observability/nest-logger.js";
 import { captureLogs, type LogCapture } from "./support/log-capture.js";
 
@@ -18,6 +19,7 @@ const isErrorReport = (line: Record<string, unknown>) => line["@type"] === REPOR
 const header = (value: unknown) => (typeof value === "string" ? value : "");
 
 /** Test-only routes that exercise the error paths. */
+@Public()
 @Controller("__test")
 class ProbeController {
   @Get("ok")

@@ -54,3 +54,6 @@ next-env.d.ts
 
 # Firebase Local Emulator Suite exported data (pnpm emulators)
 .firebase-data/
+
+# TypeScript incremental build caches
+*.tsbuildinfo

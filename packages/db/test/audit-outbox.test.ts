@@ -2,20 +2,23 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { enqueueOutboxEvent, recordAuditEvent } from "../src/events.js";
-import { auditEvents, outboxEvents } from "../src/schema/index.js";
+import { auditEvents, outboxEvents, users } from "../src/schema/index.js";
 import { createTestDatabase, type TestDatabase } from "../src/testing/index.js";
 
 let t: TestDatabase;
 
+let admin: string;
+
 beforeAll(async () => {
   t = await createTestDatabase();
+  // audit_events.actor_id references users.id, so actors must exist.
+  const [row] = await t.db.insert(users).values({ firebaseUid: "admin-uid" }).returning();
+  admin = row?.id ?? "";
 });
 
 afterAll(async () => {
   await t.close();
 });
-
-const admin = "0190f4a6-1c2b-7d3e-8f40-123456789abc";
 
 /** Drizzle wraps driver errors ("Failed query: …"); the Postgres message is on `cause`. */
 async function dbError(promise: Promise<unknown>): Promise<string> {
