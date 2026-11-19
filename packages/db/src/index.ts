@@ -16,7 +16,17 @@ export {
   recordAuditEvent,
 } from "./events.js";
 export * from "./schema/index.js";
+export {
+  consumeDailyQuota,
+  type ConsumeDailyQuotaInput,
+  type ConsumeResult,
+  dailyUsage,
+  isValidTimeZone,
+  localDate,
+  type QuotaSubject,
+} from "./quotas.js";
 export { runSeed, type SeedReport, type SeedStep, seedSteps } from "./seed/index.js";
+export { PLAN_CATALOG, type PlanDefinition } from "./seed/plans.data.js";
 export { distanceMeters, geographyOf, withinBoundingBox, withinMeters } from "./spatial.js";
 export {
   assertSameTenant,

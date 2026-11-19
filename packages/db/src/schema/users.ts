@@ -26,6 +26,8 @@ export const users = pgTable(
     status: text("status", { enum: USER_STATUSES }).notNull().default("active"),
     /** e.g. `emailLink`, `google.com`, `apple.com` (from the token's firebase.sign_in_provider). */
     lastSignInProvider: text("last_sign_in_provider"),
+    /** IANA timezone; daily quotas reset at local midnight (OQ-08). Validated by the API. */
+    timezone: text("timezone").notNull().default("UTC"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true, mode: "date" }),
     ...timestamps(),
   },
@@ -34,6 +36,7 @@ export const users = pgTable(
     index("users_email_idx").on(t.email),
     check("users_status_valid", sql`${t.status} IN ('active', 'suspended')`),
     check("users_firebase_uid_length", sql`char_length(${t.firebaseUid}) BETWEEN 1 AND 128`),
+    check("users_timezone_length", sql`char_length(${t.timezone}) BETWEEN 1 AND 64`),
     check("users_email_lowercase", sql`${t.email} IS NULL OR ${t.email} = lower(${t.email})`),
     check(
       "users_display_name_length",

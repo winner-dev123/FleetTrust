@@ -6,6 +6,7 @@ import {
   createInvitationRequestSchema,
   createOrganizationRequestSchema,
   type CreatedInvitation,
+  type EntitlementsResponse,
   type InvitationDto,
   type MemberDto,
   type MyOrganization,
@@ -27,6 +28,7 @@ import {
 
 import { RateLimit } from "../../platform/rate-limit/index.js";
 import { parseBody } from "../../platform/validation.js";
+import { EntitlementsService, subjectOfOrganization } from "../entitlements/index.js";
 import { type AuthContext, CheckRevoked, CurrentAuth, CurrentUser } from "../identity/index.js";
 import { notFound } from "./errors.js";
 import { InvitationsService } from "./invitations.service.js";
@@ -51,6 +53,7 @@ export class OrganizationsController {
   constructor(
     private readonly organizations: OrganizationsService,
     private readonly invitations: InvitationsService,
+    private readonly entitlementsService: EntitlementsService,
   ) {}
 
   @Post()
@@ -77,8 +80,18 @@ export class OrganizationsController {
     @CurrentUser() user: User,
     @Body() body: unknown,
   ): Promise<MyOrganization> {
-    const { name } = parseBody(updateOrganizationRequestSchema, body);
-    return this.organizations.rename(access, user, name);
+    return this.organizations.update(
+      access,
+      user,
+      parseBody(updateOrganizationRequestSchema, body),
+    );
+  }
+
+  /** Plan, limits and usage meters for the organization (SRS F-012). */
+  @Get(":orgId/entitlements")
+  @OrgPermission("org.read")
+  entitlements(@CurrentTenant() access: TenantAccess): Promise<EntitlementsResponse> {
+    return this.entitlementsService.describe(subjectOfOrganization(access.organization));
   }
 
   // --- Branches ---

@@ -3,6 +3,7 @@ import { access, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { PGlite } from "@electric-sql/pglite";
 import { postgis } from "@electric-sql/pglite-postgis";
@@ -10,6 +11,8 @@ import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 
 import { migrationsFolder } from "../database.js";
+import * as schema from "../schema/index.js";
+import { runSeed } from "../seed/index.js";
 
 /**
  * A migrated PGlite data directory, cached on disk and keyed by the migration files' content.
@@ -25,6 +28,11 @@ async function templateKey(): Promise<string> {
   for (const file of files) {
     if (!file.endsWith(".sql") && !file.endsWith(".json")) continue;
     hash.update(file).update(await readFile(path.join(migrationsFolder, file)));
+  }
+  // Seed data is baked in too: hash the seed modules' source.
+  const seedDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "seed");
+  for (const file of (await readdir(seedDir)).sort()) {
+    hash.update(file).update(await readFile(path.join(seedDir, file)));
   }
   // The snapshot must match the engine that loads it: the resolved paths carry the versions.
   const require = createRequire(import.meta.url);
@@ -52,6 +60,8 @@ export function ensureTestDatabaseTemplate(): Promise<string> {
     const client = await PGlite.create({ extensions: { postgis } });
     try {
       await migrate(drizzle(client), { migrationsFolder });
+      // Reference data (currencies, plan catalog) belongs in a realistic test database.
+      await runSeed(drizzle(client, { schema }));
       const dump = await client.dumpDataDir("none");
       await mkdir(CACHE_DIR, { recursive: true });
       const partial = `${file}.${randomUUID()}.partial`;

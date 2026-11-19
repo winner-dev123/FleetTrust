@@ -4,6 +4,7 @@ import { ApiConfigModule } from "./config/config.module.js";
 import type { ApiEnv } from "./config/env.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { EntitlementsModule } from "./modules/entitlements/index.js";
 import { IdentityModule } from "./modules/identity/index.js";
 import { OrganizationsModule } from "./modules/organizations/index.js";
 import { type AppLogger, createLogger } from "./observability/logger.js";
@@ -39,6 +40,8 @@ export class AppModule {
         IdentityModule.forRoot(env),
         // Tenancy: @OrgPermission() routes check membership and role after sign-in.
         OrganizationsModule,
+        // Plans, quotas and billing-operator actions.
+        EntitlementsModule,
         HealthModule,
       ],
     };

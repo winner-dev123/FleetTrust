@@ -68,27 +68,43 @@ export class UsersService {
     return row;
   }
 
-  async updateDisplayName(
+  async updateProfile(
     user: User,
-    displayName: string | null,
+    change: { displayName?: string | null | undefined; timeZone?: string | undefined },
     requestId?: string,
   ): Promise<User> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .update(users)
-        .set({ displayName })
+        .set({
+          ...(change.displayName === undefined ? {} : { displayName: change.displayName }),
+          ...(change.timeZone === undefined ? {} : { timezone: change.timeZone }),
+        })
         .where(eq(users.id, user.id))
         .returning();
       if (!row) throw new Error("user not found");
-      await recordAuditEvent(tx, {
-        actorType: "user",
-        actorId: user.id,
-        action: "user.display_name_changed",
-        targetType: "user",
-        targetId: user.id,
-        requestId,
-        metadata: { cleared: displayName === null },
-      });
+      if (change.displayName !== undefined) {
+        await recordAuditEvent(tx, {
+          actorType: "user",
+          actorId: user.id,
+          action: "user.display_name_changed",
+          targetType: "user",
+          targetId: user.id,
+          requestId,
+          metadata: { cleared: change.displayName === null },
+        });
+      }
+      if (change.timeZone !== undefined) {
+        await recordAuditEvent(tx, {
+          actorType: "user",
+          actorId: user.id,
+          action: "user.time_zone_changed",
+          targetType: "user",
+          targetId: user.id,
+          requestId,
+          metadata: { timeZone: change.timeZone },
+        });
+      }
       return row;
     });
   }

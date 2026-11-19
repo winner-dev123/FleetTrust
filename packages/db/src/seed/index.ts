@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import type { Database, Executor } from "../database.js";
 import { currencies } from "../schema/currencies.js";
 import { CURRENCIES } from "./currencies.data.js";
+import { seedPlans } from "./plans.js";
 
 /**
  * Seed steps must be idempotent: running `pnpm db:seed` any number of times converges on the
@@ -39,8 +40,16 @@ const currenciesStep: SeedStep = {
   },
 };
 
-/** Ordered seed steps. Later prompts append steps (plans in 08, service taxonomy in 11). */
-export const seedSteps: readonly SeedStep[] = [currenciesStep];
+/** The plan catalog (sample limits, OQ-09). Needs currencies for prices. */
+const plansStep: SeedStep = {
+  name: "plans",
+  async run(executor) {
+    return { upserted: await seedPlans(executor) };
+  },
+};
+
+/** Ordered seed steps. Later prompts append steps (service taxonomy in 11). */
+export const seedSteps: readonly SeedStep[] = [currenciesStep, plansStep];
 
 export interface SeedReport {
   step: string;

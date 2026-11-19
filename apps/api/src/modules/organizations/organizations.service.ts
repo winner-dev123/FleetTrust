@@ -32,6 +32,7 @@ import { Inject, Injectable } from "@nestjs/common";
 
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
 import { currentRequestContext } from "../../observability/request-context.js";
+import { EntitlementsService, subjectOfOrganization } from "../entitlements/index.js";
 import { notFound, orgError, REFERENCED, sqlState, UNIQUE_VIOLATION } from "./errors.js";
 import { toBranchDto, toMemberDto, toMyOrganization } from "./mappers.js";
 import type { TenantAccess } from "./tenancy.js";
@@ -98,7 +99,10 @@ export function assertAssignable(org: Organization, role: Role, branchId: string
 
 @Injectable()
 export class OrganizationsService {
-  constructor(@Inject(DATABASE) private readonly database: DatabaseProvider) {}
+  constructor(
+    @Inject(DATABASE) private readonly database: DatabaseProvider,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   private get db(): Database {
     if (this.database === null) throw new Error("DATABASE_URL is not configured");
@@ -148,16 +152,25 @@ export class OrganizationsService {
     return rows.map((row) => toMyOrganization(row.organization, row.membership));
   }
 
-  async rename(access: TenantAccess, user: User, name: string): Promise<MyOrganization> {
+  async update(
+    access: TenantAccess,
+    user: User,
+    change: { name?: string | undefined; timeZone?: string | undefined },
+  ): Promise<MyOrganization> {
     return this.db.transaction(async (tx) => {
       const [org] = await tx
         .update(organizations)
-        .set({ name })
+        .set({
+          ...(change.name === undefined ? {} : { name: change.name }),
+          ...(change.timeZone === undefined ? {} : { timezone: change.timeZone }),
+        })
         .where(eq(organizations.id, access.tenant.organizationId))
         .returning();
       if (!org) throw notFound();
       await this.audit(tx, access, user, "org.updated", "organization", org.id, {
-        fields: ["name"],
+        fields: Object.keys(change).filter(
+          (field) => change[field as keyof typeof change] !== undefined,
+        ),
       });
       return toMyOrganization(org, access.membership);
     });
@@ -183,6 +196,12 @@ export class OrganizationsService {
   async createBranch(access: TenantAccess, user: User, name: string): Promise<BranchDto> {
     return this.uniqueName(() =>
       this.db.transaction(async (tx) => {
+        await lockOrganization(tx, access.tenant);
+        await this.entitlements.assertCapacity(
+          tx,
+          subjectOfOrganization(access.organization),
+          "branches.max",
+        );
         const [branch] = await tx
           .insert(branches)
           .values({ organizationId: access.tenant.organizationId, name })

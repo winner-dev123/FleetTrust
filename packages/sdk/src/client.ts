@@ -10,6 +10,10 @@ import {
   type CreateInvitationRequest,
   createInvitationRequestSchema,
   type CreateOrganizationRequest,
+  entitlementErrorReasonSchema,
+  type EntitlementErrorReason,
+  type EntitlementsResponse,
+  entitlementsResponseSchema,
   createOrganizationRequestSchema,
   type HealthResponse,
   type InvitationDto,
@@ -47,7 +51,7 @@ export interface ApiClientOptions {
   getAppCheckToken?: () => Promise<string | null> | string | null;
 }
 
-export type ApiErrorReason = AuthErrorReason | OrganizationErrorReason;
+export type ApiErrorReason = AuthErrorReason | OrganizationErrorReason | EntitlementErrorReason;
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
 export class ApiError extends Error {
@@ -115,6 +119,11 @@ export interface ApiClient {
   revokeInvitation(orgId: string, invitationId: string): Promise<void>;
   /** Accept as the signed-in user (their verified email must match the invitation). */
   acceptInvitation(token: string): Promise<MyOrganization>;
+
+  /** The signed-in user's plan and usage meters. */
+  myEntitlements(): Promise<EntitlementsResponse>;
+  /** An organization's plan, limits and usage meters (any member). */
+  organizationEntitlements(orgId: string): Promise<EntitlementsResponse>;
 }
 
 const orgPath = (orgId: string, ...rest: string[]) =>
@@ -124,7 +133,9 @@ const orgPath = (orgId: string, ...rest: string[]) =>
 
 const errorBodySchema = z
   .object({
-    reason: z.union([authErrorReasonSchema, organizationErrorReasonSchema]).optional(),
+    reason: z
+      .union([authErrorReasonSchema, organizationErrorReasonSchema, entitlementErrorReasonSchema])
+      .optional(),
     message: z.unknown().optional(),
   })
   .loose();
@@ -350,6 +361,20 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         method: "DELETE",
         path: orgPath(orgId, "invitations", invitationId),
         schema: undefined,
+        authenticated: true,
+      }),
+    myEntitlements: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/entitlements",
+        schema: entitlementsResponseSchema,
+        authenticated: true,
+      }),
+    organizationEntitlements: (orgId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "entitlements"),
+        schema: entitlementsResponseSchema,
         authenticated: true,
       }),
     acceptInvitation: async (token) =>

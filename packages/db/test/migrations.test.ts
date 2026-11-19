@@ -37,6 +37,8 @@ describe("migrations on a fresh database", () => {
       "0004_users_triggers",
       "0005_organizations",
       "0006_organizations_triggers",
+      "0007_plans_and_entitlements",
+      "0008_plans_triggers",
     ]);
   });
 
@@ -69,6 +71,14 @@ describe("migrations on a fresh database", () => {
       "memberships",
       "organizations",
       "outbox_events",
+      "plan_assignments",
+      "plan_version_limits",
+      "plan_versions",
+      "plans",
+      "platform_staff",
+      "quota_consumptions",
+      "quota_counters",
+      "quota_overrides",
       "users",
     ]);
   });

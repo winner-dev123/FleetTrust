@@ -1,6 +1,11 @@
 "use client";
 
-import type { MeResponse, MyOrganization } from "@fleettrust/types";
+import {
+  CAPABILITIES,
+  type EntitlementsResponse,
+  type MeResponse,
+  type MyOrganization,
+} from "@fleettrust/types";
 import { spacing, typography } from "@fleettrust/ui";
 import { onAuthStateChanged, signOut } from "@firebase/auth";
 import { useRouter } from "next/navigation";
@@ -15,6 +20,7 @@ export default function AccountPage() {
   const [name, setName] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<MyOrganization[]>([]);
+  const [usage, setUsage] = useState<EntitlementsResponse | null>(null);
 
   useEffect(
     () =>
@@ -31,6 +37,12 @@ export default function AccountPage() {
           })
           .catch(() => {
             setMessage("Couldn't load your account. Please sign in again.");
+          });
+        apiClient()
+          .myEntitlements()
+          .then(setUsage)
+          .catch(() => {
+            setUsage(null);
           });
         apiClient()
           .myOrganizations()
@@ -86,6 +98,28 @@ export default function AccountPage() {
         </button>
       </form>
       {message && <p role="status">{message}</p>}
+
+      {usage && (
+        <>
+          <h2 style={{ fontSize: typography.fontSize.lg, marginTop: spacing.xl }}>
+            Plan: {usage.plan.name}
+          </h2>
+          {usage.plan.activatedAt && (
+            <p>
+              Activated by FleetTrust staff on{" "}
+              {new Date(usage.plan.activatedAt).toLocaleDateString()}
+            </p>
+          )}
+          <ul>
+            {usage.entitlements.map((entry) => (
+              <li key={entry.key}>
+                {CAPABILITIES[entry.key].label}: {entry.used} of {entry.limit ?? "unlimited"}
+                {entry.kind === "daily" ? " today" : ""}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <h2 style={{ fontSize: typography.fontSize.lg, marginTop: spacing.xl }}>Organizations</h2>
       {organizations.length === 0 ? (

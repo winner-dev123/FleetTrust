@@ -8,6 +8,7 @@ import { Test } from "@nestjs/testing";
 
 import { AppModule } from "../../src/app.module.js";
 import { loadApiEnv } from "../../src/config/env.js";
+import { CLOCK, type Clock, systemClock } from "../../src/modules/entitlements/index.js";
 import { DATABASE } from "../../src/database/database.module.js";
 import {
   APP_CHECK_VERIFIER,
@@ -39,6 +40,8 @@ export async function createTestApp(
     db?: TestDatabase;
     /** Real verifier for integration tests (e.g. Firebase against the Auth emulator). */
     authVerifier?: AuthVerifier;
+    /** Time source for entitlements (daily periods, grace periods). */
+    clock?: Clock;
   } = {},
 ): Promise<TestApp> {
   const env = loadApiEnv({
@@ -70,6 +73,8 @@ export async function createTestApp(
     .useValue(new FakeAppCheckVerifier())
     .overrideProvider(RATE_LIMITER)
     .useValue(limiter)
+    .overrideProvider(CLOCK)
+    .useValue(options.clock ?? systemClock)
     .compile();
 
   const app = moduleRef.createNestApplication();

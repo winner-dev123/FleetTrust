@@ -28,6 +28,7 @@
     "db:migrate": "turbo run build --filter=@fleettrust/db --output-logs=errors-only && pnpm --filter @fleettrust/db migrate",
     "db:seed": "turbo run build --filter=@fleettrust/db --output-logs=errors-only && pnpm --filter @fleettrust/db seed",
     "db:reset": "turbo run build --filter=@fleettrust/db --output-logs=errors-only && pnpm --filter @fleettrust/db reset",
+    "db:staff": "turbo run build --filter=@fleettrust/db --output-logs=errors-only && pnpm --filter @fleettrust/db staff",
     "test:db": "turbo run build --filter=@fleettrust/db --output-logs=errors-only && pnpm --filter @fleettrust/db test:pg"
   },
   "devDependencies": {

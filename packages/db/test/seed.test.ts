@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { currencies } from "../src/schema/index.js";
 import { CURRENCIES } from "../src/seed/currencies.data.js";
 import { runSeed } from "../src/seed/index.js";
+import { PLAN_CATALOG } from "../src/seed/plans.data.js";
 import { createTestDatabase, type TestDatabase } from "../src/testing/index.js";
 
 let t: TestDatabase;
@@ -23,7 +24,10 @@ async function snapshot() {
 describe("runSeed", () => {
   it("seeds ISO 4217 currencies", async () => {
     const report = await runSeed(t.db);
-    expect(report).toEqual([{ step: "currencies", upserted: CURRENCIES.length }]);
+    expect(report).toEqual([
+      { step: "currencies", upserted: CURRENCIES.length },
+      { step: "plans", upserted: PLAN_CATALOG.length },
+    ]);
 
     const rows = await snapshot();
     expect(rows).toHaveLength(CURRENCIES.length);
@@ -58,9 +62,9 @@ describe("runSeed", () => {
     await expect(
       runSeed(t.db, [
         {
-          name: "delete-then-fail",
+          name: "change-then-fail",
           async run(executor) {
-            await executor.delete(currencies);
+            await executor.update(currencies).set({ name: "Overwritten" });
             throw new Error("boom");
           },
         },

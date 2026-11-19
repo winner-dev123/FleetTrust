@@ -15,6 +15,7 @@ export function toOrganizationDto(org: Organization): OrganizationDto {
     kind: org.kind,
     name: org.name,
     status: org.status,
+    timeZone: org.timezone,
     createdAt: org.createdAt.toISOString(),
   };
 }
