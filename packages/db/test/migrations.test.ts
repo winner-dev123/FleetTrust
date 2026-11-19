@@ -35,6 +35,8 @@ describe("migrations on a fresh database", () => {
       "0002_triggers",
       "0003_users",
       "0004_users_triggers",
+      "0005_organizations",
+      "0006_organizations_triggers",
     ]);
   });
 
@@ -61,7 +63,11 @@ describe("migrations on a fresh database", () => {
     );
     expect(rows.map((row) => row.table_name)).toEqual([
       "audit_events",
+      "branches",
       "currencies",
+      "invitations",
+      "memberships",
+      "organizations",
       "outbox_events",
       "users",
     ]);

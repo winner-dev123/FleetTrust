@@ -8,6 +8,7 @@ import { browser } from "react-dom";
 
 import { clearPendingEmail, normaliseEmail, readPendingEmail } from "@/lib/email-link";
 import { apiClient, firebaseAuth } from "@/lib/firebase";
+import { afterSignInPath } from "@/lib/pending-invitation";
 
 type State =
   | { kind: "signing-in"; email: string }
@@ -39,7 +40,7 @@ function FinishSignIn() {
         // Remove the one-time code from the address bar and history.
         window.history.replaceState(null, "", "/auth/finish");
         await apiClient().me(); // creates the account on first sign-in
-        if (!cancelled) router.replace("/account");
+        if (!cancelled) router.replace(afterSignInPath());
       } catch {
         if (!cancelled) setState({ kind: "failed" });
       }

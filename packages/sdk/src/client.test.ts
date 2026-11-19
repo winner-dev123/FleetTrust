@@ -139,3 +139,69 @@ describe("authenticated requests", () => {
     expect(fetch.mock.calls[1]?.[0]).toBe("https://x.test/v1/me/sessions/revoke");
   });
 });
+
+describe("organizations", () => {
+  const orgId = "0190f4a6-1c2b-7d3e-8f40-123456789abc";
+  const mine = {
+    organization: {
+      id: orgId,
+      kind: "fleet",
+      name: "Fleet",
+      status: "active",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+    membershipId: "0190f4a6-1c2b-7d3e-8f40-123456789abd",
+    role: "owner",
+    branchId: null,
+    permissions: ["org.read"],
+  };
+
+  it("creates an organization and lists the user's organizations", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(jsonResponse(mine, 201))
+      .mockResolvedValueOnce(jsonResponse([mine]));
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+
+    await expect(client.createOrganization({ kind: "fleet", name: " Fleet " })).resolves.toEqual(
+      mine,
+    );
+    expect(fetch.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ kind: "fleet", name: "Fleet" }),
+    });
+    await expect(client.myOrganizations()).resolves.toEqual([mine]);
+  });
+
+  it("encodes path IDs and sends DELETE for revocation", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    await client.revokeInvitation(orgId, "../../me");
+    expect(fetch.mock.calls[0]?.[0]).toBe(
+      `https://x.test/v1/orgs/${orgId}/invitations/..%2F..%2Fme`,
+    );
+    expect(fetch.mock.calls[0]?.[1]).toMatchObject({ method: "DELETE" });
+  });
+
+  it("surfaces organization reason codes", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(
+        jsonResponse({ statusCode: 410, error: "gone", reason: "invitation_expired" }, 410),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    const error = (await client
+      .acceptInvitation("A".repeat(43))
+      .catch((caught: unknown) => caught)) as ApiError;
+    expect(error).toMatchObject({ status: 410, reason: "invitation_expired" });
+  });
+
+  it("rejects malformed invitation tokens without calling the API", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    await expect(client.acceptInvitation("not a token")).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});

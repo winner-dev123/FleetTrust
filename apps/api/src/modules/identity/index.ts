@@ -8,6 +8,7 @@ export {
 } from "./auth-verifier.js";
 export {
   type AuthContext,
+  type AuthenticatedRequest,
   CheckRevoked,
   CurrentAuth,
   CurrentUser,

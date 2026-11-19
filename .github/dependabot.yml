@@ -23,11 +23,10 @@ updates:
       # typescript-eslint supports TypeScript < 6.1 (see pnpm-workspace.yaml catalog).
       - dependency-name: typescript
         versions: [">=6.1.0"]
-      # React must match the version Expo SDK requires; upgrade together with Expo.
+      # React Native requires the exact React version it was built with (even patches), and Expo
+      # SDK pins it. Upgrade React only together with Expo.
       - dependency-name: react
-        update-types: [version-update:semver-minor, version-update:semver-major]
       - dependency-name: react-dom
-        update-types: [version-update:semver-minor, version-update:semver-major]
       # Node types must match the Node runtime major (.nvmrc: 24).
       - dependency-name: "@types/node"
         versions: [">=25.0.0"]

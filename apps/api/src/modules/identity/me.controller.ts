@@ -1,18 +1,10 @@
 import type { User } from "@fleettrust/db";
 import { type MeResponse, updateMeRequestSchema } from "@fleettrust/types";
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Inject,
-  Patch,
-  Post,
-} from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Inject, Patch, Post } from "@nestjs/common";
 
 import { currentRequestContext } from "../../observability/request-context.js";
 import { RateLimit } from "../../platform/rate-limit/index.js";
+import { parseBody } from "../../platform/validation.js";
 import { AUTH_VERIFIER, type AuthVerifier } from "./auth-verifier.js";
 import { type AuthContext, CheckRevoked, CurrentAuth, CurrentUser } from "./decorators.js";
 import { UsersService } from "./users.service.js";
@@ -45,21 +37,11 @@ export class MeController {
   @CheckRevoked()
   @RateLimit({ name: "me-update", limit: 20, windowSeconds: 3600, by: "user" })
   async update(@CurrentUser() user: User, @Body() body: unknown): Promise<MeResponse> {
-    const parsed = updateMeRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException({
-        statusCode: 400,
-        error: "validation_failed",
-        issues: parsed.error.issues.map((issue) => ({
-          path: issue.path.join("."),
-          message: issue.message,
-        })),
-      });
-    }
-    if (parsed.data.displayName === undefined) return toMeResponse(user);
+    const { displayName } = parseBody(updateMeRequestSchema, body);
+    if (displayName === undefined) return toMeResponse(user);
     const updated = await this.usersService.updateDisplayName(
       user,
-      parsed.data.displayName,
+      displayName,
       currentRequestContext()?.requestId,
     );
     return toMeResponse(updated);

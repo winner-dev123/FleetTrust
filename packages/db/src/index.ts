@@ -28,4 +28,18 @@ export {
 } from "./tenancy.js";
 
 /** Query operators re-exported so consumers share this package's drizzle-orm instance (one set of types). */
-export { and, asc, desc, eq, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
+export {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";

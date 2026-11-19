@@ -1,12 +1,14 @@
 import { PGlite } from "@electric-sql/pglite";
 import { postgis } from "@electric-sql/pglite-postgis";
 import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
 
-import { type Database, migrationsFolder } from "../database.js";
+import type { Database } from "../database.js";
 import * as schema from "../schema/index.js";
 
+import { loadTemplate } from "./template.js";
+
 export { expectTenantIsolation, type TenantIsolationCase } from "./tenant-isolation.js";
+export { ensureTestDatabaseTemplate } from "./template.js";
 
 export interface TestDatabase {
   db: Database;
@@ -26,10 +28,12 @@ export interface TestDatabase {
 export async function createTestDatabase(
   options: { migrate?: boolean } = {},
 ): Promise<TestDatabase> {
-  const client = await PGlite.create({ extensions: { postgis } });
+  // Migrated databases start from a cached, already-migrated snapshot (see template.ts).
+  // migrate: false gives a truly empty database, for testing the migrations themselves.
+  const client =
+    (options.migrate ?? true)
+      ? await PGlite.create({ extensions: { postgis }, loadDataDir: await loadTemplate() })
+      : await PGlite.create({ extensions: { postgis } });
   const db = drizzle(client, { schema }) as unknown as Database;
-  if (options.migrate ?? true) {
-    await migrate(drizzle(client), { migrationsFolder });
-  }
   return { db, client, close: () => client.close() };
 }

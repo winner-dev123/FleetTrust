@@ -33,6 +33,8 @@ Connection strings come from `infra/local/.env`, written by `pnpm infra:env` / `
 4. Run `pnpm test`; with Docker, also `pnpm test:db`.
 5. Never edit a migration that has been applied in any shared environment. Write a new one.
 
+When mapping database errors to HTTP responses, note that a delete blocked by an `ON DELETE RESTRICT` foreign key raises SQLSTATE **23001** (`restrict_violation`), not 23503. Drizzle wraps driver errors, so read the code from `error.cause`.
+
 Drift check: `pnpm db:generate` on a clean tree must print "No schema changes". CI enforces this from Prompt 05.
 
 ## Rollback strategy
@@ -52,6 +54,8 @@ Migrations are **forward-only** (drizzle-kit has no down migrations, by design).
 5. Long locks are avoided: `CREATE INDEX CONCURRENTLY` (in a custom migration without a transaction) for large tables; add NOT NULL via a CHECK … NOT VALID, then VALIDATE.
 
 ## PGlite vs real Postgres
+
+`createTestDatabase()` starts from a migrated snapshot (`src/testing/template.ts`) cached in the OS temp directory and keyed by the content of `migrations/` and the PGlite versions. Changing a migration rebuilds it automatically. Delete `<tmp>/fleettrust-pglite-templates` to force a rebuild.
 
 `createTestDatabase()` gives each test file a fresh, fully migrated Postgres + PostGIS in WebAssembly: no Docker, about 6 s to start. Limits:
 
