@@ -34,9 +34,52 @@ export const apiEnvSchema = z
       .string()
       .regex(/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/, "must be a Google Cloud project ID")
       .optional(),
+    /** Firebase project whose ID tokens are accepted. `demo-*` IDs only work with the emulators. */
+    FIREBASE_PROJECT_ID: z
+      .string()
+      .regex(/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/, "must be a Firebase project ID")
+      .default("demo-fleettrust"),
+    /**
+     * Set only to use the local Auth emulator. The Admin SDK then accepts UNSIGNED tokens,
+     * so this must never be set in a deployed environment (enforced below).
+     */
+    FIREBASE_AUTH_EMULATOR_HOST: z
+      .string()
+      .regex(/^[\w.-]+:\d{2,5}$/, "must be host:port")
+      .optional(),
+    /** Firebase App Check: off (local), monitor (log only), enforce (reject missing/invalid tokens). */
+    APP_CHECK_MODE: z.enum(["off", "monitor", "enforce"]).default("off"),
+    /** Redis for rate limiting (Memorystore when deployed). Without it, an in-memory limiter is used locally. */
+    REDIS_URL: z
+      .string()
+      .regex(/^rediss?:\/\//, "must be a redis:// or rediss:// URL")
+      .optional(),
+    /**
+     * Proxies in front of the API that append to X-Forwarded-For (Cloud Run: 1). The client IP
+     * used for rate limiting is read that many hops from the right; 0 uses the socket address.
+     */
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(3).default(0),
   })
   .superRefine((env, ctx) => {
     const deployed = env.APP_ENV === "staging" || env.APP_ENV === "production";
+    const issue = (path: string, message: string) => {
+      ctx.addIssue({ code: "custom", path: [path], message });
+    };
+    if (deployed && env.FIREBASE_AUTH_EMULATOR_HOST !== undefined) {
+      issue(
+        "FIREBASE_AUTH_EMULATOR_HOST",
+        "must not be set in staging or production (the emulator accepts forged tokens)",
+      );
+    }
+    if (deployed && env.FIREBASE_PROJECT_ID.startsWith("demo-")) {
+      issue("FIREBASE_PROJECT_ID", "must be a real Firebase project in staging and production");
+    }
+    if (env.APP_ENV === "production" && env.APP_CHECK_MODE !== "enforce") {
+      issue("APP_CHECK_MODE", "must be 'enforce' in production");
+    }
+    if (deployed && env.REDIS_URL === undefined) {
+      issue("REDIS_URL", "is required in staging and production (shared rate limits)");
+    }
     if (deployed && env.DATABASE_URL === undefined) {
       ctx.addIssue({
         code: "custom",

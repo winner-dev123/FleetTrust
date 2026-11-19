@@ -3,6 +3,17 @@ import { describe, expect, it } from "vitest";
 
 import { loadApiEnv } from "./env.js";
 
+/** A complete, valid production configuration; tests override one field at a time. */
+const production = {
+  APP_ENV: "production",
+  NODE_ENV: "production",
+  APP_VERSION: "1.2.3",
+  DATABASE_URL: "postgresql://app@10.0.0.5:5432/fleettrust",
+  REDIS_URL: "rediss://10.0.0.6:6378",
+  FIREBASE_PROJECT_ID: "fleettrust-prod",
+  APP_CHECK_MODE: "enforce",
+} as const;
+
 describe("loadApiEnv", () => {
   it("starts with safe local defaults and no configuration", () => {
     expect(loadApiEnv({})).toEqual({
@@ -14,6 +25,9 @@ describe("loadApiEnv", () => {
       LOG_LEVEL: "info",
       CORS_ORIGINS: [],
       DB_POOL_MAX: 5,
+      FIREBASE_PROJECT_ID: "demo-fleettrust",
+      APP_CHECK_MODE: "off",
+      TRUST_PROXY_HOPS: 0,
     });
   });
 
@@ -43,17 +57,40 @@ describe("loadApiEnv", () => {
     expect(() => loadApiEnv({ CORS_ORIGINS: "*" })).toThrow(EnvValidationError);
   });
 
-  it("requires a real version, NODE_ENV=production and a database when deployed", () => {
+  it("accepts a complete production configuration", () => {
+    expect(loadApiEnv(production).APP_ENV).toBe("production");
+  });
+
+  it("requires a real version, NODE_ENV=production, a database and Redis when deployed", () => {
     expect(() => loadApiEnv({ APP_ENV: "staging" })).toThrow(
-      /DATABASE_URL[\s\S]*APP_VERSION[\s\S]*NODE_ENV/,
+      /REDIS_URL[\s\S]*DATABASE_URL[\s\S]*APP_VERSION[\s\S]*NODE_ENV/,
+    );
+  });
+
+  it("refuses the Auth emulator in deployed environments (it accepts forged tokens)", () => {
+    expect(() =>
+      loadApiEnv({ ...production, FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099" }),
+    ).toThrow(/FIREBASE_AUTH_EMULATOR_HOST: must not be set/);
+    expect(() =>
+      loadApiEnv({
+        ...production,
+        APP_ENV: "staging",
+        APP_CHECK_MODE: "monitor",
+        FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099",
+      }),
+    ).toThrow(/FIREBASE_AUTH_EMULATOR_HOST/);
+    expect(loadApiEnv({ FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099" }).APP_ENV).toBe("local");
+  });
+
+  it("refuses demo Firebase projects when deployed and requires App Check enforcement in production", () => {
+    expect(() => loadApiEnv({ ...production, FIREBASE_PROJECT_ID: "demo-fleettrust" })).toThrow(
+      /FIREBASE_PROJECT_ID/,
+    );
+    expect(() => loadApiEnv({ ...production, APP_CHECK_MODE: "monitor" })).toThrow(
+      /APP_CHECK_MODE: must be 'enforce' in production/,
     );
     expect(
-      loadApiEnv({
-        APP_ENV: "production",
-        NODE_ENV: "production",
-        APP_VERSION: "1.2.3",
-        DATABASE_URL: "postgresql://app@10.0.0.5:5432/fleettrust",
-      }).APP_ENV,
-    ).toBe("production");
+      loadApiEnv({ ...production, APP_ENV: "staging", APP_CHECK_MODE: "monitor" }).APP_CHECK_MODE,
+    ).toBe("monitor");
   });
 });

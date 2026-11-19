@@ -78,6 +78,9 @@ jobs:
           API_MIN_INSTANCES: "0"
           API_MAX_INSTANCES: "4"
           TRACE_SAMPLE_RATIO: "1"
+          FIREBASE_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          # Staging logs App Check failures without blocking; production must use "enforce".
+          APP_CHECK_MODE: monitor
         run: |
           envsubst < deploy/cloudrun/api.service.yaml > /tmp/api.service.yaml
           gcloud run services replace /tmp/api.service.yaml --region "$GCP_REGION" --quiet

@@ -42,9 +42,16 @@ spec:
             - { name: OTEL_TRACES_EXPORTER, value: otlp }
             - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://localhost:4318" }
             - { name: OTEL_TRACES_SAMPLER_ARG, value: "${TRACE_SAMPLE_RATIO}" }
+            - { name: FIREBASE_PROJECT_ID, value: "${FIREBASE_PROJECT_ID}" }
+            - { name: APP_CHECK_MODE, value: "${APP_CHECK_MODE}" }
+            # Cloud Run's front end appends exactly one X-Forwarded-For hop.
+            - { name: TRUST_PROXY_HOPS, value: "1" }
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef: { name: fleettrust-database-url, key: latest }
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef: { name: fleettrust-redis-url, key: latest }
           resources:
             limits: { cpu: "1", memory: 512Mi }
           startupProbe:

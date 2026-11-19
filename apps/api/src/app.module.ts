@@ -4,8 +4,10 @@ import { ApiConfigModule } from "./config/config.module.js";
 import type { ApiEnv } from "./config/env.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { IdentityModule } from "./modules/identity/index.js";
 import { type AppLogger, createLogger } from "./observability/logger.js";
 import { ObservabilityModule } from "./observability/observability.module.js";
+import { RateLimitModule } from "./platform/rate-limit/index.js";
 
 /** Builds the structured logger for an environment (one per process). */
 export function createAppLogger(env: ApiEnv): AppLogger {
@@ -31,6 +33,9 @@ export class AppModule {
         ObservabilityModule.forRoot(options.logger ?? createAppLogger(env)),
         ApiConfigModule.forRoot(env),
         DatabaseModule.forRoot(env),
+        RateLimitModule.forRoot(env),
+        // Registers the global AuthGuard: every route requires sign-in unless marked @Public().
+        IdentityModule.forRoot(env),
         HealthModule,
       ],
     };

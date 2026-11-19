@@ -33,6 +33,8 @@ describe("migrations on a fresh database", () => {
       "0000_extensions_and_functions",
       "0001_foundation_tables",
       "0002_triggers",
+      "0003_users",
+      "0004_users_triggers",
     ]);
   });
 
@@ -61,6 +63,7 @@ describe("migrations on a fresh database", () => {
       "audit_events",
       "currencies",
       "outbox_events",
+      "users",
     ]);
   });
 

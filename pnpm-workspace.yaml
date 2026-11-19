@@ -9,7 +9,9 @@ packages:
 #   protobufjs: postinstall only prints a version-scheme warning.
 #   re2: optional dependency of the Hosting emulator (superstatic), which falls back to RegExp.
 #   esbuild: postinstall only verifies the platform binary that pnpm installs as an optional dep.
+#   @firebase/util: postinstall bakes App Hosting auto-config (FIREBASE_WEBAPP_CONFIG); we pass config explicitly.
 allowBuilds:
+  "@firebase/util": false
   "@parcel/watcher": false
   "@swc/core": false
   esbuild: false

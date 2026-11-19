@@ -1,0 +1,67 @@
+import type { DecodedIdToken } from "firebase-admin/auth";
+import { describe, expect, it, vi } from "vitest";
+
+import { AuthenticationError } from "./auth-verifier.js";
+import { FirebaseAuthVerifier } from "./firebase-adapters.js";
+
+function firebaseError(code: string): Error {
+  return Object.assign(new Error(`firebase says ${code}`), { code });
+}
+
+describe("FirebaseAuthVerifier", () => {
+  it("maps decoded Firebase claims to a VerifiedIdentity", async () => {
+    const decoded = {
+      uid: "abc123",
+      email: "Driver@Example.test",
+      email_verified: true,
+      auth_time: 1_763_000_000,
+      firebase: { sign_in_provider: "apple.com", identities: {}, sign_in_second_factor: "totp" },
+    } as unknown as DecodedIdToken;
+    const auth = {
+      verifyIdToken: vi.fn().mockResolvedValue(decoded),
+      revokeRefreshTokens: vi.fn(),
+    };
+
+    const identity = await new FirebaseAuthVerifier(auth).verifyIdToken("tok", {
+      checkRevoked: true,
+    });
+
+    expect(auth.verifyIdToken).toHaveBeenCalledWith("tok", true);
+    expect(identity).toEqual({
+      uid: "abc123",
+      email: "Driver@Example.test",
+      emailVerified: true,
+      signInProvider: "apple.com",
+      authTime: new Date(1_763_000_000_000),
+      secondFactor: "totp",
+    });
+  });
+
+  it.each([
+    ["auth/id-token-expired", "expired_token"],
+    ["auth/id-token-revoked", "revoked_token"],
+    ["auth/user-disabled", "user_disabled"],
+    ["auth/argument-error", "invalid_token"],
+    ["auth/something-new", "invalid_token"],
+  ])("maps %s to %s without leaking the provider message", async (code, expected) => {
+    const auth = {
+      verifyIdToken: vi.fn().mockRejectedValue(firebaseError(code)),
+      revokeRefreshTokens: vi.fn(),
+    };
+    const error = await new FirebaseAuthVerifier(auth)
+      .verifyIdToken("tok", { checkRevoked: false })
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(AuthenticationError);
+    expect((error as AuthenticationError).reason).toBe(expected);
+    expect((error as Error).message).not.toContain("firebase says");
+  });
+
+  it("revokes refresh tokens for the UID", async () => {
+    const auth = {
+      verifyIdToken: vi.fn(),
+      revokeRefreshTokens: vi.fn().mockResolvedValue(undefined),
+    };
+    await new FirebaseAuthVerifier(auth).revokeSessions("abc123");
+    expect(auth.revokeRefreshTokens).toHaveBeenCalledWith("abc123");
+  });
+});

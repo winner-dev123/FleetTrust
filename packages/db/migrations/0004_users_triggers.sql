@@ -1,0 +1,4 @@
+-- Hand-written migration: keep users.updated_at honest (data conventions).
+CREATE TRIGGER users_set_updated_at
+  BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
