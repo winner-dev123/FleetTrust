@@ -19,7 +19,9 @@ Supply-chain hygiene:
 - Installs use `--frozen-lockfile`.
 - pnpm's release-age policy and install-script allowlist (`pnpm-workspace.yaml`) apply in CI too.
 
-**Cost note:** private repositories on GitHub Free get 2,000 Actions minutes per month. A full run uses about 20–30 runner-minutes, so roughly 70–100 runs a month. If that gets tight, run `local-infra` and `container` only on pull requests that touch `infra/`, `apps/api/` or `packages/db/` (path filters).
+**Cost note:** the repository is **public** (since 2026-11-19), so GitHub-hosted standard runners are free. If it ever goes private again, GitHub Free includes 2,000 minutes a month and a full run uses about 20–30. In that case, path-filter `local-infra` and `container` to changes under `infra/`, `apps/api/` or `packages/db/`.
+
+**Public-repo hygiene:** Actions logs are public. Never echo secrets: the workflows use only throwaway per-run credentials, and secrets from GitHub's store are masked automatically. Pull requests from forks get a read-only token and no secrets (GitHub's default; keep it).
 
 ## Dependency updates (`.github/dependabot.yml`)
 
@@ -27,9 +29,7 @@ Weekly PRs for npm (grouped: minor/patch, OpenTelemetry, NestJS, Expo/React Nati
 
 ## Branch protection (recommended settings)
 
-> **Plan limitation:** GitHub Free doesn't enforce branch protection or rulesets on **private** repositories. They need GitHub Pro/Team, or a public repository. Until then, these are working agreements, not enforced rules.
-
-When available (Settings → Rules → Rulesets → `main`):
+Rulesets are available because the repository is public. Configure them in Settings → Rules → Rulesets → `main`:
 
 - Require a pull request before merging, with 1 approval and stale approvals dismissed on new commits.
 - Require status checks: `quality`, `database`, `local-infra`, `container`, `security`, with branches up to date before merging.

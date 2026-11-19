@@ -1,7 +1,7 @@
 # Handoff — Prompt 05: CI/CD and observability foundation
 
 - Date: 2026-11-19
-- Status: **awaiting owner approval. CI has not run yet:** GitHub refused to start the jobs because of a billing block on the account (see Blockers).
+- Status: **awaiting owner approval. CI passes:** all 5 jobs green on PR #1 ([run 44585455998](https://github.com/winner-dev123/FleetTrust/actions/runs/44585455998), attempt 2, 2026-11-19).
 - Prompt 04 approved by owner ("pls continue develop"). Sample PR: winner-dev123/FleetTrust **#1**.
 
 ## What was built
@@ -41,11 +41,11 @@ Every action is pinned to a commit SHA and every image to a digest. Permissions 
 
 ## Acceptance criteria
 
-| Criterion                     | Result                                                                                                                                                                                                                                           |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Pipeline works on a sample PR | **Not yet demonstrated.** PR #1 is open and the workflow parsed (5 jobs listed), but GitHub didn't start any job: _"recent account payments have failed or your spending limit needs to be increased"_. Every step was run locally first (below) |
-| Logs redact secrets           | **Pass**: 7 pattern cases, a field-path plus pattern test covering 9 planted secrets, and an e2e test where an exception carrying a DB password returns a generic 500 and the log contains `[REDACTED]`, never the password                      |
-| Backup restoration documented | **Pass**: [runbook](../operations/backup-restore-runbook.md) with a decision table, PITR clone and cut-over, daily-backup restore, object restore and drill log (first drill due in Prompt 28)                                                   |
+| Criterion                     | Result                                                                                                                                                                                                                                                                                                                                  |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pipeline works on a sample PR | **Pass**: PR #1, all 5 jobs green ([run](https://github.com/winner-dev123/FleetTrust/actions/runs/44585455998)): quality 1.7 min, database 1.0, local-infra 1.1, container 1.3, security 0.2. The first attempts were refused by an account billing block; after the repository went public (free runners) the re-run passed first time |
+| Logs redact secrets           | **Pass**: 7 pattern cases, a field-path plus pattern test covering 9 planted secrets, and an e2e test where an exception carrying a DB password returns a generic 500 and the log contains `[REDACTED]`, never the password                                                                                                             |
+| Backup restoration documented | **Pass**: [runbook](../operations/backup-restore-runbook.md) with a decision table, PITR clone and cut-over, daily-backup restore, object restore and drill log (first drill due in Prompt 28)                                                                                                                                          |
 
 ## Local evidence (actual results, 2026-11-19)
 
@@ -63,8 +63,8 @@ Not runnable on this machine: the Docker build itself, the Compose stack, the em
 
 ## Blockers
 
-1. **GitHub Actions billing (owner action):** github.com → Settings → Billing and licensing. Fix the failed payment or raise the Actions spending limit. Private repos on GitHub Free include 2,000 minutes/month; one full run uses about 20–30. Then re-run PR #1's checks (Actions → CI → Re-run jobs).
-2. **Branch protection** isn't available for private repos on GitHub Free. The recommended settings are documented as working agreements.
+1. ~~GitHub Actions billing~~: **resolved** by making the repository public (2026-11-19; free standard runners). The account billing issue itself remains; it no longer affects this repo.
+2. **Branch protection** is now available (public repo). Recommended ruleset in [ci-cd.md](../operations/ci-cd.md); not yet applied (owner decision).
 3. **Staging (OQ-19, OQ-02):** a GCP project and region are needed before `deploy-staging.yml` can run.
 
 ## Risks

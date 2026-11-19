@@ -2,38 +2,38 @@
 
 Each stage needs explicit owner approval before the next starts. Status values: `todo` · `in progress` · `awaiting approval` · `approved`
 
-| #   | Stage                                      | Status                                            | Handoff                      |
-| --- | ------------------------------------------ | ------------------------------------------------- | ---------------------------- |
-| 01  | Product requirements and architecture      | approved                                          | [prompt-01.md](prompt-01.md) |
-| 02  | Monorepo bootstrap                         | approved                                          | [prompt-02.md](prompt-02.md) |
-| 03  | Local infrastructure                       | approved (start-up checks pending Docker/Java 21) | [prompt-03.md](prompt-03.md) |
-| 04  | Database and migration foundation          | approved                                          | [prompt-04.md](prompt-04.md) |
-| 05  | CI/CD and observability foundation         | awaiting approval (CI blocked by GitHub billing)  | [prompt-05.md](prompt-05.md) |
-| 06  | Authentication and minimal signup          | todo                                              |                              |
-| 07  | Organizations, memberships and RBAC        | todo                                              |                              |
-| 08  | Subscription catalog and entitlements      | todo                                              |                              |
-| 09  | Document verification workflow             | todo                                              |                              |
-| 10  | Provider profile onboarding                | todo                                              |                              |
-| 11  | Service catalogs and published pricing     | todo                                              |                              |
-| 12  | Geospatial provider search                 | todo                                              |                              |
-| 13  | Route-aware discovery and saved lists      | todo                                              |                              |
-| 14  | Service requests and quotations            | todo                                              |                              |
-| 15  | Article publishing and knowledge hub       | todo                                              |                              |
-| 16  | Friendships and communities                | todo                                              |                              |
-| 17  | Messaging and community notifications      | todo                                              |                              |
-| 18  | Emergency assistance and trusted circles   | todo                                              |                              |
-| 19  | Vehicle profiles and maintenance           | todo                                              |                              |
-| 20  | Provider CRM and appointments              | todo                                              |                              |
-| 21  | Parts inventory and provider referrals     | todo                                              |                              |
-| 22  | Fleet dashboards and job board             | todo                                              |                              |
-| 23  | Status, power users and moderation         | todo                                              |                              |
-| 24  | Web product and design system              | todo                                              |                              |
-| 25  | React Native mobile product                | todo                                              |                              |
-| 26  | Administration and operations              | todo                                              |                              |
-| 27  | Security and privacy hardening             | todo                                              |                              |
-| 28  | Performance, reliability and end-to-end QA | todo                                              |                              |
-| 29  | Staging, production and launch             | todo                                              |                              |
-| 30  | Future extensibility specification only    | todo                                              |                              |
+| #   | Stage                                      | Status                             | Handoff                      |
+| --- | ------------------------------------------ | ---------------------------------- | ---------------------------- |
+| 01  | Product requirements and architecture      | approved                           | [prompt-01.md](prompt-01.md) |
+| 02  | Monorepo bootstrap                         | approved                           | [prompt-02.md](prompt-02.md) |
+| 03  | Local infrastructure                       | approved (start-up verified in CI) | [prompt-03.md](prompt-03.md) |
+| 04  | Database and migration foundation          | approved                           | [prompt-04.md](prompt-04.md) |
+| 05  | CI/CD and observability foundation         | awaiting approval (CI green)       | [prompt-05.md](prompt-05.md) |
+| 06  | Authentication and minimal signup          | todo                               |                              |
+| 07  | Organizations, memberships and RBAC        | todo                               |                              |
+| 08  | Subscription catalog and entitlements      | todo                               |                              |
+| 09  | Document verification workflow             | todo                               |                              |
+| 10  | Provider profile onboarding                | todo                               |                              |
+| 11  | Service catalogs and published pricing     | todo                               |                              |
+| 12  | Geospatial provider search                 | todo                               |                              |
+| 13  | Route-aware discovery and saved lists      | todo                               |                              |
+| 14  | Service requests and quotations            | todo                               |                              |
+| 15  | Article publishing and knowledge hub       | todo                               |                              |
+| 16  | Friendships and communities                | todo                               |                              |
+| 17  | Messaging and community notifications      | todo                               |                              |
+| 18  | Emergency assistance and trusted circles   | todo                               |                              |
+| 19  | Vehicle profiles and maintenance           | todo                               |                              |
+| 20  | Provider CRM and appointments              | todo                               |                              |
+| 21  | Parts inventory and provider referrals     | todo                               |                              |
+| 22  | Fleet dashboards and job board             | todo                               |                              |
+| 23  | Status, power users and moderation         | todo                               |                              |
+| 24  | Web product and design system              | todo                               |                              |
+| 25  | React Native mobile product                | todo                               |                              |
+| 26  | Administration and operations              | todo                               |                              |
+| 27  | Security and privacy hardening             | todo                               |                              |
+| 28  | Performance, reliability and end-to-end QA | todo                               |                              |
+| 29  | Staging, production and launch             | todo                               |                              |
+| 30  | Future extensibility specification only    | todo                               |                              |
 
 ## Prompt 01 acceptance criteria
 
@@ -54,7 +54,7 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 - [x] Documented commands for every service (`pnpm infra:*`, `pnpm emulators`; [local-infrastructure.md](../development/local-infrastructure.md))
 - [x] Health checks defined for every service, and `pnpm infra:status` reports them
 - [x] No public default credentials: random per-developer secrets, `${VAR:?}` in Compose, enforced by tests
-- [ ] **Services actually start and turn healthy**: not verified; needs Docker (KC-04) and Java 21+ (KC-06)
+- [x] Services actually start and turn healthy: verified in CI (`local-infra` job, [run](https://github.com/winner-dev123/FleetTrust/actions/runs/44585455998)): Compose healthy, credentials enforced, emulators up, Storage rules deny client uploads
 
 ## Prompt 04 acceptance criteria
 
@@ -62,10 +62,10 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 - [x] Seed is repeatable (second run changes nothing; failures roll back)
 - [x] Spatial query tests pass (geodesic accuracy, radius, viewport, GiST index)
 - [x] Tenant leak tests planned ([test plan](../qa/tenant-isolation-test-plan.md)) with a working, self-tested harness
-- [ ] Same migrations verified on **Postgres 17** (`pnpm test:db`): needs Docker (KC-04)
+- [x] Same migrations verified on **Postgres 17** (CI `database` and `local-infra` jobs, [run](https://github.com/winner-dev123/FleetTrust/actions/runs/44585455998))
 
 ## Prompt 05 acceptance criteria
 
-- [ ] Pipeline works on a sample PR: PR #1 opened, but GitHub didn't start the jobs (account billing block, owner action)
+- [x] Pipeline works on a sample PR: PR #1, 5/5 jobs green ([run](https://github.com/winner-dev123/FleetTrust/actions/runs/44585455998))
 - [x] Logs redact secrets (unit and e2e tests with planted secrets)
 - [x] Backup restoration documented ([runbook](../operations/backup-restore-runbook.md))
