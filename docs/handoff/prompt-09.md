@@ -1,7 +1,7 @@
 # Handoff — Prompt 09: Document verification workflow
 
 - Date: 2026-11-19
-- Status: **awaiting owner approval** · branch `feat/prompt-09-verification`
+- Status: **approved** · PR **#10** squash-merged as `d0d45d6` (CI 5/5 green on `0b2ff72`)
 - Prompt 08 approved and merged (PR #9 → `37ee120`). Dependabot #8 (PGlite 0.5.16, turbo 2.11.11, yaml 2.9.1) was merged after a local run of the db and API suites on top of #9.
 
 ## Assumptions

@@ -51,6 +51,7 @@ spec:
             - { name: STORAGE_DRIVER, value: gcs }
             - { name: STORAGE_QUARANTINE_BUCKET, value: "${STORAGE_QUARANTINE_BUCKET}" }
             - { name: STORAGE_SENSITIVE_BUCKET, value: "${STORAGE_SENSITIVE_BUCKET}" }
+            - { name: STORAGE_PUBLIC_MEDIA_BUCKET, value: "${STORAGE_PUBLIC_MEDIA_BUCKET}" }
             - { name: DOCUMENT_KEY_PROVIDER, value: kms }
             - { name: DOCUMENT_KMS_KEY, value: "${DOCUMENT_KMS_KEY}" }
             - { name: MALWARE_SCANNER, value: clamav }

@@ -31,6 +31,8 @@ export const PERMISSIONS = [
   "owners.manage",
   /** Apply for business/location badges and upload evidence (Prompt 09). */
   "verification.manage",
+  /** Edit and publish the public provider profile (Prompt 10). */
+  "profile.manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -50,6 +52,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "members.manage",
     "invitations.manage",
     "verification.manage",
+    "profile.manage",
   ],
   manager: ["org.read", "branches.read", "members.read"],
   staff: ["org.read", "branches.read"],
@@ -110,6 +113,16 @@ export const branchSchema = z.object({
   id: z.uuid(),
   organizationId: z.uuid(),
   name: z.string(),
+  /** Location details (edited through the provider profile wizard). */
+  addressLine1: z.string().nullable(),
+  addressLine2: z.string().nullable(),
+  locality: z.string().nullable(),
+  region: z.string().nullable(),
+  postalCode: z.string().nullable(),
+  countryCode: z.string().nullable(),
+  location: z.object({ lng: z.number(), lat: z.number() }).nullable(),
+  serviceRadiusKm: z.number().nullable(),
+  phone: z.string().nullable(),
   createdAt: z.iso.datetime(),
 });
 export type BranchDto = z.infer<typeof branchSchema>;

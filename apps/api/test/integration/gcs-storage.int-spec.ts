@@ -19,7 +19,7 @@ if (process.env["REQUIRE_INTEGRATION"] === "1" && !emulator) {
 describe.skipIf(!emulator)("GcsObjectStorage against the Storage emulator", () => {
   const bucket = "demo-fleettrust.appspot.com";
   const storage = new GcsObjectStorage(
-    { quarantine: bucket, sensitive: bucket },
+    { quarantine: bucket, sensitive: bucket, public_media: bucket },
     new Storage({ projectId: "demo-fleettrust" }),
   );
 

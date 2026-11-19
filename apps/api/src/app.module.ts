@@ -7,6 +7,7 @@ import { HealthModule } from "./health/health.module.js";
 import { EntitlementsModule } from "./modules/entitlements/index.js";
 import { IdentityModule } from "./modules/identity/index.js";
 import { OrganizationsModule } from "./modules/organizations/index.js";
+import { ProvidersModule } from "./modules/providers/index.js";
 import { VerificationModule } from "./modules/verification/index.js";
 import { type AppLogger, createLogger } from "./observability/logger.js";
 import { ObservabilityModule } from "./observability/observability.module.js";
@@ -48,6 +49,8 @@ export class AppModule {
         EntitlementsModule,
         // Document verification and badges.
         VerificationModule,
+        // Provider profiles: setup wizard, publication, public views.
+        ProvidersModule,
         HealthModule,
       ],
     };

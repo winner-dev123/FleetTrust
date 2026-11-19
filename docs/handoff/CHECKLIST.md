@@ -12,8 +12,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 06  | Authentication and minimal signup          | approved (merged, PR #6)           | [prompt-06.md](prompt-06.md) |
 | 07  | Organizations, memberships and RBAC        | approved (merged, PR #7)           | [prompt-07.md](prompt-07.md) |
 | 08  | Subscription catalog and entitlements      | approved (merged, PR #9)           | [prompt-08.md](prompt-08.md) |
-| 09  | Document verification workflow             | awaiting approval                  | [prompt-09.md](prompt-09.md) |
-| 10  | Provider profile onboarding                | todo                               |                              |
+| 09  | Document verification workflow             | approved (merged, PR #10)          | [prompt-09.md](prompt-09.md) |
+| 10  | Provider profile onboarding                | awaiting approval                  | [prompt-10.md](prompt-10.md) |
 | 11  | Service catalogs and published pricing     | todo                               |                              |
 | 12  | Geospatial provider search                 | todo                               |                              |
 | 13  | Route-aware discovery and saved lists      | todo                               |                              |

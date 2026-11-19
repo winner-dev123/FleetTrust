@@ -78,6 +78,20 @@
       "when": 1795123252748,
       "tag": "0010_verification_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795129753872,
+      "tag": "0011_provider_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795129754880,
+      "tag": "0012_provider_profiles_triggers",
+      "breakpoints": true
     }
   ]
 }

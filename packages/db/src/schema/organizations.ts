@@ -1,9 +1,11 @@
 import { sql } from "drizzle-orm";
 import {
+  char,
   check,
   foreignKey,
   index,
   pgTable,
+  smallint,
   text,
   timestamp,
   unique,
@@ -11,7 +13,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import { id, timestamps } from "./columns.js";
+import { geographyPoint, id, timestamps } from "./columns.js";
 import { users } from "./users.js";
 
 export const ORGANIZATION_KINDS = ["provider", "fleet"] as const;
@@ -64,9 +66,30 @@ export const branches = pgTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "restrict" }),
     name: text("name").notNull(),
+    // Public location details (provider profiles, Prompt 10). All optional until publication.
+    addressLine1: text("address_line1"),
+    addressLine2: text("address_line2"),
+    locality: text("locality"),
+    region: text("region"),
+    postalCode: text("postal_code"),
+    /** ISO 3166-1 alpha-2. */
+    countryCode: char("country_code", { length: 2 }),
+    location: geographyPoint("location"),
+    /** How far the branch travels to customers (mobile mechanics, towing). */
+    serviceRadiusKm: smallint("service_radius_km"),
+    phone: text("phone"),
     ...timestamps(),
   },
   (t) => [
+    index("branches_location_gist").using("gist", t.location),
+    check(
+      "branches_country_code_format",
+      sql`${t.countryCode} IS NULL OR ${t.countryCode} ~ '^[A-Z]{2}$'`,
+    ),
+    check(
+      "branches_service_radius_range",
+      sql`${t.serviceRadiusKm} IS NULL OR ${t.serviceRadiusKm} BETWEEN 1 AND 500`,
+    ),
     // Target of composite FKs proving a branch belongs to the same organization.
     unique("branches_id_organization_key").on(t.id, t.organizationId),
     uniqueIndex("branches_org_name_key").on(t.organizationId, sql`lower(${t.name})`),

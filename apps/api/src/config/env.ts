@@ -70,6 +70,12 @@ export const apiEnvSchema = z
       .string()
       .regex(/^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$/)
       .optional(),
+    STORAGE_PUBLIC_MEDIA_BUCKET: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$/)
+      .optional(),
+    /** CDN origin serving the public media bucket (optional; defaults to storage.googleapis.com). */
+    PUBLIC_MEDIA_BASE_URL: envFields.httpUrl().optional(),
     STORAGE_SENSITIVE_BUCKET: z
       .string()
       .regex(/^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$/)
@@ -117,9 +123,14 @@ export const apiEnvSchema = z
     }
     if (
       env.STORAGE_DRIVER === "gcs" &&
-      (env.STORAGE_QUARANTINE_BUCKET === undefined || env.STORAGE_SENSITIVE_BUCKET === undefined)
+      (env.STORAGE_QUARANTINE_BUCKET === undefined ||
+        env.STORAGE_SENSITIVE_BUCKET === undefined ||
+        env.STORAGE_PUBLIC_MEDIA_BUCKET === undefined)
     ) {
-      issue("STORAGE_SENSITIVE_BUCKET", "both bucket names are required with STORAGE_DRIVER=gcs");
+      issue(
+        "STORAGE_SENSITIVE_BUCKET",
+        "all three bucket names are required with STORAGE_DRIVER=gcs",
+      );
     }
     if (deployed && env.DOCUMENT_KEY_PROVIDER !== "kms") {
       issue("DOCUMENT_KEY_PROVIDER", "must be 'kms' in staging and production");
