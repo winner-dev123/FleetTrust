@@ -32,7 +32,7 @@ catalog:
   "@next/eslint-plugin-next": 16.4.6
   globals: 17.14.0
   vitest: 5.1.1
-  "@types/node": 24.19.2
+  "@types/node": 26.6.6
   # Runtime
   zod: 4.6.7
   # React is pinned to the version Expo SDK 58 requires so web and mobile share one React.
