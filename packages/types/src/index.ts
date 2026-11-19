@@ -1,3 +1,4 @@
+export * from "./entitlements.js";
 export * from "./health.js";
 export * from "./ids.js";
 export * from "./identity.js";

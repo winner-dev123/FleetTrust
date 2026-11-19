@@ -2,7 +2,9 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createDatabase, type DatabaseHandle, runMigrations } from "../src/database.js";
+import { consumeDailyQuota, dailyUsage } from "../src/quotas.js";
 import { runSeed } from "../src/seed/index.js";
+import { uuidv7 } from "uuidv7";
 
 /**
  * Runs against the real PostgreSQL 17 + PostGIS container (Cloud SQL's major version).
@@ -55,5 +57,45 @@ describe.skipIf(!url)("real PostgreSQL (DATABASE_URL_TEST)", () => {
                          'SRID=4326;POINT(18.4300 -33.9300)'::geography, 1000) AS near`,
     );
     expect(result.rows[0]?.near).toBe(true);
+  });
+
+  it("quota consumption is atomic across 10 real connections (SRS AB-18)", async () => {
+    const pool = createDatabase({ url: url ?? "", maxConnections: 10 });
+    try {
+      const subject = { type: "user" as const, id: uuidv7() };
+      const day = "2026-11-19";
+      const results = await Promise.all(
+        Array.from({ length: 40 }, () =>
+          pool.db.transaction((tx) =>
+            consumeDailyQuota(tx, {
+              subject,
+              key: "friend_requests.daily",
+              periodStart: day,
+              limit: 7,
+            }),
+          ),
+        ),
+      );
+      expect(results.filter((result) => result.allowed)).toHaveLength(7);
+      expect((await dailyUsage(pool.db, subject, day)).get("friend_requests.daily")).toBe(7);
+
+      const retries = await Promise.all(
+        Array.from({ length: 20 }, () =>
+          pool.db.transaction((tx) =>
+            consumeDailyQuota(tx, {
+              subject,
+              key: "articles.daily",
+              periodStart: day,
+              limit: 100,
+              idempotencyKey: "same-request",
+            }),
+          ),
+        ),
+      );
+      expect(retries.every((result) => result.allowed)).toBe(true);
+      expect((await dailyUsage(pool.db, subject, day)).get("articles.daily")).toBe(1);
+    } finally {
+      await pool.close();
+    }
   });
 });

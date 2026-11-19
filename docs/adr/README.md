@@ -18,6 +18,7 @@ We record significant decisions as short ADRs ([Nygard format](https://cognitect
 | [0012](0012-local-storage-emulation.md)              | Local object storage uses the Firebase Storage emulator    | Accepted |
 | [0013](0013-drizzle-orm-and-pglite-tests.md)         | Drizzle ORM, SQL migrations, and PGlite for database tests | Accepted |
 | [0014](0014-tenancy-and-rbac.md)                     | Tenancy and role-based access in the API, RLS later        | Accepted |
+| [0015](0015-entitlements-model.md)                   | Entitlements: daily counters, capacity limits, grace       | Accepted |
 
 ## Template
 

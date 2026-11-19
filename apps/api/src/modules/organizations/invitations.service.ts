@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 import {
   and,
+  count,
   type Database,
   desc,
   eq,
@@ -26,6 +27,7 @@ import { Inject, Injectable } from "@nestjs/common";
 
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
 import { currentRequestContext } from "../../observability/request-context.js";
+import { EntitlementsService, subjectOfOrganization } from "../entitlements/index.js";
 import type { AuthContext } from "../identity/index.js";
 import { notFound, orgError } from "./errors.js";
 import { toInvitationDto, toMyOrganization } from "./mappers.js";
@@ -65,7 +67,10 @@ type CreateInput = Required<Pick<CreateInvitationRequest, "email" | "role">> & {
 
 @Injectable()
 export class InvitationsService {
-  constructor(@Inject(DATABASE) private readonly database: DatabaseProvider) {}
+  constructor(
+    @Inject(DATABASE) private readonly database: DatabaseProvider,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   private get db(): Database {
     if (this.database === null) throw new Error("DATABASE_URL is not configured");
@@ -105,6 +110,13 @@ export class InvitationsService {
           ),
         )
         .returning({ id: invitations.id });
+
+      // Seats count members plus pending invitations (SRS F-012).
+      await this.entitlements.assertCapacity(
+        tx,
+        subjectOfOrganization(access.organization),
+        "staff.seats",
+      );
 
       const [row] = await tx
         .insert(invitations)
@@ -213,6 +225,27 @@ export class InvitationsService {
         .where(and(tenantFilter(memberships, tenant), eq(memberships.userId, user.id)))
         .limit(1);
       if (existing) throw orgError(409, "already_member");
+
+      // Serialise joins per organization, then check seats against members only (this
+      // invitation already held a pending seat). After a downgrade, accepting is refused
+      // once members reach the new limit.
+      await tx
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.id, invitation.organizationId))
+        .for("update");
+      const [members] = await tx
+        .select({ n: count() })
+        .from(memberships)
+        .where(tenantFilter(memberships, tenant));
+      await this.entitlements.assertCapacity(
+        tx,
+        subjectOfOrganization(organization),
+        "staff.seats",
+        {
+          current: members?.n ?? 0,
+        },
+      );
 
       const [membership] = await tx
         .insert(memberships)

@@ -1,7 +1,7 @@
 # Handoff — Prompt 07: Organizations, memberships and RBAC
 
 - Date: 2026-11-19
-- Status: **awaiting owner approval** · branch `feat/prompt-07-orgs`
+- Status: **approved** · PR **#7** squash-merged as `8a250d9` (CI 5/5 green on `f5006bd`)
 - Prompt 06 approved and merged (PR #6 → `d608ab2`).
 
 ## Assumptions

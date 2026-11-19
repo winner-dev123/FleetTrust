@@ -38,6 +38,8 @@ export const organizations = pgTable(
     status: text("status", { enum: ["active", "suspended"] })
       .notNull()
       .default("active"),
+    /** IANA timezone; daily quotas reset at local midnight (OQ-08). Validated by the API. */
+    timezone: text("timezone").notNull().default("UTC"),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
@@ -49,6 +51,7 @@ export const organizations = pgTable(
     check("organizations_kind_valid", sql`${t.kind} IN ('provider', 'fleet')`),
     check("organizations_status_valid", sql`${t.status} IN ('active', 'suspended')`),
     check("organizations_name_length", sql`char_length(${t.name}) BETWEEN 2 AND 120`),
+    check("organizations_timezone_length", sql`char_length(${t.timezone}) BETWEEN 1 AND 64`),
     index("organizations_created_by_idx").on(t.createdBy),
   ],
 );

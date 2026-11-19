@@ -59,6 +59,7 @@ const me = {
   emailVerified: true,
   displayName: null,
   profileComplete: false,
+  timeZone: "UTC",
   createdAt: "2026-11-19T10:00:00.000Z",
 };
 
@@ -148,6 +149,7 @@ describe("organizations", () => {
       kind: "fleet",
       name: "Fleet",
       status: "active",
+      timeZone: "UTC",
       createdAt: "2026-01-01T00:00:00.000Z",
     },
     membershipId: "0190f4a6-1c2b-7d3e-8f40-123456789abd",
@@ -196,6 +198,46 @@ describe("organizations", () => {
       .acceptInvitation("A".repeat(43))
       .catch((caught: unknown) => caught)) as ApiError;
     expect(error).toMatchObject({ status: 410, reason: "invitation_expired" });
+  });
+
+  it("reads usage meters and surfaces quota_exceeded", async () => {
+    const meters = {
+      subject: { type: "organization", id: orgId },
+      plan: {
+        code: "fleet-free",
+        name: "Fleet Starter",
+        version: 1,
+        source: "default",
+        activatedAt: null,
+        endsAt: null,
+      },
+      timeZone: "UTC",
+      period: "2026-11-19",
+      entitlements: [
+        {
+          key: "branches.max",
+          kind: "capacity",
+          limit: 3,
+          used: 3,
+          source: "plan",
+          graceUntil: null,
+          overLimit: false,
+        },
+      ],
+    };
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(jsonResponse(meters))
+      .mockResolvedValueOnce(
+        jsonResponse({ statusCode: 403, error: "forbidden", reason: "quota_exceeded" }, 403),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    await expect(client.organizationEntitlements(orgId)).resolves.toEqual(meters);
+    expect(fetch.mock.calls[0]?.[0]).toBe(`https://x.test/v1/orgs/${orgId}/entitlements`);
+    const error = (await client
+      .createBranch(orgId, "Depot")
+      .catch((caught: unknown) => caught)) as ApiError;
+    expect(error.reason).toBe("quota_exceeded");
   });
 
   it("rejects malformed invitation tokens without calling the API", async () => {

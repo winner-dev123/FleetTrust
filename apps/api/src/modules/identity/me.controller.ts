@@ -16,6 +16,7 @@ function toMeResponse(user: User): MeResponse {
     emailVerified: user.emailVerified,
     displayName: user.displayName,
     profileComplete: user.displayName !== null,
+    timeZone: user.timezone,
     createdAt: user.createdAt.toISOString(),
   };
 }
@@ -37,11 +38,12 @@ export class MeController {
   @CheckRevoked()
   @RateLimit({ name: "me-update", limit: 20, windowSeconds: 3600, by: "user" })
   async update(@CurrentUser() user: User, @Body() body: unknown): Promise<MeResponse> {
-    const { displayName } = parseBody(updateMeRequestSchema, body);
-    if (displayName === undefined) return toMeResponse(user);
-    const updated = await this.usersService.updateDisplayName(
+    const change = parseBody(updateMeRequestSchema, body);
+    if (change.displayName === undefined && change.timeZone === undefined)
+      return toMeResponse(user);
+    const updated = await this.usersService.updateProfile(
       user,
-      displayName,
+      change,
       currentRequestContext()?.requestId,
     );
     return toMeResponse(updated);

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { timeZoneSchema } from "./entitlements.js";
+
 /**
  * Public display name: optional until the first contribution. Trimmed, 1–50 characters,
  * no control characters (prevents invisible or spoofed names and log/terminal injection).
@@ -19,13 +21,15 @@ export const meResponseSchema = z.object({
   displayName: z.string().nullable(),
   /** False until a display name is set; contributing actions require it. */
   profileComplete: z.boolean(),
+  /** IANA timezone: personal daily quotas reset at local midnight. */
+  timeZone: z.string(),
   createdAt: z.iso.datetime(),
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;
 
 /** `PATCH /v1/me`. `displayName: null` clears it. */
 export const updateMeRequestSchema = z
-  .object({ displayName: displayNameSchema.nullable() })
+  .object({ displayName: displayNameSchema.nullable(), timeZone: timeZoneSchema })
   .partial()
   .strict();
 export type UpdateMeRequest = z.infer<typeof updateMeRequestSchema>;

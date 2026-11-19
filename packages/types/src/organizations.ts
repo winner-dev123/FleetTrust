@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { timeZoneSchema } from "./entitlements.js";
+
 /** SRS §2.2: providers (workshops, towing, …) and fleets (vehicle operators). */
 export const ORGANIZATION_KINDS = ["provider", "fleet"] as const;
 export const organizationKindSchema = z.enum(ORGANIZATION_KINDS);
@@ -72,7 +74,11 @@ export const createOrganizationRequestSchema = z
   .strict();
 export type CreateOrganizationRequest = z.infer<typeof createOrganizationRequestSchema>;
 
-export const updateOrganizationRequestSchema = z.object({ name: nameSchema }).strict();
+export const updateOrganizationRequestSchema = z
+  .object({ name: nameSchema, timeZone: timeZoneSchema })
+  .partial()
+  .strict()
+  .refine((value) => value.name !== undefined || value.timeZone !== undefined, "Nothing to update");
 
 export const branchRequestSchema = z.object({ name: nameSchema }).strict();
 
@@ -81,6 +87,8 @@ export const organizationSchema = z.object({
   kind: organizationKindSchema,
   name: z.string(),
   status: z.enum(["active", "suspended"]),
+  /** IANA timezone: the organization's daily quotas reset at local midnight. */
+  timeZone: z.string(),
   createdAt: z.iso.datetime(),
 });
 export type OrganizationDto = z.infer<typeof organizationSchema>;
