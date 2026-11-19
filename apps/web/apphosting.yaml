@@ -1,0 +1,21 @@
+# Firebase App Hosting settings for the Next.js web app (ADR-0004).
+# The backend is connected to this GitHub repo in the Firebase console with root directory apps/web;
+# see docs/operations/staging-deployment.md. Per-environment overrides: apphosting.<env>.yaml.
+runConfig:
+  minInstances: 0
+  maxInstances: 4
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  - variable: NEXT_PUBLIC_APP_ENV
+    value: staging
+    availability: [BUILD, RUNTIME]
+  # Set to the staging API URL once the API is deployed (output of deploy-staging.yml).
+  - variable: NEXT_PUBLIC_API_URL
+    value: https://REPLACE-WITH-STAGING-API-URL
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_TELEMETRY_DISABLED
+    value: "1"
+    availability: [BUILD, RUNTIME]

@@ -1,4 +1,4 @@
-import { type EnvSource, envFields, parseEnv } from "@fleettrust/config/env";
+import { type EnvSource, envFields, parseEnv } from "@fleettrust/env";
 import { appRoleSchema } from "@fleettrust/types";
 import { z } from "zod";
 
@@ -29,6 +29,11 @@ export const apiEnvSchema = z
       .optional(),
     /** Connections per instance. Keep (Cloud Run max instances × this) under the Cloud SQL limit. */
     DB_POOL_MAX: z.coerce.number().int().min(1).max(50).default(5),
+    /** Google Cloud project ID; enables log ↔ trace correlation in Cloud Logging. */
+    GOOGLE_CLOUD_PROJECT: z
+      .string()
+      .regex(/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/, "must be a Google Cloud project ID")
+      .optional(),
   })
   .superRefine((env, ctx) => {
     const deployed = env.APP_ENV === "staging" || env.APP_ENV === "production";

@@ -1,0 +1,15 @@
+# Secret scanning (CI "security" job). Default gitleaks rules, plus one deliberate exemption:
+# test files contain *fake* credentials on purpose (fake JWTs, connection strings, API keys) to
+# prove that logs and error messages redact them. Real secrets never belong in tests either;
+# reviewers must reject any test that needs a real one.
+title = "FleetTrust gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Intentional fake secrets in redaction and validation tests"
+paths = [
+  '''(^|/)test/''',
+  '''\.(spec|test)\.tsx?$''',
+]

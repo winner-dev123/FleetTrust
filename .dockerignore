@@ -1,0 +1,19 @@
+# Keep the build context small and free of secrets.
+**/node_modules
+**/dist
+**/.next
+**/.expo
+**/.turbo
+**/coverage
+.git
+.firebase-data
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/service-account*.json
+apps/mobile
+apps/web
+docs
+infra
+tools

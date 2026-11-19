@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { EnvValidationError, envFields, parseEnv } from "./env.js";
+import { EnvValidationError, envFields, parseEnv } from "./index.js";
 
 const schema = z.object({
   APP_ENV: envFields.appEnv(),

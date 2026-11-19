@@ -1,0 +1,54 @@
+# Weekly dependency update PRs. The 7-day cooldown matches pnpm's minimum-release-age policy:
+# brand-new releases (the window in which most malicious publishes are caught) are not proposed.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+      opentelemetry:
+        patterns: ["@opentelemetry/*"]
+      nestjs:
+        patterns: ["@nestjs/*"]
+      expo:
+        patterns: ["expo", "expo-*", "jest-expo", "react-native", "@react-native/*"]
+    ignore:
+      # typescript-eslint supports TypeScript < 6.1 (see pnpm-workspace.yaml catalog).
+      - dependency-name: typescript
+        versions: [">=6.1.0"]
+      # React must match the version Expo SDK requires; upgrade together with Expo.
+      - dependency-name: react
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-minor, version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directories: [/apps/api]
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: docker-compose
+    directory: /infra/local
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

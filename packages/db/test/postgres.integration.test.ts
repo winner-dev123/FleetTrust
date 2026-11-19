@@ -11,6 +11,11 @@ import { runSeed } from "../src/seed/index.js";
  */
 const url = process.env["DATABASE_URL_TEST"];
 
+// CI sets REQUIRE_PG_TESTS=1 so a missing database fails the job instead of silently skipping.
+if (process.env["REQUIRE_PG_TESTS"] === "1" && !url) {
+  throw new Error("REQUIRE_PG_TESTS=1 but DATABASE_URL_TEST is not set");
+}
+
 describe.skipIf(!url)("real PostgreSQL (DATABASE_URL_TEST)", () => {
   let handle: DatabaseHandle;
   /** Typed raw queries (Database.execute is driver-agnostic and returns untyped rows). */

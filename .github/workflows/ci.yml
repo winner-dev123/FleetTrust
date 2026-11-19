@@ -1,0 +1,198 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege: jobs only read the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CI: "1"
+  TURBO_TELEMETRY_DISABLED: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+  EXPO_NO_TELEMETRY: "1"
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  quality:
+    name: Format, guard, lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Formatting
+        run: pnpm format:check
+      - name: ADR-0011 excluded-module guard
+        run: pnpm guard:modules
+      - name: Lint, typecheck, test, build
+        run: pnpm turbo run lint typecheck test build
+      - name: Migrations match the schema (no drift)
+        run: |
+          pnpm db:generate
+          if [ -n "$(git status --porcelain packages/db/migrations)" ]; then
+            echo "::error::src/schema changed without a migration. Run 'pnpm db:generate' and commit the result."
+            git status --porcelain packages/db/migrations
+            exit 1
+          fi
+      - name: Tracing smoke test (built API, ESM auto-instrumentation)
+        run: pnpm --filter @fleettrust/api smoke:tracing
+
+  database:
+    name: Database on PostgreSQL 17 + PostGIS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        # Same image and digest as infra/local/compose.yaml.
+        image: postgis/postgis:17-3.6@sha256:1ac10b2551ba84ae05db8e7da477afcd0a3fede99bcb7705da2ee157390cb095
+        env:
+          POSTGRES_USER: ci
+          # Throwaway per-run password for a container that only lives for this job.
+          POSTGRES_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
+          POSTGRES_DB: fleettrust_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U ci -d fleettrust_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL_TEST: postgresql://ci:ci-${{ github.run_id }}-${{ github.run_attempt }}@127.0.0.1:5432/fleettrust_test
+      REQUIRE_PG_TESTS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile --filter "@fleettrust/db..." --filter fleettrust
+      - run: pnpm turbo run build --filter "@fleettrust/db..."
+      - name: Migrate a fresh database
+        run: pnpm --filter @fleettrust/db migrate --test
+      - name: Seed twice (must be repeatable)
+        run: |
+          DATABASE_URL="$DATABASE_URL_TEST" pnpm --filter @fleettrust/db seed
+          DATABASE_URL="$DATABASE_URL_TEST" pnpm --filter @fleettrust/db seed
+      - name: All database tests, including the real-PostgreSQL suite
+        run: pnpm --filter @fleettrust/db test:pg
+
+  local-infra:
+    name: Local infrastructure (Docker Compose + Firebase emulators)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Generate local secrets and start Postgres, Redis and Mailpit
+        run: pnpm infra:up:all
+      - name: Containers are healthy
+        run: pnpm infra:status
+      - name: Credentials are enforced
+        run: |
+          set -a; . infra/local/.env; set +a
+          # Postgres rejects a wrong password over TCP.
+          if PGPASSWORD=wrong psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c 'select 1' 2>/dev/null; then
+            echo "::error::Postgres accepted a wrong password"; exit 1; fi
+          # Redis requires the password.
+          reply=$(docker compose --env-file infra/local/.env -f infra/local/compose.yaml exec -T -e REDISCLI_AUTH= redis redis-cli ping 2>&1 || true)
+          echo "unauthenticated redis PING -> $reply"
+          echo "$reply" | grep -q NOAUTH
+          # Mailpit UI requires the generated login.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8025/api/v1/info)" = "401"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -u "$MAILPIT_UI_USER:$MAILPIT_UI_PASSWORD" http://127.0.0.1:8025/api/v1/info)" = "200"
+      - name: Migrate, seed and run database tests against the Compose Postgres
+        env:
+          REQUIRE_PG_TESTS: "1"
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+          pnpm test:db
+      - name: Start Firebase emulators
+        run: |
+          pnpm emulators > emulators.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -s -o /dev/null http://127.0.0.1:9099/ && curl -s -o /dev/null http://127.0.0.1:9199/; then exit 0; fi
+            sleep 2
+          done
+          cat emulators.log; exit 1
+      - name: Everything healthy, and Storage rules deny direct client access
+        run: |
+          pnpm infra:status
+          status=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+            -H 'Content-Type: text/plain' --data 'hello' \
+            'http://127.0.0.1:9199/v0/b/demo-fleettrust.appspot.com/o?name=probe.txt')
+          echo "unauthenticated client upload -> HTTP $status"
+          test "$status" = "403"
+      - name: Emulator log
+        if: failure()
+        run: cat emulators.log || true
+      - name: Tear down (deletes local data)
+        if: always()
+        run: pnpm infra:destroy --yes || true
+
+  container:
+    name: API container image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          tags: fleettrust-api:ci
+          load: true
+          push: false
+      - name: Runs as non-root and serves health checks
+        run: |
+          test "$(docker run --rm --entrypoint id fleettrust-api:ci -u)" != "0"
+          docker run -d --name api -p 8080:8080 -e APP_VERSION=ci fleettrust-api:ci
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:8080/health && break; sleep 0.5; done
+          curl -sf http://127.0.0.1:8080/health | grep -q '"status":"ok"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/health/ready)" = "503"
+          docker logs api | head -3
+          docker rm -f api
+      - name: Image size
+        run: docker image ls fleettrust-api:ci --format '{{.Repository}}:{{.Tag}} {{.Size}}'
+
+  security:
+    name: Dependency audit and secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # full history for the secret scan
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - name: Known vulnerabilities in production dependencies (high or critical)
+        run: pnpm audit --prod --audit-level high
+      - name: Secret scan (gitleaks, full history)
+        run: |
+          docker run --rm -v "$PWD:/repo" \
+            zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git /repo --config /repo/.gitleaks.toml --redact --no-banner --exit-code 1

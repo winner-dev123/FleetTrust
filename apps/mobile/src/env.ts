@@ -1,4 +1,4 @@
-import { type EnvSource, envFields, parseEnv } from "@fleettrust/config/env";
+import { type EnvSource, envFields, parseEnv } from "@fleettrust/env";
 import { z } from "zod";
 
 /**

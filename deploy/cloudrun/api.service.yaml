@@ -1,0 +1,86 @@
+# Cloud Run service template for the FleetTrust API (rendered with envsubst by
+# .github/workflows/deploy-staging.yml, then applied with `gcloud run services replace`).
+# The same image runs the worker: copy this file with APP_ROLE=worker and ingress internal.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: fleettrust-api
+  labels:
+    app: fleettrust
+    role: api
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "${API_MIN_INSTANCES}"
+        autoscaling.knative.dev/maxScale: "${API_MAX_INSTANCES}"
+        run.googleapis.com/cloudsql-instances: ${CLOUDSQL_CONNECTION_NAME}
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/startup-cpu-boost: "true"
+        # Start the app after the collector sidecar is ready.
+        run.googleapis.com/container-dependencies: '{"api":["otel-collector"]}'
+    spec:
+      serviceAccountName: ${API_SERVICE_ACCOUNT}
+      containerConcurrency: 40
+      timeoutSeconds: 300
+      containers:
+        - name: api
+          image: ${API_IMAGE}
+          ports:
+            - containerPort: 8080
+          env:
+            - { name: APP_ENV, value: "${APP_ENV}" }
+            - { name: APP_ROLE, value: api }
+            - { name: APP_VERSION, value: "${APP_VERSION}" }
+            - { name: LOG_LEVEL, value: info }
+            - { name: GOOGLE_CLOUD_PROJECT, value: "${GCP_PROJECT_ID}" }
+            - { name: CORS_ORIGINS, value: "${CORS_ORIGINS}" }
+            - { name: DB_POOL_MAX, value: "5" }
+            - { name: OTEL_TRACES_EXPORTER, value: otlp }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://localhost:4318" }
+            - { name: OTEL_TRACES_SAMPLER_ARG, value: "${TRACE_SAMPLE_RATIO}" }
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: fleettrust-database-url, key: latest }
+          resources:
+            limits: { cpu: "1", memory: 512Mi }
+          startupProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 30
+        - name: otel-collector
+          # OpenTelemetry Collector sidecar → Cloud Trace (https://cloud.google.com/run/docs/tutorials/custom-metrics-opentelemetry-sidecar)
+          image: ${OTEL_COLLECTOR_IMAGE}
+          args: ["--config=env:OTEL_COLLECTOR_CONFIG"]
+          env:
+            - name: OTEL_COLLECTOR_CONFIG
+              value: |
+                receivers:
+                  otlp:
+                    protocols:
+                      http: { endpoint: "localhost:4318" }
+                processors:
+                  batch: {}
+                  memory_limiter: { check_interval: 1s, limit_percentage: 65, spike_limit_percentage: 20 }
+                  resourcedetection: { detectors: [env, gcp], timeout: 2s }
+                exporters:
+                  googlecloud: {}
+                extensions:
+                  health_check: { endpoint: "0.0.0.0:13133" }
+                service:
+                  extensions: [health_check]
+                  pipelines:
+                    traces: { receivers: [otlp], processors: [memory_limiter, resourcedetection, batch], exporters: [googlecloud] }
+          resources:
+            limits: { cpu: 250m, memory: 256Mi }
+          startupProbe:
+            httpGet: { path: /, port: 13133 }
+  traffic:
+    - percent: 100
+      latestRevision: true

@@ -1,4 +1,4 @@
-import { EnvValidationError } from "@fleettrust/config/env";
+import { EnvValidationError } from "@fleettrust/env";
 import { describe, expect, it } from "vitest";
 
 import { loadWebEnv } from "./env";

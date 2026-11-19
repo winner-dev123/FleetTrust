@@ -4,17 +4,35 @@ import { ApiConfigModule } from "./config/config.module.js";
 import type { ApiEnv } from "./config/env.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { type AppLogger, createLogger } from "./observability/logger.js";
+import { ObservabilityModule } from "./observability/observability.module.js";
+
+/** Builds the structured logger for an environment (one per process). */
+export function createAppLogger(env: ApiEnv): AppLogger {
+  return createLogger({
+    level: env.LOG_LEVEL,
+    service: "fleettrust-api",
+    role: env.APP_ROLE,
+    version: env.APP_VERSION,
+    gcpProject: env.GOOGLE_CLOUD_PROJECT,
+  });
+}
 
 /**
  * Root module. Bounded-context modules live under `src/modules/<name>` and are
- * registered here as they are built (Prompt 04 onwards).
+ * registered here as they are built (Prompt 06 onwards).
  */
 @Module({})
 export class AppModule {
-  static register(env: ApiEnv): DynamicModule {
+  static register(env: ApiEnv, options: { logger?: AppLogger } = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ApiConfigModule.forRoot(env), DatabaseModule.forRoot(env), HealthModule],
+      imports: [
+        ObservabilityModule.forRoot(options.logger ?? createAppLogger(env)),
+        ApiConfigModule.forRoot(env),
+        DatabaseModule.forRoot(env),
+        HealthModule,
+      ],
     };
   }
 }

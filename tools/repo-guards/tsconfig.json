@@ -1,0 +1,11 @@
+{
+  "extends": "@fleettrust/config/tsconfig/node.json",
+  "compilerOptions": {
+    // Executed directly by Node's built-in type stripping: only erasable syntax, explicit .ts imports.
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src", "test"]
+}

@@ -1,4 +1,4 @@
-import { EnvValidationError } from "@fleettrust/config/env";
+import { EnvValidationError } from "@fleettrust/env";
 import { describe, expect, it } from "@jest/globals";
 
 import { loadMobileEnv } from "./env";

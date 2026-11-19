@@ -1,5 +1,5 @@
 {
-  "extends": "./tsconfig/node.json",
+  "extends": "@fleettrust/config/tsconfig/library.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
