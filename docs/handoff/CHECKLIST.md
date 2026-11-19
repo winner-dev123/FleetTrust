@@ -7,8 +7,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 01  | Product requirements and architecture      | approved                                          | [prompt-01.md](prompt-01.md) |
 | 02  | Monorepo bootstrap                         | approved                                          | [prompt-02.md](prompt-02.md) |
 | 03  | Local infrastructure                       | approved (start-up checks pending Docker/Java 21) | [prompt-03.md](prompt-03.md) |
-| 04  | Database and migration foundation          | awaiting approval                                 | [prompt-04.md](prompt-04.md) |
-| 05  | CI/CD and observability foundation         | todo                                              |                              |
+| 04  | Database and migration foundation          | approved                                          | [prompt-04.md](prompt-04.md) |
+| 05  | CI/CD and observability foundation         | awaiting approval (CI blocked by GitHub billing)  | [prompt-05.md](prompt-05.md) |
 | 06  | Authentication and minimal signup          | todo                                              |                              |
 | 07  | Organizations, memberships and RBAC        | todo                                              |                              |
 | 08  | Subscription catalog and entitlements      | todo                                              |                              |
@@ -63,3 +63,9 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 - [x] Spatial query tests pass (geodesic accuracy, radius, viewport, GiST index)
 - [x] Tenant leak tests planned ([test plan](../qa/tenant-isolation-test-plan.md)) with a working, self-tested harness
 - [ ] Same migrations verified on **Postgres 17** (`pnpm test:db`): needs Docker (KC-04)
+
+## Prompt 05 acceptance criteria
+
+- [ ] Pipeline works on a sample PR: PR #1 opened, but GitHub didn't start the jobs (account billing block, owner action)
+- [x] Logs redact secrets (unit and e2e tests with planted secrets)
+- [x] Backup restoration documented ([runbook](../operations/backup-restore-runbook.md))
