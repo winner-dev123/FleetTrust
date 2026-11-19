@@ -8,8 +8,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 02  | Monorepo bootstrap                         | approved                           | [prompt-02.md](prompt-02.md) |
 | 03  | Local infrastructure                       | approved (start-up verified in CI) | [prompt-03.md](prompt-03.md) |
 | 04  | Database and migration foundation          | approved                           | [prompt-04.md](prompt-04.md) |
-| 05  | CI/CD and observability foundation         | awaiting approval (CI green)       | [prompt-05.md](prompt-05.md) |
-| 06  | Authentication and minimal signup          | todo                               |                              |
+| 05  | CI/CD and observability foundation         | approved (merged, PR #1)           | [prompt-05.md](prompt-05.md) |
+| 06  | Authentication and minimal signup          | awaiting approval (PR #6)          | [prompt-06.md](prompt-06.md) |
 | 07  | Organizations, memberships and RBAC        | todo                               |                              |
 | 08  | Subscription catalog and entitlements      | todo                               |                              |
 | 09  | Document verification workflow             | todo                               |                              |

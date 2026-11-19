@@ -7,7 +7,7 @@ import {
   OAuthProvider,
   sendSignInLinkToEmail,
   signInWithPopup,
-} from "firebase/auth";
+} from "@firebase/auth";
 import { useRouter } from "next/navigation";
 import { type SubmitEvent, useState } from "react";
 

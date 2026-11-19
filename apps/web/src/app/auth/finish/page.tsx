@@ -1,7 +1,7 @@
 "use client";
 
 import { spacing, typography } from "@fleettrust/ui";
-import { isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
+import { isSignInWithEmailLink, signInWithEmailLink } from "@firebase/auth";
 import { useRouter } from "next/navigation";
 import { type SubmitEvent, Suspense, use, useEffect, useState } from "react";
 import { browser } from "react-dom";

@@ -2,7 +2,7 @@
 
 import type { MeResponse } from "@fleettrust/types";
 import { spacing, typography } from "@fleettrust/ui";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "@firebase/auth";
 import { useRouter } from "next/navigation";
 import { type SubmitEvent, useEffect, useState } from "react";
 

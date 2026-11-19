@@ -1,8 +1,8 @@
 "use client";
 
 import { createApiClient } from "@fleettrust/sdk";
-import { type FirebaseApp, getApps, initializeApp } from "firebase/app";
-import { type Auth, connectAuthEmulator, getAuth } from "firebase/auth";
+import { type FirebaseApp, getApps, initializeApp } from "@firebase/app";
+import { type Auth, connectAuthEmulator, getAuth } from "@firebase/auth";
 
 import { webEnv } from "@/env";
 
