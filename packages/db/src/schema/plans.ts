@@ -260,7 +260,7 @@ export const quotaConsumptions = pgTable(
   ],
 );
 
-export const PLATFORM_ROLES = ["billing_operator"] as const;
+export const PLATFORM_ROLES = ["billing_operator", "verification_reviewer"] as const;
 export type PlatformRole = (typeof PLATFORM_ROLES)[number];
 
 /**
@@ -278,7 +278,10 @@ export const platformStaff = pgTable(
   },
   (t) => [
     primaryKey({ name: "platform_staff_pkey", columns: [t.userId, t.role] }),
-    check("platform_staff_role_valid", sql`${t.role} IN ('billing_operator')`),
+    check(
+      "platform_staff_role_valid",
+      sql`${t.role} IN (${sql.raw(PLATFORM_ROLES.map((role) => `'${role}'`).join(", "))})`,
+    ),
   ],
 );
 

@@ -7,9 +7,11 @@ import { HealthModule } from "./health/health.module.js";
 import { EntitlementsModule } from "./modules/entitlements/index.js";
 import { IdentityModule } from "./modules/identity/index.js";
 import { OrganizationsModule } from "./modules/organizations/index.js";
+import { VerificationModule } from "./modules/verification/index.js";
 import { type AppLogger, createLogger } from "./observability/logger.js";
 import { ObservabilityModule } from "./observability/observability.module.js";
 import { RateLimitModule } from "./platform/rate-limit/index.js";
+import { StorageModule } from "./platform/storage/index.js";
 
 /** Builds the structured logger for an environment (one per process). */
 export function createAppLogger(env: ApiEnv): AppLogger {
@@ -36,12 +38,16 @@ export class AppModule {
         ApiConfigModule.forRoot(env),
         DatabaseModule.forRoot(env),
         RateLimitModule.forRoot(env),
+        // Object storage, document encryption and malware scanning (ADR-0006).
+        StorageModule.forRoot(env),
         // Registers the global AuthGuard: every route requires sign-in unless marked @Public().
         IdentityModule.forRoot(env),
         // Tenancy: @OrgPermission() routes check membership and role after sign-in.
         OrganizationsModule,
         // Plans, quotas and billing-operator actions.
         EntitlementsModule,
+        // Document verification and badges.
+        VerificationModule,
         HealthModule,
       ],
     };

@@ -29,6 +29,8 @@ export const PERMISSIONS = [
   "members.manage",
   "invitations.manage",
   "owners.manage",
+  /** Apply for business/location badges and upload evidence (Prompt 09). */
+  "verification.manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -47,6 +49,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "members.read",
     "members.manage",
     "invitations.manage",
+    "verification.manage",
   ],
   manager: ["org.read", "branches.read", "members.read"],
   staff: ["org.read", "branches.read"],

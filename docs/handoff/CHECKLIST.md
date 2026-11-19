@@ -11,8 +11,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 05  | CI/CD and observability foundation         | approved (merged, PR #1)           | [prompt-05.md](prompt-05.md) |
 | 06  | Authentication and minimal signup          | approved (merged, PR #6)           | [prompt-06.md](prompt-06.md) |
 | 07  | Organizations, memberships and RBAC        | approved (merged, PR #7)           | [prompt-07.md](prompt-07.md) |
-| 08  | Subscription catalog and entitlements      | awaiting approval                  | [prompt-08.md](prompt-08.md) |
-| 09  | Document verification workflow             | todo                               |                              |
+| 08  | Subscription catalog and entitlements      | approved (merged, PR #9)           | [prompt-08.md](prompt-08.md) |
+| 09  | Document verification workflow             | awaiting approval                  | [prompt-09.md](prompt-09.md) |
 | 10  | Provider profile onboarding                | todo                               |                              |
 | 11  | Service catalogs and published pricing     | todo                               |                              |
 | 12  | Geospatial provider search                 | todo                               |                              |

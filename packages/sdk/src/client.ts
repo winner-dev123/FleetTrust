@@ -1,5 +1,19 @@
 import {
   acceptInvitationRequestSchema,
+  type AddDocumentRequest,
+  addDocumentRequestSchema,
+  appealRequestSchema,
+  type BadgeDto,
+  badgeSchema,
+  type BadgeType,
+  type DocumentUpload,
+  documentUploadSchema,
+  type VerificationCaseDto,
+  verificationCaseSchema,
+  type VerificationErrorReason,
+  verificationErrorReasonSchema,
+  type VerificationLabels,
+  verificationLabelsSchema,
   type AuthErrorReason,
   authErrorReasonSchema,
   type BranchDto,
@@ -51,7 +65,8 @@ export interface ApiClientOptions {
   getAppCheckToken?: () => Promise<string | null> | string | null;
 }
 
-export type ApiErrorReason = AuthErrorReason | OrganizationErrorReason | EntitlementErrorReason;
+export type ApiErrorReason =
+  AuthErrorReason | OrganizationErrorReason | EntitlementErrorReason | VerificationErrorReason;
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
 export class ApiError extends Error {
@@ -124,7 +139,31 @@ export interface ApiClient {
   myEntitlements(): Promise<EntitlementsResponse>;
   /** An organization's plan, limits and usage meters (any member). */
   organizationEntitlements(orgId: string): Promise<EntitlementsResponse>;
+
+  /**
+   * Verification: open a case (driver: personal; business/location: pass orgId), add each
+   * document (then PUT the bytes to `upload.url` with `upload.headers`), complete it, submit.
+   */
+  openVerificationCase(badgeType: BadgeType, orgId?: string): Promise<VerificationCaseDto>;
+  verificationCases(orgId?: string): Promise<VerificationCaseDto[]>;
+  verificationCase(caseId: string): Promise<VerificationCaseDto>;
+  addVerificationDocument(caseId: string, document: AddDocumentRequest): Promise<DocumentUpload>;
+  /** Call after the PUT succeeds: the file is checked, scanned and encrypted. */
+  completeVerificationDocument(caseId: string, documentId: string): Promise<VerificationCaseDto>;
+  submitVerificationCase(caseId: string): Promise<VerificationCaseDto>;
+  withdrawVerificationCase(caseId: string): Promise<void>;
+  appealVerificationCase(caseId: string, statement: string): Promise<VerificationCaseDto>;
+  appealBadge(badgeId: string, statement: string): Promise<BadgeDto>;
+  badges(orgId?: string): Promise<BadgeDto[]>;
+  /** Public trust labels: "verified" or "unverified" per badge type. */
+  verificationLabels(subject: {
+    type: "user" | "organization";
+    id: string;
+  }): Promise<VerificationLabels>;
 }
+
+const casePath = (caseId: string, ...rest: string[]) =>
+  ["/v1/verification/cases", encodeURIComponent(caseId), ...rest.map(encodeURIComponent)].join("/");
 
 const orgPath = (orgId: string, ...rest: string[]) =>
   ["/v1/orgs", orgId, ...rest]
@@ -134,7 +173,12 @@ const orgPath = (orgId: string, ...rest: string[]) =>
 const errorBodySchema = z
   .object({
     reason: z
-      .union([authErrorReasonSchema, organizationErrorReasonSchema, entitlementErrorReasonSchema])
+      .union([
+        authErrorReasonSchema,
+        organizationErrorReasonSchema,
+        entitlementErrorReasonSchema,
+        verificationErrorReasonSchema,
+      ])
       .optional(),
     message: z.unknown().optional(),
   })
@@ -375,6 +419,96 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         method: "GET",
         path: orgPath(orgId, "entitlements"),
         schema: entitlementsResponseSchema,
+        authenticated: true,
+      }),
+    openVerificationCase: (badgeType, orgId) =>
+      send({
+        method: "POST",
+        path:
+          orgId === undefined
+            ? "/v1/me/verification/cases"
+            : orgPath(orgId, "verification", "cases"),
+        schema: verificationCaseSchema,
+        body: { badgeType },
+        authenticated: true,
+      }),
+    verificationCases: (orgId) =>
+      send({
+        method: "GET",
+        path:
+          orgId === undefined
+            ? "/v1/me/verification/cases"
+            : orgPath(orgId, "verification", "cases"),
+        schema: z.array(verificationCaseSchema),
+        authenticated: true,
+      }),
+    verificationCase: (caseId) =>
+      send({
+        method: "GET",
+        path: casePath(caseId),
+        schema: verificationCaseSchema,
+        authenticated: true,
+      }),
+    addVerificationDocument: async (caseId, document) =>
+      send({
+        method: "POST",
+        path: casePath(caseId, "documents"),
+        schema: documentUploadSchema,
+        body: addDocumentRequestSchema.parse(document),
+        authenticated: true,
+      }),
+    completeVerificationDocument: (caseId, documentId) =>
+      send({
+        method: "POST",
+        path: casePath(caseId, "documents", documentId, "complete"),
+        schema: verificationCaseSchema,
+        authenticated: true,
+      }),
+    submitVerificationCase: (caseId) =>
+      send({
+        method: "POST",
+        path: casePath(caseId, "submit"),
+        schema: verificationCaseSchema,
+        authenticated: true,
+      }),
+    withdrawVerificationCase: (caseId) =>
+      send({
+        method: "POST",
+        path: casePath(caseId, "withdraw"),
+        schema: undefined,
+        authenticated: true,
+      }),
+    appealVerificationCase: async (caseId, statement) =>
+      send({
+        method: "POST",
+        path: casePath(caseId, "appeal"),
+        schema: verificationCaseSchema,
+        body: appealRequestSchema.parse({ statement }),
+        authenticated: true,
+      }),
+    appealBadge: async (badgeId, statement) =>
+      send({
+        method: "POST",
+        path: `/v1/verification/badges/${encodeURIComponent(badgeId)}/appeal`,
+        schema: badgeSchema,
+        body: appealRequestSchema.parse({ statement }),
+        authenticated: true,
+      }),
+    badges: (orgId) =>
+      send({
+        method: "GET",
+        path:
+          orgId === undefined
+            ? "/v1/me/verification/badges"
+            : orgPath(orgId, "verification", "badges"),
+        schema: z.array(badgeSchema),
+        authenticated: true,
+      }),
+    verificationLabels: (subject) =>
+      send({
+        method: "GET",
+        path: `/v1/verification/labels/${subject.type === "user" ? "users" : "organizations"}/${encodeURIComponent(subject.id)}`,
+        schema: verificationLabelsSchema,
         authenticated: true,
       }),
     acceptInvitation: async (token) =>

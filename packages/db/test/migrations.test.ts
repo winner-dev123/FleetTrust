@@ -39,6 +39,8 @@ describe("migrations on a fresh database", () => {
       "0006_organizations_triggers",
       "0007_plans_and_entitlements",
       "0008_plans_triggers",
+      "0009_verification",
+      "0010_verification_triggers",
     ]);
   });
 
@@ -67,6 +69,7 @@ describe("migrations on a fresh database", () => {
       "audit_events",
       "branches",
       "currencies",
+      "document_access_grants",
       "invitations",
       "memberships",
       "organizations",
@@ -80,6 +83,10 @@ describe("migrations on a fresh database", () => {
       "quota_counters",
       "quota_overrides",
       "users",
+      "verification_appeals",
+      "verification_badges",
+      "verification_cases",
+      "verification_documents",
     ]);
   });
 

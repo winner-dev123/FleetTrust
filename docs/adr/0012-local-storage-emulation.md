@@ -1,6 +1,6 @@
 # ADR-0012: Local object storage uses the Firebase Storage emulator
 
-- Status: Accepted (revisit in Prompt 09)
+- Status: Accepted; refined by [ADR-0016](0016-verification-documents.md) (Prompt 09)
 - Date: 2026-11-19
 - Refines: [ADR-0006](0006-object-storage-and-private-documents.md) ("decided in Prompt 03")
 
