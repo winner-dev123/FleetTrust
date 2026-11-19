@@ -1,0 +1,39 @@
+packages:
+  - apps/*
+  - packages/*
+  - tools/*
+
+# Dependency install scripts are blocked unless listed here. Every entry below is denied on purpose;
+# review any new entry before allowing it.
+#   @parcel/watcher, @swc/core: scripts only build from source; prebuilt binaries are optional deps.
+#   protobufjs: postinstall only prints a version-scheme warning.
+#   re2: optional dependency of the Hosting emulator (superstatic), which falls back to RegExp.
+allowBuilds:
+  "@parcel/watcher": false
+  "@swc/core": false
+  protobufjs: false
+  re2: false
+
+# Single source of truth for shared dependency versions. Packages reference these with "catalog:".
+# pnpm also refuses versions published too recently (supply-chain protection); prefer pinning an
+# older release over adding minimumReleaseAgeExclude entries.
+catalog:
+  # Tooling
+  turbo: 2.11.10
+  prettier: 3.10.1
+  # typescript-eslint 8.x supports TypeScript < 6.1, so TypeScript 7 is not used yet.
+  typescript: 6.0.3
+  eslint: 10.15.0
+  "@eslint/js": 10.0.1
+  typescript-eslint: 8.73.0
+  eslint-plugin-react-hooks: 7.1.1
+  "@next/eslint-plugin-next": 16.4.6
+  globals: 17.14.0
+  vitest: 5.1.1
+  "@types/node": 24.19.2
+  # Runtime
+  zod: 4.6.7
+  # React is pinned to the version Expo SDK 58 requires so web and mobile share one React.
+  react: 19.3.0
+  react-dom: 19.3.0
+  "@types/react": 19.3.0

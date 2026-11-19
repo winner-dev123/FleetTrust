@@ -1,0 +1,32 @@
+{
+  "name": "@fleettrust/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "FleetTrust Next.js web app: public site, user/provider/fleet apps and admin console.",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --port 3000",
+    "start": "next start --port 3000",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "clean": "node -e \"fs.rmSync('.next',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@fleettrust/config": "workspace:*",
+    "@fleettrust/ui": "workspace:*",
+    "next": "16.4.6",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "19.3.0",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

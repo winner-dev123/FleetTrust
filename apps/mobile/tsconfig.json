@@ -1,0 +1,11 @@
+{
+  // Strict FleetTrust flags first, then Expo's bundler/JSX settings on top.
+  "extends": ["@fleettrust/config/tsconfig/base.json", "expo/tsconfig.base"],
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "types": ["node"]
+  },
+  "include": ["index.ts", "src/**/*.ts", "src/**/*.tsx"]
+}

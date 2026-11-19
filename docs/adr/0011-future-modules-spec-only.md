@@ -1,0 +1,38 @@
+# ADR-0011: Future modules are specification-only
+
+- Status: Accepted
+- Date: 2026-11-19
+
+## Context
+
+Several modules are planned for later:
+
+- Rewards and streaks.
+- Payments and escrow.
+- Transaction-backed reviews.
+- AI.
+- Telematics.
+- Multilingual support.
+
+Half-built versions behind feature flags tend to leak through configuration mistakes, and they create legal exposure, for example a hidden payment endpoint.
+
+## Decision
+
+- These modules exist **only** as RFC documents (`docs/rfcs/`, Prompt 30). The RFCs define integration seams and event schemas.
+- For these modules, the codebase **must not** contain:
+  - Database tables or migrations.
+  - API routes.
+  - UI screens or navigation entries.
+  - Workers or queues.
+  - Feature flags or Remote Config keys.
+- Allowed: domain events that already exist for current features (for example `ServiceRequestCompleted`). A future module could consume them; nothing consumes them for that purpose now.
+- CI adds a guard (Prompt 05/27) that fails on forbidden identifiers in routes, migrations and UI. Examples: `escrow`, `payout`, `rating`, `stars`, `streak`, `reward_points`.
+
+## Consequences
+
+- Future work starts from an RFC review and a new ADR, not from dormant code.
+- The guard's word list may need tuning to avoid false positives, such as "rating" in "operating".
+
+## Alternatives considered
+
+- **Feature-flagged stubs**: rejected by the business rule.

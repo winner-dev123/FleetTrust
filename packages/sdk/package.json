@@ -1,0 +1,34 @@
+{
+  "name": "@fleettrust/sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed FleetTrust API client shared by web and mobile.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@fleettrust/types": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@fleettrust/config": "workspace:*",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

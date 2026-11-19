@@ -1,0 +1,11 @@
+{
+  "extends": "@fleettrust/config/tsconfig/node.json",
+  "compilerOptions": {
+    // NestJS 12 still uses legacy (experimental) decorators and reflect-metadata for DI.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src", "test", "vitest.config.ts", "eslint.boundaries.d.ts"]
+}

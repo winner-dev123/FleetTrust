@@ -1,0 +1,35 @@
+# Architecture Decision Records
+
+We record significant decisions as short ADRs ([Nygard format](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)). ADRs are immutable once accepted. To change a decision, add a new ADR that supersedes the old one.
+
+| ADR                                                  | Title                                                   | Status   |
+| ---------------------------------------------------- | ------------------------------------------------------- | -------- |
+| [0001](0001-typescript-monorepo.md)                  | TypeScript monorepo with pnpm and Turborepo             | Accepted |
+| [0002](0002-modular-monolith-api.md)                 | NestJS modular monolith API                             | Accepted |
+| [0003](0003-postgresql-postgis-system-of-record.md)  | PostgreSQL + PostGIS as the system of record            | Accepted |
+| [0004](0004-firebase-hybrid-platform.md)             | Firebase hybrid platform on Google Cloud                | Accepted |
+| [0005](0005-authn-firebase-authz-api.md)             | Authentication by Firebase, authorization by the API    | Accepted |
+| [0006](0006-object-storage-and-private-documents.md) | Object storage and private documents                    | Accepted |
+| [0007](0007-jobs-and-realtime.md)                    | Background jobs, notifications and realtime delivery    | Proposed |
+| [0008](0008-manual-plan-activation.md)               | Manual plan activation after external billing           | Accepted |
+| [0009](0009-trust-independent-of-payment.md)         | Trust signals and ranking are independent of payment    | Accepted |
+| [0010](0010-emergency-exempt-from-quotas.md)         | Emergency functionality is exempt from ordinary quotas  | Accepted |
+| [0011](0011-future-modules-spec-only.md)             | Future modules are specification-only                   | Accepted |
+| [0012](0012-local-storage-emulation.md)              | Local object storage uses the Firebase Storage emulator | Accepted |
+
+## Template
+
+```markdown
+# ADR-NNNN: Title
+
+- Status: Proposed | Accepted | Superseded by ADR-XXXX
+- Date: YYYY-MM-DD
+
+## Context
+
+## Decision
+
+## Consequences
+
+## Alternatives considered
+```

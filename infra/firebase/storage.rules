@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Deny-by-default (docs/adr/0006-object-storage-and-private-documents.md).
+// Clients never read or write Cloud Storage directly. The API authorizes every
+// access and issues short-lived signed URLs; the Admin SDK bypasses these rules.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

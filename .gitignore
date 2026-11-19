@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+out/
+.turbo/
+coverage/
+
+# Expo / React Native
+.expo/
+ios/Pods/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Next.js generated types
+next-env.d.ts
+
+# Firebase Local Emulator Suite exported data (pnpm emulators)
+.firebase-data/

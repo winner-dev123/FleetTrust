@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "FleetTrust",
+    "slug": "fleettrust",
+    "scheme": "fleettrust",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "com.fleettrust.app",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.fleettrust.app"
+    }
+  }
+}

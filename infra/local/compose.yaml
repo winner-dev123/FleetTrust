@@ -1,0 +1,93 @@
+# Local development services only. Production uses managed Google Cloud services
+# (Cloud SQL, Memorystore, Cloud Storage) and never runs this file. See docs/development/local-infrastructure.md.
+#
+# Credentials are never defaulted here: every secret comes from infra/local/.env, which
+# `pnpm infra:env` generates with random values. Compose refuses to start if one is missing.
+# All ports bind to 127.0.0.1 so nothing is reachable from other machines on the network.
+
+name: fleettrust-local
+
+services:
+  postgres:
+    # PostgreSQL 17 + PostGIS 3.6, matching the Cloud SQL major version. amd64 image:
+    # Apple Silicon runs it under emulation.
+    image: postgis/postgis:17-3.6@sha256:1ac10b2551ba84ae05db8e7da477afcd0a3fede99bcb7705da2ee157390cb095
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?run "pnpm infra:env" to create infra/local/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run "pnpm infra:env" to create infra/local/.env}
+      POSTGRES_DB: ${POSTGRES_DB:?run "pnpm infra:env" to create infra/local/.env}
+      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB:?run "pnpm infra:env" to create infra/local/.env}
+      # With a password set, the image requires scram-sha-256 for all TCP connections.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs once, on first start with an empty volume, after the image's own 10_postgis.sh.
+      - ./postgres/20-fleettrust.sh:/docker-entrypoint-initdb.d/20-fleettrust.sh:ro
+    healthcheck:
+      # pg_isready over TCP fails while initdb's temporary socket-only server is running, so the
+      # container only turns healthy once init has finished. Then confirm PostGIS exists in the
+      # test database (created last by 20-fleettrust.sh), using the in-container socket.
+      test:
+        - CMD-SHELL
+        - >-
+          pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" &&
+          psql -U "$$POSTGRES_USER" -d "$$POSTGRES_TEST_DB" -tAc
+          "SELECT 1 FROM pg_extension WHERE extname = 'postgis'" | grep -q 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    # Redis 7.2 matches Memorystore for Redis 7.2.
+    image: redis:7.2.17-alpine@sha256:2f66de68111e64c3927859f158f8e666066dae2b97d9f82770a6f37a5aa1c335
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?run "pnpm infra:env" to create infra/local/.env}
+      # Lets redis-cli in the health check authenticate without putting the password on its command line.
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?run "pnpm infra:env" to create infra/local/.env}
+    command:
+      - sh
+      - -c
+      - exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --save 60 1000
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
+  mailpit:
+    # Optional: catches outgoing email locally. Start with `pnpm infra:up:all`.
+    image: axllent/mailpit:v1.33.1@sha256:aef2aacc11f075ec0fb6874275ee4a421e688e11a96ebb296134d1735c7761ce
+    profiles: ["email"]
+    restart: unless-stopped
+    environment:
+      MP_UI_AUTH: ${MAILPIT_UI_USER:?run "pnpm infra:env" to create infra/local/.env}:${MAILPIT_UI_PASSWORD:?run "pnpm infra:env" to create infra/local/.env}
+      MP_MAX_MESSAGES: "5000"
+      # Local SMTP accepts mail without authentication; it is bound to 127.0.0.1 only.
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  pgdata:
+  redisdata:
