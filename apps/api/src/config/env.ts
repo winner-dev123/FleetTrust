@@ -18,9 +18,27 @@ export const apiEnvSchema = z
     LOG_LEVEL: envFields.logLevel(),
     /** Comma-separated browser origins allowed to call the API. Empty disables CORS. */
     CORS_ORIGINS: envFields.list().pipe(z.array(envFields.httpUrl())),
+    /**
+     * PostgreSQL connection string (a secret: Secret Manager in deployed environments).
+     * Optional locally so the API still boots without Docker; /health/ready then reports
+     * the database as not_configured.
+     */
+    DATABASE_URL: z
+      .string()
+      .regex(/^postgres(ql)?:\/\//, "must be a postgres:// or postgresql:// URL")
+      .optional(),
+    /** Connections per instance. Keep (Cloud Run max instances × this) under the Cloud SQL limit. */
+    DB_POOL_MAX: z.coerce.number().int().min(1).max(50).default(5),
   })
   .superRefine((env, ctx) => {
     const deployed = env.APP_ENV === "staging" || env.APP_ENV === "production";
+    if (deployed && env.DATABASE_URL === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["DATABASE_URL"],
+        message: "is required in staging and production",
+      });
+    }
     if (deployed && env.APP_VERSION === DEV_VERSION) {
       ctx.addIssue({
         code: "custom",

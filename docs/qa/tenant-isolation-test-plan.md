@@ -1,0 +1,43 @@
+# Tenant isolation test plan
+
+Goal: prove that no organization can read, change or delete another organization's data (SRS FR-02, abuse case AB-09). Prompt 04 delivers the tooling; each later prompt adds its resources to this plan and its tests to CI.
+
+## Layers
+
+| Layer                    | Mechanism                                                                                                                                                                             | Test                                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1. API guard (Prompt 07) | Every org-scoped route resolves an organization context and checks membership, role and branch scope before any query                                                                 | HTTP integration tests: member of org A calls org B's routes → 403/404, never data                                         |
+| 2. Repository            | Repositories take a `TenantContext` (branded type: only the guard can create one) and apply `tenantFilter()` to every query                                                           | `expectTenantIsolation()` from `@fleettrust/db/testing` per repository: list, get-by-ID, update, delete across two tenants |
+| 3. Database              | `organization_id NOT NULL` + leading index on every org-scoped table. **Row-level security** (`current_setting('app.organization_id')`) as defence in depth is evaluated in Prompt 07 | conventions test (column type + index)                                                                                     |
+
+The harness has its own test proving it **detects** a leaky repository (`packages/db/test/tenancy.test.ts`), so a passing isolation test means something.
+
+## Per-resource checklist
+
+For every org-scoped resource, the owning prompt adds:
+
+- [ ] `expectTenantIsolation()` case covering create, list, get-by-ID, update and delete
+- [ ] HTTP test: cross-tenant ID in path → 404 (don't confirm existence), cross-tenant ID in body or filter → ignored or 403
+- [ ] Search and aggregate endpoints (counts, dashboards, exports) return only own-tenant data
+- [ ] Branch-scoped roles (manager, staff, driver) can't reach other branches of the **same** org
+- [ ] Background jobs and outbox consumers carry and re-check the tenant ID
+- [ ] File access: signed URLs are only issued after the same tenant check (Prompt 09)
+
+## Resource register
+
+| Resource                                      | Prompt | Isolation test | HTTP test |
+| --------------------------------------------- | ------ | -------------- | --------- |
+| Organizations, memberships, invitations       | 07     | planned        | planned   |
+| Plan assignments, quota counters              | 08     | planned        | planned   |
+| Verification cases and documents              | 09     | planned        | planned   |
+| Provider profiles (drafts), branches, catalog | 10–11  | planned        | planned   |
+| Service requests, quotes, events              | 14     | planned        | planned   |
+| Conversations and messages                    | 17     | planned        | planned   |
+| Emergency incidents                           | 18     | planned        | planned   |
+| Vehicles, maintenance, document vault         | 19     | planned        | planned   |
+| CRM pipeline, appointments                    | 20     | planned        | planned   |
+| Parts listings, referrals                     | 21     | planned        | planned   |
+| Fleet dashboards, spending records, jobs      | 22     | planned        | planned   |
+| `audit_events` (admin search)                 | 26     | planned        | planned   |
+
+Prompt 27 (security hardening) runs a dedicated cross-tenant penetration pass over every row of this register.

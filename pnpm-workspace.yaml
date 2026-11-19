@@ -8,9 +8,11 @@ packages:
 #   @parcel/watcher, @swc/core: scripts only build from source; prebuilt binaries are optional deps.
 #   protobufjs: postinstall only prints a version-scheme warning.
 #   re2: optional dependency of the Hosting emulator (superstatic), which falls back to RegExp.
+#   esbuild: postinstall only verifies the platform binary that pnpm installs as an optional dep.
 allowBuilds:
   "@parcel/watcher": false
   "@swc/core": false
+  esbuild: false
   protobufjs: false
   re2: false
 

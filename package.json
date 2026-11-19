@@ -22,7 +22,12 @@
     "infra:status": "node tools/local-infra/src/cli.ts status",
     "infra:down": "node tools/local-infra/src/cli.ts down",
     "infra:destroy": "node tools/local-infra/src/cli.ts destroy",
-    "emulators": "node tools/local-infra/src/cli.ts emulators"
+    "emulators": "node tools/local-infra/src/cli.ts emulators",
+    "db:generate": "pnpm --filter @fleettrust/db generate",
+    "db:migrate": "turbo run build --filter=@fleettrust/db --output-logs=errors-only && pnpm --filter @fleettrust/db migrate",
+    "db:seed": "turbo run build --filter=@fleettrust/db --output-logs=errors-only && pnpm --filter @fleettrust/db seed",
+    "db:reset": "turbo run build --filter=@fleettrust/db --output-logs=errors-only && pnpm --filter @fleettrust/db reset",
+    "test:db": "turbo run build --filter=@fleettrust/db --output-logs=errors-only && pnpm --filter @fleettrust/db test:pg"
   },
   "devDependencies": {
     "@fleettrust/config": "workspace:*",

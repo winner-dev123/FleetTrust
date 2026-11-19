@@ -2,21 +2,22 @@
 
 A multi-tenant transport and logistics SaaS that connects drivers, fleets and service providers (workshops, towing, tyres, fuel, parts, parking, mobile mechanics). It covers provider discovery, service requests with indicative quotes, evidence-based verification, emergency alerts to trusted contacts, and vehicle maintenance.
 
-> **Status:** local infrastructure (stage 03 of 30). Apps start and pass their checks; no product features exist yet.
+> **Status:** database foundation (stage 04 of 30). Apps start and pass their checks; no product features exist yet.
 
 ## Repository layout
 
-| Path                            | What it is                                                                        |
-| ------------------------------- | --------------------------------------------------------------------------------- |
-| `apps/api`                      | NestJS 12 modular-monolith API (ESM). Runs as `APP_ROLE=api` or `worker`          |
-| `apps/web`                      | Next.js 16 web app (App Router)                                                   |
-| `apps/mobile`                   | Expo SDK 58 / React Native 0.88 app for iOS and Android                           |
-| `packages/config`               | Shared TypeScript, ESLint and Prettier presets, plus `parseEnv` env validation    |
-| `packages/types`                | Shared domain types and zod schemas                                               |
-| `packages/sdk`                  | Typed API client used by web and mobile                                           |
-| `packages/ui`                   | Design tokens (colours with WCAG AA contrast tests, spacing, type)                |
-| `tools/local-infra`             | CLI behind `pnpm infra:*` and `pnpm emulators` (runs on Node directly, no build)  |
-| `infra/local`, `infra/firebase` | Docker Compose for local Postgres/PostGIS, Redis, Mailpit; Firebase Storage rules |
+| Path                            | What it is                                                                                                      |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `apps/api`                      | NestJS 12 modular-monolith API (ESM). Runs as `APP_ROLE=api` or `worker`                                        |
+| `apps/web`                      | Next.js 16 web app (App Router)                                                                                 |
+| `apps/mobile`                   | Expo SDK 58 / React Native 0.88 app for iOS and Android                                                         |
+| `packages/config`               | Shared TypeScript, ESLint and Prettier presets, plus `parseEnv` env validation                                  |
+| `packages/types`                | Shared domain types and zod schemas                                                                             |
+| `packages/sdk`                  | Typed API client used by web and mobile                                                                         |
+| `packages/ui`                   | Design tokens (colours with WCAG AA contrast tests, spacing, type)                                              |
+| `packages/db`                   | PostgreSQL/PostGIS schema, SQL migrations, seeds, spatial/tenancy/audit helpers (Drizzle); PGlite test database |
+| `tools/local-infra`             | CLI behind `pnpm infra:*` and `pnpm emulators` (runs on Node directly, no build)                                |
+| `infra/local`, `infra/firebase` | Docker Compose for local Postgres/PostGIS, Redis, Mailpit; Firebase Storage rules                               |
 
 ## Getting started
 
@@ -39,6 +40,7 @@ Optional local overrides: copy each app's `.env.example` to `.env` (API, mobile)
 | Everything CI will run            | `pnpm check`                                                                                                                                   |
 | Local Postgres/Redis/Mailpit      | `pnpm infra:up` · `pnpm infra:status` · `pnpm infra:down` (needs Docker; see [local infrastructure](docs/development/local-infrastructure.md)) |
 | Firebase Auth + Storage emulators | `pnpm emulators` (needs Java 21+)                                                                                                              |
+| Database                          | `pnpm db:migrate` · `pnpm db:seed` · `pnpm db:generate` · `pnpm test:db` (see [database workflow](docs/development/database.md))               |
 
 The mobile app uses Expo. `pnpm --filter @fleettrust/mobile dev` starts the dev server. Native Firebase modules arrive in later stages and will require an Expo **dev build** rather than Expo Go.
 

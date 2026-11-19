@@ -2,6 +2,7 @@ import { type DynamicModule, Module } from "@nestjs/common";
 
 import { ApiConfigModule } from "./config/config.module.js";
 import type { ApiEnv } from "./config/env.js";
+import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
 
 /**
@@ -13,7 +14,7 @@ export class AppModule {
   static register(env: ApiEnv): DynamicModule {
     return {
       module: AppModule,
-      imports: [ApiConfigModule.forRoot(env), HealthModule],
+      imports: [ApiConfigModule.forRoot(env), DatabaseModule.forRoot(env), HealthModule],
     };
   }
 }
