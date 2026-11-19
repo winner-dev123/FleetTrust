@@ -240,6 +240,38 @@ describe("organizations", () => {
     expect(error.reason).toBe("quota_exceeded");
   });
 
+  it("verification: personal vs organization paths and labels", async () => {
+    const labels = {
+      subject: { type: "organization", id: orgId },
+      labels: [{ badgeType: "business", status: "unverified", expiresAt: null }],
+    };
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse(labels));
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    await client.verificationCases();
+    await client.verificationCases(orgId);
+    await expect(client.verificationLabels({ type: "organization", id: orgId })).resolves.toEqual(
+      labels,
+    );
+    expect(fetch.mock.calls.map((call) => call[0])).toEqual([
+      "https://x.test/v1/me/verification/cases",
+      `https://x.test/v1/orgs/${orgId}/verification/cases`,
+      `https://x.test/v1/verification/labels/organizations/${orgId}`,
+    ]);
+    // Oversized documents are refused before any request.
+    await expect(
+      client.addVerificationDocument(orgId, {
+        kind: "other",
+        contentType: "application/pdf",
+        size: 50_000_000,
+      }),
+    ).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

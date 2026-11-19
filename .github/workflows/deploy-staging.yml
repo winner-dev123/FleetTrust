@@ -81,6 +81,11 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           # Staging logs App Check failures without blocking; production must use "enforce".
           APP_CHECK_MODE: monitor
+          PUBLIC_API_URL: ${{ vars.STAGING_PUBLIC_API_URL }}
+          STORAGE_QUARANTINE_BUCKET: ${{ vars.STAGING_QUARANTINE_BUCKET }}
+          STORAGE_SENSITIVE_BUCKET: ${{ vars.STAGING_SENSITIVE_BUCKET }}
+          DOCUMENT_KMS_KEY: ${{ vars.STAGING_DOCUMENT_KMS_KEY }}
+          CLAMAV_HOST: ${{ vars.STAGING_CLAMAV_HOST }}
         run: |
           envsubst < deploy/cloudrun/api.service.yaml > /tmp/api.service.yaml
           gcloud run services replace /tmp/api.service.yaml --region "$GCP_REGION" --quiet

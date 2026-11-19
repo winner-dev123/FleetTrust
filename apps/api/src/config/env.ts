@@ -59,6 +59,41 @@ export const apiEnvSchema = z
      * used for rate limiting is read that many hops from the right; 0 uses the socket address.
      */
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(3).default(0),
+    /** Public base URL of this API (local storage upload links point here). */
+    PUBLIC_API_URL: envFields.httpUrl().default("http://localhost:8080"),
+    /**
+     * Object storage for documents (ADR-0006): `gcs` (Cloud Storage, V4 signed URLs) or
+     * `memory` (in-process, local/test only).
+     */
+    STORAGE_DRIVER: z.enum(["memory", "gcs"]).default("memory"),
+    STORAGE_QUARANTINE_BUCKET: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$/)
+      .optional(),
+    STORAGE_SENSITIVE_BUCKET: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$/)
+      .optional(),
+    /** Envelope encryption for verification documents: Cloud KMS, or a static local key. */
+    DOCUMENT_KEY_PROVIDER: z.enum(["local", "kms"]).default("local"),
+    DOCUMENT_KMS_KEY: z
+      .string()
+      .regex(
+        /^projects\/[^/]+\/locations\/[^/]+\/keyRings\/[^/]+\/cryptoKeys\/[^/]+$/,
+        "must be projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>",
+      )
+      .optional(),
+    /** 32 random bytes, base64. Local only; without it a random key is used per process. */
+    DOCUMENT_LOCAL_KEK: z
+      .string()
+      .regex(/^[A-Za-z0-9+/]{43}=$/, "must be 32 bytes, base64")
+      .optional(),
+    /** `clamav` (clamd over TCP) or `eicar-only` (detects only the EICAR test file; local only). */
+    MALWARE_SCANNER: z.enum(["eicar-only", "clamav"]).default("eicar-only"),
+    CLAMAV_HOST: z.string().min(1).optional(),
+    CLAMAV_PORT: envFields.port(3310),
+    /** Verification documents are deleted this many days after the case is decided (OQ-14). */
+    VERIFICATION_DOCUMENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
   })
   .superRefine((env, ctx) => {
     const deployed = env.APP_ENV === "staging" || env.APP_ENV === "production";
@@ -76,6 +111,30 @@ export const apiEnvSchema = z
     }
     if (env.APP_ENV === "production" && env.APP_CHECK_MODE !== "enforce") {
       issue("APP_CHECK_MODE", "must be 'enforce' in production");
+    }
+    if (deployed && env.STORAGE_DRIVER !== "gcs") {
+      issue("STORAGE_DRIVER", "must be 'gcs' in staging and production");
+    }
+    if (
+      env.STORAGE_DRIVER === "gcs" &&
+      (env.STORAGE_QUARANTINE_BUCKET === undefined || env.STORAGE_SENSITIVE_BUCKET === undefined)
+    ) {
+      issue("STORAGE_SENSITIVE_BUCKET", "both bucket names are required with STORAGE_DRIVER=gcs");
+    }
+    if (deployed && env.DOCUMENT_KEY_PROVIDER !== "kms") {
+      issue("DOCUMENT_KEY_PROVIDER", "must be 'kms' in staging and production");
+    }
+    if (env.DOCUMENT_KEY_PROVIDER === "kms" && env.DOCUMENT_KMS_KEY === undefined) {
+      issue("DOCUMENT_KMS_KEY", "is required with DOCUMENT_KEY_PROVIDER=kms");
+    }
+    if (deployed && env.DOCUMENT_LOCAL_KEK !== undefined) {
+      issue("DOCUMENT_LOCAL_KEK", "must not be set in staging or production");
+    }
+    if (deployed && env.MALWARE_SCANNER !== "clamav") {
+      issue("MALWARE_SCANNER", "must be 'clamav' in staging and production");
+    }
+    if (env.MALWARE_SCANNER === "clamav" && env.CLAMAV_HOST === undefined) {
+      issue("CLAMAV_HOST", "is required with MALWARE_SCANNER=clamav");
     }
     if (deployed && env.REDIS_URL === undefined) {
       issue("REDIS_URL", "is required in staging and production (shared rate limits)");

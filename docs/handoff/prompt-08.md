@@ -1,7 +1,7 @@
 # Handoff — Prompt 08: Subscription catalog and entitlements
 
 - Date: 2026-11-19
-- Status: **awaiting owner approval** · branch `feat/prompt-08-entitlements`
+- Status: **approved** · PR **#9** squash-merged as `37ee120` (CI 5/5 green on `696310c`)
 - Prompt 07 approved and merged (PR #7 → `8a250d9`).
 
 ## Assumptions

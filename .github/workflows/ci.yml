@@ -143,9 +143,10 @@ jobs:
             'http://127.0.0.1:9199/v0/b/demo-fleettrust.appspot.com/o?name=probe.txt')
           echo "unauthenticated client upload -> HTTP $status"
           test "$status" = "403"
-      - name: API integration tests (real Redis + Firebase Auth emulator)
+      - name: API integration tests (real Redis + Firebase Auth and Storage emulators)
         env:
           FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+          STORAGE_EMULATOR_HOST: http://127.0.0.1:9199
           REQUIRE_INTEGRATION: "1"
         run: |
           pnpm turbo run build --filter "@fleettrust/api^..."

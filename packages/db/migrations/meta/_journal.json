@@ -64,6 +64,20 @@
       "when": 1795121649026,
       "tag": "0008_plans_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795123251874,
+      "tag": "0009_verification",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795123252748,
+      "tag": "0010_verification_triggers",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,14 @@ const production = {
   REDIS_URL: "rediss://10.0.0.6:6378",
   FIREBASE_PROJECT_ID: "fleettrust-prod",
   APP_CHECK_MODE: "enforce",
+  STORAGE_DRIVER: "gcs",
+  STORAGE_QUARANTINE_BUCKET: "fleettrust-prod-quarantine",
+  STORAGE_SENSITIVE_BUCKET: "fleettrust-prod-sensitive",
+  DOCUMENT_KEY_PROVIDER: "kms",
+  DOCUMENT_KMS_KEY:
+    "projects/fleettrust-prod/locations/europe-west1/keyRings/documents/cryptoKeys/verification",
+  MALWARE_SCANNER: "clamav",
+  CLAMAV_HOST: "clamav.internal",
 } as const;
 
 describe("loadApiEnv", () => {
@@ -28,6 +36,12 @@ describe("loadApiEnv", () => {
       FIREBASE_PROJECT_ID: "demo-fleettrust",
       APP_CHECK_MODE: "off",
       TRUST_PROXY_HOPS: 0,
+      PUBLIC_API_URL: "http://localhost:8080",
+      STORAGE_DRIVER: "memory",
+      DOCUMENT_KEY_PROVIDER: "local",
+      MALWARE_SCANNER: "eicar-only",
+      CLAMAV_PORT: 3310,
+      VERIFICATION_DOCUMENT_RETENTION_DAYS: 90,
     });
   });
 
@@ -64,6 +78,23 @@ describe("loadApiEnv", () => {
   it("requires a real version, NODE_ENV=production, a database and Redis when deployed", () => {
     expect(() => loadApiEnv({ APP_ENV: "staging" })).toThrow(
       /REDIS_URL[\s\S]*DATABASE_URL[\s\S]*APP_VERSION[\s\S]*NODE_ENV/,
+    );
+  });
+
+  it("requires real storage, KMS encryption and ClamAV for documents when deployed", () => {
+    for (const [field, value] of [
+      ["STORAGE_DRIVER", "memory"],
+      ["DOCUMENT_KEY_PROVIDER", "local"],
+      ["MALWARE_SCANNER", "eicar-only"],
+    ] as const) {
+      expect(() => loadApiEnv({ ...production, [field]: value })).toThrow(new RegExp(field));
+    }
+    expect(() =>
+      loadApiEnv({ ...production, DOCUMENT_LOCAL_KEK: Buffer.alloc(32, 1).toString("base64") }),
+    ).toThrow(/DOCUMENT_LOCAL_KEK/);
+    expect(() => loadApiEnv({ ...production, CLAMAV_HOST: undefined })).toThrow(/CLAMAV_HOST/);
+    expect(() => loadApiEnv({ ...production, DOCUMENT_KMS_KEY: "my-key" })).toThrow(
+      /DOCUMENT_KMS_KEY/,
     );
   });
 
