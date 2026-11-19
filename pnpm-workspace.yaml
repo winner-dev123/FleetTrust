@@ -23,7 +23,7 @@ allowBuilds:
 # older release over adding minimumReleaseAgeExclude entries.
 catalog:
   # Tooling
-  turbo: 2.11.10
+  turbo: 2.11.11
   prettier: 3.10.1
   # typescript-eslint 8.x supports TypeScript < 6.1, so TypeScript 7 is not used yet.
   typescript: 6.0.3
@@ -38,6 +38,6 @@ catalog:
   # Runtime
   zod: 4.6.7
   # React is pinned to the version Expo SDK 58 requires so web and mobile share one React.
-  react: 19.3.0
-  react-dom: 19.3.0
+  react: 19.3.1
+  react-dom: 19.3.1
   "@types/react": 19.3.0
