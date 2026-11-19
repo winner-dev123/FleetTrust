@@ -33,6 +33,8 @@ Connection strings come from `infra/local/.env`, written by `pnpm infra:env` / `
 4. Run `pnpm test`; with Docker, also `pnpm test:db`.
 5. Never edit a migration that has been applied in any shared environment. Write a new one.
 
+When mapping database errors to HTTP responses, note that a delete blocked by an `ON DELETE RESTRICT` foreign key raises SQLSTATE **23001** (`restrict_violation`), not 23503. Drizzle wraps driver errors, so read the code from `error.cause`.
+
 Drift check: `pnpm db:generate` on a clean tree must print "No schema changes". CI enforces this from Prompt 05.
 
 ## Rollback strategy

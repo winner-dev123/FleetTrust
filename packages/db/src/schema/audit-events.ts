@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { check, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { id } from "./columns.js";
+import { organizations } from "./organizations.js";
 import { users } from "./users.js";
 
 export const ACTOR_TYPES = ["user", "admin", "system"] as const;
@@ -24,8 +25,10 @@ export const auditEvents = pgTable(
     actorType: text("actor_type", { enum: ACTOR_TYPES }).notNull(),
     /** Internal users.id (never a Firebase UID). Null for system actions. */
     actorId: uuid("actor_id").references(() => users.id, { onDelete: "restrict" }),
-    /** Tenant the action happened in, if any. FK added with organizations (Prompt 07). */
-    organizationId: uuid("organization_id"),
+    /** Tenant the action happened in, if any. */
+    organizationId: uuid("organization_id").references(() => organizations.id, {
+      onDelete: "restrict",
+    }),
     /** Dotted verb, e.g. `verification.badge_granted`, `plan.assigned`. */
     action: text("action").notNull(),
     targetType: text("target_type").notNull(),

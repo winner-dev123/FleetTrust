@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { type SubmitEvent, useState } from "react";
 
 import { apiClient, firebaseAuth } from "@/lib/firebase";
+import { afterSignInPath } from "@/lib/pending-invitation";
 import { emailLinkSettings, normaliseEmail, rememberPendingEmail } from "@/lib/email-link";
 
 type Status =
@@ -57,7 +58,7 @@ export default function SignInPage() {
     try {
       await signInWithPopup(firebaseAuth(), provider);
       await apiClient().me();
-      router.replace("/account");
+      router.replace(afterSignInPath());
     } catch {
       setStatus({ kind: "error", message: "Sign-in was cancelled or failed. Please try again." });
     }

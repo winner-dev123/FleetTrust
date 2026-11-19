@@ -1,6 +1,6 @@
 "use client";
 
-import type { MeResponse } from "@fleettrust/types";
+import type { MeResponse, MyOrganization } from "@fleettrust/types";
 import { spacing, typography } from "@fleettrust/ui";
 import { onAuthStateChanged, signOut } from "@firebase/auth";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ export default function AccountPage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [name, setName] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [organizations, setOrganizations] = useState<MyOrganization[]>([]);
 
   useEffect(
     () =>
@@ -30,6 +31,12 @@ export default function AccountPage() {
           })
           .catch(() => {
             setMessage("Couldn't load your account. Please sign in again.");
+          });
+        apiClient()
+          .myOrganizations()
+          .then(setOrganizations)
+          .catch(() => {
+            setOrganizations([]);
           });
       }),
     [router],
@@ -79,6 +86,19 @@ export default function AccountPage() {
         </button>
       </form>
       {message && <p role="status">{message}</p>}
+
+      <h2 style={{ fontSize: typography.fontSize.lg, marginTop: spacing.xl }}>Organizations</h2>
+      {organizations.length === 0 ? (
+        <p>You're not a member of any organization yet.</p>
+      ) : (
+        <ul>
+          {organizations.map((entry) => (
+            <li key={entry.membershipId}>
+              <strong>{entry.organization.name}</strong> ({entry.organization.kind}) · {entry.role}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div style={{ display: "flex", gap: spacing.sm, marginTop: spacing.xl }}>
         <button

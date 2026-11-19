@@ -4,11 +4,11 @@ Goal: prove that no organization can read, change or delete another organization
 
 ## Layers
 
-| Layer                    | Mechanism                                                                                                                                                                             | Test                                                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| 1. API guard (Prompt 07) | Every org-scoped route resolves an organization context and checks membership, role and branch scope before any query                                                                 | HTTP integration tests: member of org A calls org B's routes → 403/404, never data                                         |
-| 2. Repository            | Repositories take a `TenantContext` (branded type: only the guard can create one) and apply `tenantFilter()` to every query                                                           | `expectTenantIsolation()` from `@fleettrust/db/testing` per repository: list, get-by-ID, update, delete across two tenants |
-| 3. Database              | `organization_id NOT NULL` + leading index on every org-scoped table. **Row-level security** (`current_setting('app.organization_id')`) as defence in depth is evaluated in Prompt 07 | conventions test (column type + index)                                                                                     |
+| Layer                    | Mechanism                                                                                                                                                                                          | Test                                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1. API guard (Prompt 07) | `@OrgPermission()` + `TenancyGuard` ([ADR-0014](../adr/0014-tenancy-and-rbac.md)): membership, organization status and role permission are checked before any query; branch scope narrows listings | HTTP integration tests: member of org A calls org B's routes → 403/404, never data                                         |
+| 2. Repository            | Repositories take a `TenantContext` (branded type: only the guard can create one) and apply `tenantFilter()` to every query                                                                        | `expectTenantIsolation()` from `@fleettrust/db/testing` per repository: list, get-by-ID, update, delete across two tenants |
+| 3. Database              | `organization_id NOT NULL` + leading index on every org-scoped table. **Row-level security** as defence in depth: deferred to Prompt 27 ([ADR-0014](../adr/0014-tenancy-and-rbac.md))              | conventions test (column type + index)                                                                                     |
 
 The harness has its own test proving it **detects** a leaky repository (`packages/db/test/tenancy.test.ts`), so a passing isolation test means something.
 
@@ -25,19 +25,19 @@ For every org-scoped resource, the owning prompt adds:
 
 ## Resource register
 
-| Resource                                      | Prompt | Isolation test | HTTP test |
-| --------------------------------------------- | ------ | -------------- | --------- |
-| Organizations, memberships, invitations       | 07     | planned        | planned   |
-| Plan assignments, quota counters              | 08     | planned        | planned   |
-| Verification cases and documents              | 09     | planned        | planned   |
-| Provider profiles (drafts), branches, catalog | 10–11  | planned        | planned   |
-| Service requests, quotes, events              | 14     | planned        | planned   |
-| Conversations and messages                    | 17     | planned        | planned   |
-| Emergency incidents                           | 18     | planned        | planned   |
-| Vehicles, maintenance, document vault         | 19     | planned        | planned   |
-| CRM pipeline, appointments                    | 20     | planned        | planned   |
-| Parts listings, referrals                     | 21     | planned        | planned   |
-| Fleet dashboards, spending records, jobs      | 22     | planned        | planned   |
-| `audit_events` (admin search)                 | 26     | planned        | planned   |
+| Resource                                      | Prompt | Isolation test                                | HTTP test                                                                                                                        |
+| --------------------------------------------- | ------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Organizations, memberships, invitations       | 07     | done (db: branches, memberships, invitations) | done (`organizations.e2e-spec.ts`: 12 routes × foreign org → 404; foreign IDs via own org → 404; harness over HTTP for branches) |
+| Plan assignments, quota counters              | 08     | planned                                       | planned                                                                                                                          |
+| Verification cases and documents              | 09     | planned                                       | planned                                                                                                                          |
+| Provider profiles (drafts), branches, catalog | 10–11  | planned                                       | planned                                                                                                                          |
+| Service requests, quotes, events              | 14     | planned                                       | planned                                                                                                                          |
+| Conversations and messages                    | 17     | planned                                       | planned                                                                                                                          |
+| Emergency incidents                           | 18     | planned                                       | planned                                                                                                                          |
+| Vehicles, maintenance, document vault         | 19     | planned                                       | planned                                                                                                                          |
+| CRM pipeline, appointments                    | 20     | planned                                       | planned                                                                                                                          |
+| Parts listings, referrals                     | 21     | planned                                       | planned                                                                                                                          |
+| Fleet dashboards, spending records, jobs      | 22     | planned                                       | planned                                                                                                                          |
+| `audit_events` (admin search)                 | 26     | planned                                       | planned                                                                                                                          |
 
 Prompt 27 (security hardening) runs a dedicated cross-tenant penetration pass over every row of this register.
