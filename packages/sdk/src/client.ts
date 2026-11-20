@@ -1,4 +1,14 @@
 import {
+  type GeocodeResult,
+  geocodeQuerySchema,
+  geocodeResultSchema,
+  type MapConfig,
+  mapConfigSchema,
+  type ProviderSearchPage,
+  providerSearchPageSchema,
+  type SearchProvidersQuery,
+  searchErrorReasonSchema,
+  searchProvidersQuerySchema,
   type BranchHoursDto,
   branchHoursRequestSchema,
   branchHoursSchema,
@@ -87,13 +97,19 @@ export interface ApiClientOptions {
   getAppCheckToken?: () => Promise<string | null> | string | null;
 }
 
+/** Search query string values (validated with `searchProvidersQuerySchema` before sending). */
+export type SearchQueryParams = Partial<
+  Record<keyof SearchProvidersQuery, string | number | boolean>
+>;
+
 export type ApiErrorReason =
   | AuthErrorReason
   | OrganizationErrorReason
   | EntitlementErrorReason
   | VerificationErrorReason
   | ProviderErrorReason
-  | CatalogErrorReason;
+  | CatalogErrorReason
+  | "invalid_cursor";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
 export class ApiError extends Error {
@@ -237,6 +253,17 @@ export interface ApiClient {
     exception: HoursExceptionRequest,
   ): Promise<BranchHoursDto>;
   removeHoursException(orgId: string, branchId: string, date: string): Promise<void>;
+  /**
+   * Nearby (lat/lng) or map-viewport (bbox) provider search, ranked by relevance. Visitors get
+   * approximate locations; pass `signedIn: true` for exact ones. Follow `nextCursor` to page.
+   */
+  searchProviders(
+    query: SearchQueryParams,
+    options?: { signedIn?: boolean },
+  ): Promise<ProviderSearchPage>;
+  /** Place-name lookup through the map adapter (search near the result). */
+  geocode(query: string, options?: { country?: string; limit?: number }): Promise<GeocodeResult[]>;
+  mapConfig(): Promise<MapConfig>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -265,6 +292,7 @@ const errorBodySchema = z
         verificationErrorReasonSchema,
         providerErrorReasonSchema,
         catalogErrorReasonSchema,
+        searchErrorReasonSchema,
       ])
       .optional(),
     message: z.unknown().optional(),
@@ -744,6 +772,39 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         ),
         schema: undefined,
         authenticated: true,
+      }),
+    searchProviders: async (query, options) => {
+      // Validate locally (same schema as the API), then send the original string form.
+      searchProvidersQuerySchema.parse(query);
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(query)) {
+        params.set(key, String(value));
+      }
+      const signedIn = options?.signedIn === true;
+      return send({
+        method: "GET",
+        path: `/v1/search/providers${signedIn ? "/full" : ""}?${params.toString()}`,
+        schema: providerSearchPageSchema,
+        authenticated: signedIn,
+      });
+    },
+    geocode: async (q, options) => {
+      const parsed = geocodeQuerySchema.parse({ q, ...options });
+      const params = new URLSearchParams({ q: parsed.q, limit: String(parsed.limit) });
+      if (parsed.country) params.set("country", parsed.country);
+      return send({
+        method: "GET",
+        path: `/v1/geo/geocode?${params.toString()}`,
+        schema: z.array(geocodeResultSchema),
+        authenticated: false,
+      });
+    },
+    mapConfig: () =>
+      send({
+        method: "GET",
+        path: "/v1/geo/map-config",
+        schema: mapConfigSchema,
+        authenticated: false,
       }),
     provider: (slug, options) =>
       send({

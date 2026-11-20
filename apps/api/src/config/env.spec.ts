@@ -21,6 +21,7 @@ const production = {
     "projects/fleettrust-prod/locations/europe-west1/keyRings/documents/cryptoKeys/verification",
   MALWARE_SCANNER: "clamav",
   CLAMAV_HOST: "clamav.internal",
+  MAP_TILE_URL: "https://tiles.example.test/{z}/{x}/{y}.png",
 } as const;
 
 describe("loadApiEnv", () => {
@@ -43,6 +44,7 @@ describe("loadApiEnv", () => {
       MALWARE_SCANNER: "eicar-only",
       CLAMAV_PORT: 3310,
       VERIFICATION_DOCUMENT_RETENTION_DAYS: 90,
+      MAP_PROVIDER: "stub",
     });
   });
 
@@ -94,6 +96,10 @@ describe("loadApiEnv", () => {
       loadApiEnv({ ...production, DOCUMENT_LOCAL_KEK: Buffer.alloc(32, 1).toString("base64") }),
     ).toThrow(/DOCUMENT_LOCAL_KEK/);
     expect(() => loadApiEnv({ ...production, CLAMAV_HOST: undefined })).toThrow(/CLAMAV_HOST/);
+    expect(() => loadApiEnv({ ...production, MAP_TILE_URL: undefined })).toThrow(/MAP_TILE_URL/);
+    expect(() =>
+      loadApiEnv({ ...production, MAP_TILE_URL: "http://tiles.example.test/{z}" }),
+    ).toThrow(/MAP_TILE_URL/);
     expect(() => loadApiEnv({ ...production, DOCUMENT_KMS_KEY: "my-key" })).toThrow(
       /DOCUMENT_KMS_KEY/,
     );

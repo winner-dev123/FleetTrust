@@ -14,8 +14,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 08  | Subscription catalog and entitlements      | approved (merged, PR #9)           | [prompt-08.md](prompt-08.md) |
 | 09  | Document verification workflow             | approved (merged, PR #10)          | [prompt-09.md](prompt-09.md) |
 | 10  | Provider profile onboarding                | approved (merged, PR #11)          | [prompt-10.md](prompt-10.md) |
-| 11  | Service catalogs and published pricing     | awaiting approval                  | [prompt-11.md](prompt-11.md) |
-| 12  | Geospatial provider search                 | todo                               |                              |
+| 11  | Service catalogs and published pricing     | approved (merged, PR #12)          | [prompt-11.md](prompt-11.md) |
+| 12  | Geospatial provider search                 | awaiting approval                  | [prompt-12.md](prompt-12.md) |
 | 13  | Route-aware discovery and saved lists      | todo                               |                              |
 | 14  | Service requests and quotations            | todo                               |                              |
 | 15  | Article publishing and knowledge hub       | todo                               |                              |

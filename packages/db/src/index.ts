@@ -27,6 +27,20 @@ export {
 } from "./quotas.js";
 export { runSeed, type SeedReport, type SeedStep, seedSteps } from "./seed/index.js";
 export { PLAN_CATALOG, type PlanDefinition } from "./seed/plans.data.js";
+export {
+  type BoundingBox,
+  buildSearchQuery,
+  DISTANCE_HALF_KM,
+  type ProviderSearchParams,
+  type ProviderSearchRow,
+  queryRows,
+  RANKING_WEIGHTS,
+  refreshProviderSearch,
+  type SearchArea,
+  type SearchCursor,
+  searchProviders,
+  searchTerms,
+} from "./search.js";
 export { distanceMeters, geographyOf, withinBoundingBox, withinMeters } from "./spatial.js";
 export {
   assertSameTenant,

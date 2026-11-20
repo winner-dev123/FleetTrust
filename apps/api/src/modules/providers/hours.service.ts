@@ -148,8 +148,8 @@ export class HoursService {
   }
 
   /** The public `hours` block: status now, weekly hours, and exceptions from today on. */
-  present(schedule: BranchSchedule) {
-    const now = this.clock.now();
+  present(schedule: BranchSchedule, at?: Date) {
+    const now = at ?? this.clock.now();
     const today = localClock(now, schedule.timeZone).date;
     const last = addDays(today, PUBLIC_EXCEPTION_DAYS);
     return {

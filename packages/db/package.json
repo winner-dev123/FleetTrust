@@ -53,6 +53,7 @@
     "@electric-sql/pglite": "0.5.16",
     "@electric-sql/pglite-postgis": "0.2.16",
     "@fleettrust/config": "workspace:*",
+    "@fleettrust/types": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "8.23.1",
     "drizzle-kit": "0.31.11",
