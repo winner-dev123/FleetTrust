@@ -1,7 +1,6 @@
 import { Module } from "@nestjs/common";
 
 import { BillingService } from "./billing.service.js";
-import { CLOCK, systemClock } from "./clock.js";
 import { BillingAdminController, MyEntitlementsController } from "./entitlements.controller.js";
 import { EntitlementsService } from "./entitlements.service.js";
 
@@ -12,7 +11,7 @@ import { EntitlementsService } from "./entitlements.service.js";
  */
 @Module({
   controllers: [MyEntitlementsController, BillingAdminController],
-  providers: [EntitlementsService, BillingService, { provide: CLOCK, useValue: systemClock }],
-  exports: [EntitlementsService, CLOCK],
+  providers: [EntitlementsService, BillingService],
+  exports: [EntitlementsService],
 })
 export class EntitlementsModule {}

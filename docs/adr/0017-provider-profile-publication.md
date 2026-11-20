@@ -24,7 +24,7 @@ Prompt 10 builds the provider setup wizard (SRS J4, F-030..F-032). Providers fil
 
 - The snapshot duplicates some data (names, branches). That is accepted for the guarantee that what's public is exactly what was reviewed at publish time. Search (Prompt 12) indexes the snapshot, not the draft.
 - The metadata stripper doesn't re-encode, so pixel data and ICC profiles are untouched and no native image library is needed (the repo denies native build scripts). If thumbnails are needed later, a re-encoding step (sharp in a worker) can replace it.
-- Opening hours, services and indicative prices belong to Prompt 11. They will join the draft and the snapshot the same way.
+- Opening hours, services and indicative prices belong to Prompt 11. Services and prices joined the draft and snapshot; opening hours are live instead ([ADR-0018](0018-catalog-pricing-and-hours.md)).
 
 ## Alternatives considered
 

@@ -43,6 +43,8 @@ describe("migrations on a fresh database", () => {
       "0010_verification_triggers",
       "0011_provider_profiles",
       "0012_provider_profiles_triggers",
+      "0013_catalog_and_hours",
+      "0014_catalog_triggers",
     ]);
   });
 
@@ -69,6 +71,8 @@ describe("migrations on a fresh database", () => {
     );
     expect(rows.map((row) => row.table_name)).toEqual([
       "audit_events",
+      "branch_hours_exceptions",
+      "branch_opening_hours",
       "branches",
       "currencies",
       "document_access_grants",
@@ -82,6 +86,8 @@ describe("migrations on a fresh database", () => {
       "plans",
       "platform_staff",
       "provider_media",
+      "provider_offering_branches",
+      "provider_offerings",
       "provider_profiles",
       "quota_consumptions",
       "quota_counters",

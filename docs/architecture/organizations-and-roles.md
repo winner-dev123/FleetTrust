@@ -24,16 +24,16 @@ invitations ─┘ (email, role, branch_id?, token_hash, expires_at, accepted_*/
 
 Defined once in `@fleettrust/types` (`ROLES_BY_KIND`, `ROLE_PERMISSIONS`). The database check and the TypeScript table are kept in step by an API test.
 
-| Role      | Provider | Fleet | Can be branch-scoped | Permissions                                                                                                          |
-| --------- | :------: | :---: | :------------------: | -------------------------------------------------------------------------------------------------------------------- |
-| owner     |    ✓     |   ✓   |                      | everything, including `owners.manage`                                                                                |
-| admin     |    ✓     |   ✓   |                      | `org.read`, `org.update`, `branches.read`, `branches.manage`, `members.read`, `members.manage`, `invitations.manage` |
-| manager   |    ✓     |   ✓   |          ✓           | `org.read`, `branches.read`, `members.read`                                                                          |
-| staff     |    ✓     |       |          ✓           | `org.read`, `branches.read`                                                                                          |
-| driver    |          |   ✓   |          ✓           | `org.read`, `branches.read`                                                                                          |
-| recruiter |          |   ✓   |                      | `org.read`                                                                                                           |
+| Role      | Provider | Fleet | Can be branch-scoped | Permissions                                                                                                                                                                                     |
+| --------- | :------: | :---: | :------------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| owner     |    ✓     |   ✓   |                      | everything, including `owners.manage`                                                                                                                                                           |
+| admin     |    ✓     |   ✓   |                      | `org.read`, `org.update`, `branches.read`, `branches.manage`, `members.read`, `members.manage`, `invitations.manage`, `verification.manage`, `profile.manage`, `catalog.manage`, `hours.manage` |
+| manager   |    ✓     |   ✓   |          ✓           | `org.read`, `branches.read`, `members.read`, `catalog.manage`, `hours.manage` (branch-scoped: own branch only)                                                                                  |
+| staff     |    ✓     |       |          ✓           | `org.read`, `branches.read`                                                                                                                                                                     |
+| driver    |          |   ✓   |          ✓           | `org.read`, `branches.read`                                                                                                                                                                     |
+| recruiter |          |   ✓   |                      | `org.read`                                                                                                                                                                                      |
 
-A branch-scoped member sees only their branch in `GET …/branches`. A branch-scoped manager sees only that branch's members (plus themselves) in `GET …/members`. Later prompts add domain permissions (catalog, requests, vehicles, jobs) to the same table.
+A branch-scoped member sees only their branch in `GET …/branches`. A branch-scoped manager sees only that branch's members (plus themselves) in `GET …/members`. A branch-scoped manager edits only their branch's hours and offerings limited to their branch (Prompt 11). Later prompts add domain permissions (requests, vehicles, jobs) to the same table.
 
 ## Using the tenancy guard (for later modules)
 

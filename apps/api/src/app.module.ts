@@ -11,6 +11,7 @@ import { ProvidersModule } from "./modules/providers/index.js";
 import { VerificationModule } from "./modules/verification/index.js";
 import { type AppLogger, createLogger } from "./observability/logger.js";
 import { ObservabilityModule } from "./observability/observability.module.js";
+import { ClockModule } from "./platform/clock/index.js";
 import { RateLimitModule } from "./platform/rate-limit/index.js";
 import { StorageModule } from "./platform/storage/index.js";
 
@@ -41,6 +42,8 @@ export class AppModule {
         RateLimitModule.forRoot(env),
         // Object storage, document encryption and malware scanning (ADR-0006).
         StorageModule.forRoot(env),
+        // Time source (CLOCK), replaceable in tests.
+        ClockModule,
         // Registers the global AuthGuard: every route requires sign-in unless marked @Public().
         IdentityModule.forRoot(env),
         // Tenancy: @OrgPermission() routes check membership and role after sign-in.

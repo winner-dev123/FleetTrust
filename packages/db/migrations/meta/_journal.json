@@ -92,6 +92,20 @@
       "when": 1795129754880,
       "tag": "0012_provider_profiles_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795136539216,
+      "tag": "0013_catalog_and_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795136540067,
+      "tag": "0014_catalog_triggers",
+      "breakpoints": true
     }
   ]
 }

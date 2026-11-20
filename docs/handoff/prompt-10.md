@@ -1,7 +1,7 @@
 # Handoff — Prompt 10: Provider profile onboarding
 
 - Date: 2026-11-19
-- Status: **awaiting owner approval** · branch `feat/prompt-10-provider-profiles`
+- Status: **approved** · PR **#11** squash-merged as `ddb185e` (CI 5/5 green on `17ce17f`)
 - Prompt 09 approved and merged (PR #10 → `d0d45d6`).
 
 ## Assumptions

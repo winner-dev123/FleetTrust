@@ -20,9 +20,11 @@ import {
 import {
   type BranchDto,
   CATEGORY_DETAIL_SCHEMAS,
+  INDICATIVE_PRICE_DISCLAIMER,
   MAX_GALLERY_IMAGES,
   type ProviderCategory,
   type ProviderErrorReason,
+  type OfferingDto,
   type ProviderProfileDto,
   type PublicProviderProfile,
   RADIUS_CATEGORIES,
@@ -32,14 +34,7 @@ import {
   type wizardStepSchema,
 } from "@fleettrust/types";
 import type { z } from "zod";
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  UnprocessableEntityException,
-} from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
 import { currentRequestContext } from "../../observability/request-context.js";
@@ -49,6 +44,9 @@ import { MALWARE_SCANNER, type MalwareScanner } from "../../platform/scanning/ma
 import { OBJECT_STORAGE, type ObjectStorage } from "../../platform/storage/index.js";
 import type { TenantAccess } from "../organizations/index.js";
 import { VerificationService } from "../verification/index.js";
+import { CatalogService, type SnapshotOffering } from "./catalog.service.js";
+import { HoursService } from "./hours.service.js";
+import { assertProvider, notFound, providerError } from "./shared.js";
 
 type WizardStep = z.infer<typeof wizardStepSchema>;
 type Issue = WizardStep["issues"][number];
@@ -60,24 +58,6 @@ const EXTENSIONS: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
-
-export function providerError(
-  status: 400 | 409 | 422,
-  reason: ProviderErrorReason,
-  extra: object = {},
-): Error {
-  const body = {
-    statusCode: status,
-    error: status === 422 ? "unprocessable" : status === 409 ? "conflict" : "bad_request",
-    reason,
-    ...extra,
-  };
-  if (status === 409) return new ConflictException(body);
-  if (status === 422) return new UnprocessableEntityException(body);
-  return new BadRequestException(body);
-}
-
-const notFound = () => new NotFoundException({ statusCode: 404, error: "not_found" });
 
 /** Published branches need these; street address too unless the provider only travels. */
 function branchIssues(branch: Branch, categories: readonly ProviderCategory[]): Issue[] {
@@ -136,6 +116,8 @@ interface Snapshot {
     phone: string | null;
   }[];
   mediaIds: string[];
+  /** Added in Prompt 11; snapshots published earlier have none. */
+  offerings?: SnapshotOffering[];
 }
 
 /**
@@ -150,15 +132,13 @@ export class ProviderProfilesService {
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
     @Inject(MALWARE_SCANNER) private readonly scanner: MalwareScanner,
     private readonly verification: VerificationService,
+    private readonly catalog: CatalogService,
+    private readonly hours: HoursService,
   ) {}
 
   private get db(): Database {
     if (this.database === null) throw new Error("DATABASE_URL is not configured");
     return this.database.db;
-  }
-
-  private assertProvider(access: TenantAccess): void {
-    if (access.organization.kind !== "provider") throw providerError(400, "not_a_provider");
   }
 
   /** The profile row, created empty on first use (that's the wizard's "start"). */
@@ -189,11 +169,24 @@ export class ProviderProfilesService {
         ),
       )
       .orderBy(asc(providerMedia.kind), asc(providerMedia.sortOrder), asc(providerMedia.createdAt));
-    return { profile, branches: branchRows, media };
+    const offerings = await this.catalog.offerings(executor, organizationId);
+    return { profile, branches: branchRows, media, offerings };
+  }
+
+  /** Branches complete enough to publish. */
+  private publishable(profile: ProviderProfile, branchRows: readonly Branch[]): Branch[] {
+    const categories = profile.categories as ProviderCategory[];
+    return branchRows.filter(
+      (b) => branchIssues(b, categories).length === 0 && b.location !== null,
+    );
   }
 
   /** Per-step completeness for the wizard. Publishing requires every step complete. */
-  steps(profile: ProviderProfile, branchRows: readonly Branch[]): WizardStep[] {
+  steps(
+    profile: ProviderProfile,
+    branchRows: readonly Branch[],
+    offerings: readonly OfferingDto[],
+  ): WizardStep[] {
     const categories = profile.categories as ProviderCategory[];
     const result: Record<(typeof WIZARD_STEPS)[number], Issue[]> = {
       basics: [],
@@ -201,6 +194,8 @@ export class ProviderProfilesService {
       vehicles: [],
       contact: [],
       branches: [],
+      catalog: [],
+      hours: [],
       media: [],
     };
     if (!profile.slug) result.basics.push({ path: "slug", message: "Choose a profile address" });
@@ -240,6 +235,10 @@ export class ProviderProfilesService {
           : branchProblems.flat()),
       );
     }
+    // The catalog is optional, but every offering must fit the rest of the profile.
+    result.catalog.push(
+      ...this.catalog.issues(offerings, profile, this.publishable(profile, branchRows)),
+    );
     return WIZARD_STEPS.map((id) => ({
       id,
       complete: result[id].length === 0,
@@ -251,8 +250,10 @@ export class ProviderProfilesService {
     profile: ProviderProfile,
     branchRows: readonly Branch[],
     media: readonly ProviderMedia[],
+    offerings: readonly OfferingDto[],
   ): Snapshot {
     const categories = profile.categories as ProviderCategory[];
+    const publishable = this.publishable(profile, branchRows);
     return {
       organizationId: profile.organizationId,
       slug: profile.slug ?? "",
@@ -273,22 +274,21 @@ export class ProviderProfilesService {
         email: profile.contactEmail,
         website: profile.website,
       },
-      branches: branchRows
-        .filter((b) => branchIssues(b, categories).length === 0 && b.location !== null)
-        .map((b) => ({
-          id: b.id,
-          name: b.name,
-          addressLine1: b.addressLine1,
-          addressLine2: b.addressLine2,
-          locality: b.locality,
-          region: b.region,
-          postalCode: b.postalCode,
-          countryCode: b.countryCode,
-          location: b.location ?? { lng: 0, lat: 0 },
-          serviceRadiusKm: b.serviceRadiusKm,
-          phone: b.phone,
-        })),
+      branches: publishable.map((b) => ({
+        id: b.id,
+        name: b.name,
+        addressLine1: b.addressLine1,
+        addressLine2: b.addressLine2,
+        locality: b.locality,
+        region: b.region,
+        postalCode: b.postalCode,
+        countryCode: b.countryCode,
+        location: b.location ?? { lng: 0, lat: 0 },
+        serviceRadiusKm: b.serviceRadiusKm,
+        phone: b.phone,
+      })),
       mediaIds: media.map((m) => m.id),
+      offerings: this.catalog.snapshot(offerings, publishable),
     };
   }
 
@@ -296,9 +296,10 @@ export class ProviderProfilesService {
     profile: ProviderProfile,
     branchRows: readonly Branch[],
     media: readonly ProviderMedia[],
+    offerings: readonly OfferingDto[],
   ): ProviderProfileDto {
-    const steps = this.steps(profile, branchRows);
-    const draft = this.snapshot(profile, branchRows, media);
+    const steps = this.steps(profile, branchRows, offerings);
+    const draft = this.snapshot(profile, branchRows, media, offerings);
     return {
       organizationId: profile.organizationId,
       status: profile.status,
@@ -324,13 +325,14 @@ export class ProviderProfilesService {
   // --- Draft (save and resume) ----------------------------------------------------------------
 
   async get(access: TenantAccess): Promise<ProviderProfileDto> {
-    this.assertProvider(access);
+    assertProvider(access);
     const {
       profile,
       branches: rows,
       media,
+      offerings,
     } = await this.load(this.db, access.tenant.organizationId);
-    return this.toDto(profile, rows, media);
+    return this.toDto(profile, rows, media, offerings);
   }
 
   async update(
@@ -338,7 +340,7 @@ export class ProviderProfilesService {
     actor: User,
     change: UpdateProviderProfileRequest,
   ): Promise<ProviderProfileDto> {
-    this.assertProvider(access);
+    assertProvider(access);
     const orgId = access.tenant.organizationId;
     try {
       await this.db.transaction(async (tx) => {
@@ -388,7 +390,7 @@ export class ProviderProfilesService {
     branchId: string,
     change: BranchLocation,
   ): Promise<BranchDto> {
-    this.assertProvider(access);
+    assertProvider(access);
     const [row] = await this.db
       .update(branches)
       .set({
@@ -440,7 +442,7 @@ export class ProviderProfilesService {
 
   /** Publishes the draft as an immutable snapshot. 422 profile_incomplete lists what's missing. */
   async publish(access: TenantAccess, actor: User): Promise<ProviderProfileDto> {
-    this.assertProvider(access);
+    assertProvider(access);
     const orgId = access.tenant.organizationId;
     await this.db.transaction(async (tx) => {
       await tx
@@ -448,11 +450,11 @@ export class ProviderProfilesService {
         .from(organizations)
         .where(eq(organizations.id, orgId))
         .for("update");
-      const { profile, branches: rows, media } = await this.load(tx, orgId);
-      const steps = this.steps(profile, rows);
+      const { profile, branches: rows, media, offerings } = await this.load(tx, orgId);
+      const steps = this.steps(profile, rows, offerings);
       const issues = steps.flatMap((s) => s.issues);
       if (issues.length > 0) throw providerError(422, "profile_incomplete", { issues });
-      const snapshot = this.snapshot(profile, rows, media);
+      const snapshot = this.snapshot(profile, rows, media, offerings);
       await tx
         .update(providerProfiles)
         .set({
@@ -465,13 +467,14 @@ export class ProviderProfilesService {
       await this.audit(tx, actor, orgId, "provider_profile.published", {
         slug: snapshot.slug,
         branches: snapshot.branches.length,
+        offerings: snapshot.offerings?.length ?? 0,
       });
     });
     return this.get(access);
   }
 
   async unpublish(access: TenantAccess, actor: User): Promise<ProviderProfileDto> {
-    this.assertProvider(access);
+    assertProvider(access);
     const orgId = access.tenant.organizationId;
     await this.db.transaction(async (tx) => {
       const profile = await this.profile(tx, orgId);
@@ -489,18 +492,19 @@ export class ProviderProfilesService {
   async preview(
     access: TenantAccess,
   ): Promise<{ visitor: PublicProviderProfile; signedIn: PublicProviderProfile; issues: Issue[] }> {
-    this.assertProvider(access);
+    assertProvider(access);
     const {
       profile,
       branches: rows,
       media,
+      offerings,
     } = await this.load(this.db, access.tenant.organizationId);
-    const snapshot = this.snapshot(profile, rows, media);
+    const snapshot = this.snapshot(profile, rows, media, offerings);
     const now = new Date();
     return {
-      visitor: await this.present(snapshot, now, false),
-      signedIn: await this.present(snapshot, now, true),
-      issues: this.steps(profile, rows).flatMap((s) => s.issues),
+      visitor: await this.present(snapshot, now, false, access.organization.timezone),
+      signedIn: await this.present(snapshot, now, true, access.organization.timezone),
+      issues: this.steps(profile, rows, offerings).flatMap((s) => s.issues),
     };
   }
 
@@ -524,6 +528,7 @@ export class ProviderProfilesService {
       row.profile.publishedSnapshot as unknown as Snapshot,
       row.profile.publishedAt,
       signedIn,
+      row.org.timezone,
     );
   }
 
@@ -531,7 +536,22 @@ export class ProviderProfilesService {
     snapshot: Snapshot,
     publishedAt: Date,
     signedIn: boolean,
+    organizationTimeZone: string,
   ): Promise<PublicProviderProfile> {
+    // Hours and timezones are live, read from the branches named in the snapshot.
+    const branchIds = snapshot.branches.map((b) => b.id);
+    const liveBranches = branchIds.length
+      ? await this.db
+          .select()
+          .from(branches)
+          .where(
+            and(
+              eq(branches.organizationId, snapshot.organizationId),
+              inArray(branches.id, branchIds),
+            ),
+          )
+      : [];
+    const schedules = await this.hours.schedules(organizationTimeZone, liveBranches);
     // Media is resolved live so removed images disappear immediately.
     const media = snapshot.mediaIds.length
       ? await this.db
@@ -560,16 +580,29 @@ export class ProviderProfilesService {
       categoryDetails: snapshot.categoryDetails,
       vehicleTypes: snapshot.vehicleTypes as PublicProviderProfile["vehicleTypes"],
       contact: signedIn ? snapshot.contact : null,
-      branches: snapshot.branches.map((b) => ({
-        ...b,
-        addressLine1: signedIn ? b.addressLine1 : null,
-        addressLine2: signedIn ? b.addressLine2 : null,
-        postalCode: signedIn ? b.postalCode : null,
-        phone: signedIn ? b.phone : null,
-        location: signedIn
-          ? { ...b.location, approximate: false }
-          : { lng: round(b.location.lng), lat: round(b.location.lat), approximate: true },
-      })),
+      branches: snapshot.branches.map((b) => {
+        const schedule = schedules.get(b.id) ?? {
+          timeZone: organizationTimeZone,
+          weekly: null,
+          exceptions: [],
+        };
+        return {
+          ...b,
+          timeZone: schedule.timeZone,
+          hours: this.hours.present(schedule),
+          addressLine1: signedIn ? b.addressLine1 : null,
+          addressLine2: signedIn ? b.addressLine2 : null,
+          postalCode: signedIn ? b.postalCode : null,
+          phone: signedIn ? b.phone : null,
+          location: signedIn
+            ? { ...b.location, approximate: false }
+            : { lng: round(b.location.lng), lat: round(b.location.lat), approximate: true },
+        };
+      }),
+      catalog: {
+        disclaimer: INDICATIVE_PRICE_DISCLAIMER,
+        offerings: this.catalog.present(snapshot.offerings ?? []),
+      },
       media: media
         .filter((m) => m.storageKey !== null)
         .map((m) => ({
@@ -595,7 +628,7 @@ export class ProviderProfilesService {
       altText: string | null;
     },
   ) {
-    this.assertProvider(access);
+    assertProvider(access);
     const orgId = access.tenant.organizationId;
     const row = await this.db.transaction(async (tx) => {
       if (input.kind === "gallery") {
@@ -640,7 +673,7 @@ export class ProviderProfilesService {
     actor: User,
     mediaId: string,
   ): Promise<{ id: string; url: string }> {
-    this.assertProvider(access);
+    assertProvider(access);
     const orgId = access.tenant.organizationId;
     const [media] = await this.db
       .select()
@@ -718,7 +751,7 @@ export class ProviderProfilesService {
   }
 
   async removeMedia(access: TenantAccess, actor: User, mediaId: string): Promise<void> {
-    this.assertProvider(access);
+    assertProvider(access);
     const orgId = access.tenant.organizationId;
     const [row] = await this.db
       .update(providerMedia)

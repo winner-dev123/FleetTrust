@@ -78,6 +78,10 @@ export const branches = pgTable(
     /** How far the branch travels to customers (mobile mechanics, towing). */
     serviceRadiusKm: smallint("service_radius_km"),
     phone: text("phone"),
+    /** IANA timezone for opening hours (Prompt 11). Null = the organization's timezone. */
+    timeZone: text("time_zone"),
+    /** When opening hours were last saved. Null = hours not provided (not the same as closed). */
+    hoursUpdatedAt: timestamp("hours_updated_at", { withTimezone: true, mode: "date" }),
     ...timestamps(),
   },
   (t) => [
@@ -94,6 +98,10 @@ export const branches = pgTable(
     unique("branches_id_organization_key").on(t.id, t.organizationId),
     uniqueIndex("branches_org_name_key").on(t.organizationId, sql`lower(${t.name})`),
     check("branches_name_length", sql`char_length(${t.name}) BETWEEN 2 AND 120`),
+    check(
+      "branches_time_zone_length",
+      sql`${t.timeZone} IS NULL OR char_length(${t.timeZone}) BETWEEN 1 AND 64`,
+    ),
   ],
 );
 

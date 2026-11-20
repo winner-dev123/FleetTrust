@@ -45,6 +45,7 @@ export {
   desc,
   eq,
   gt,
+  gte,
   inArray,
   isNotNull,
   isNull,

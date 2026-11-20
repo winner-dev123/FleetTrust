@@ -1,17 +1,19 @@
 # Provider profiles
 
-The provider setup wizard and public profile (SRS J4, F-030..F-032). Design: [ADR-0017](../adr/0017-provider-profile-publication.md). Verification labels come from [verification](verification.md).
+The provider setup wizard and public profile (SRS J4, F-030..F-032). Design: [ADR-0017](../adr/0017-provider-profile-publication.md). Verification labels come from [verification](verification.md). Offerings, prices and opening hours: [catalog-and-hours.md](catalog-and-hours.md).
 
 ## Wizard steps
 
-| Step         | Required to publish                                                                                                                                                        |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `basics`     | `slug` (3–60 chars, a–z 0–9 -, unique), `legalName`, `tradingName`. `description` is optional                                                                              |
-| `categories` | At least one category, and every chosen category's fields (below)                                                                                                          |
-| `vehicles`   | At least one vehicle type: `car`, `van`, `light_truck`, `heavy_truck`, `trailer`, `bus`, `motorcycle`, `agricultural`                                                      |
-| `contact`    | A phone (`+27 21 555 0100` format), email or https website                                                                                                                 |
-| `branches`   | At least one branch with town, country, map location, plus street address (unless the provider only travels: mobile mechanic) and service radius (towing, mobile mechanic) |
-| `media`      | Optional: logo, cover, up to 12 gallery images                                                                                                                             |
+| Step         | Required to publish                                                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `basics`     | `slug` (3–60 chars, a–z 0–9 -, unique), `legalName`, `tradingName`. `description` is optional                                                                                  |
+| `categories` | At least one category, and every chosen category's fields (below)                                                                                                              |
+| `vehicles`   | At least one vehicle type: `car`, `van`, `light_truck`, `heavy_truck`, `trailer`, `bus`, `motorcycle`, `agricultural`                                                          |
+| `contact`    | A phone (`+27 21 555 0100` format), email or https website                                                                                                                     |
+| `branches`   | At least one branch with town, country, map location, plus street address (unless the provider only travels: mobile mechanic) and service radius (towing, mobile mechanic)     |
+| `catalog`    | Optional. Every offering must fit the profile: category chosen, vehicle types served, a publishable branch, service radius for `at_customer` ([catalog](catalog-and-hours.md)) |
+| `hours`      | Optional. Opening hours are live and never block publishing ([hours](catalog-and-hours.md#opening-hours))                                                                      |
+| `media`      | Optional: logo, cover, up to 12 gallery images                                                                                                                                 |
 
 Every `GET` returns `steps[]` with `complete` and `issues` (`path` and `message`) plus `canPublish`. Saving never fails for incompleteness, only for malformed values.
 
