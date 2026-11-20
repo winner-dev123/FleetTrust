@@ -91,6 +91,15 @@ export class MemoryObjectStorage implements ObjectStorage {
     return Promise.resolve();
   }
 
+  publicUrl(key: string): string {
+    return `${this.publicApiUrl.replace(/\/+$/, "")}/v1/local-storage/public/${key}`;
+  }
+
+  /** Serves public_media objects for the local-only GET route. */
+  publicObject(key: string): { data: Buffer; contentType: string } | undefined {
+    return this.objects.get(MemoryObjectStorage.id("public_media", key));
+  }
+
   /** Test helper: raw stored bytes (to prove documents are encrypted at rest). */
   raw(bucket: BucketClass, key: string): Buffer | undefined {
     return this.objects.get(MemoryObjectStorage.id(bucket, key))?.data;

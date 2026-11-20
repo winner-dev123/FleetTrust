@@ -272,6 +272,25 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
+  it("provider profiles: visitors call the public route without tokens", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(jsonResponse({ statusCode: 404, error: "not_found" }, 404));
+    const client = createApiClient({
+      baseUrl: "https://x.test",
+      fetch,
+      getIdToken: () => "secret",
+    });
+    await client.provider("rapid-recovery").catch(() => undefined);
+    await client.provider("rapid-recovery", { signedIn: true }).catch(() => undefined);
+    expect(fetch.mock.calls[0]?.[0]).toBe("https://x.test/v1/providers/rapid-recovery");
+    expect(fetch.mock.calls[0]?.[1]?.headers).not.toHaveProperty("Authorization");
+    expect(fetch.mock.calls[1]?.[0]).toBe("https://x.test/v1/providers/rapid-recovery/full");
+    expect(fetch.mock.calls[1]?.[1]?.headers).toMatchObject({ Authorization: "Bearer secret" });
+    // Draft saves are shape-checked locally.
+    await expect(client.updateProviderProfile(orgId, { slug: "Not A Slug" })).rejects.toThrow();
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

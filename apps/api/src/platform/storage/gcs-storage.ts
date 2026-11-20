@@ -11,11 +11,22 @@ import type { BucketClass, ObjectInfo, ObjectStorage, UploadUrl } from "./object
 export class GcsObjectStorage implements ObjectStorage {
   private readonly buckets: Record<BucketClass, Bucket>;
 
-  constructor(names: Record<BucketClass, string>, storage: Storage = new Storage()) {
+  constructor(
+    private readonly names: Record<BucketClass, string>,
+    storage: Storage = new Storage(),
+    /** CDN origin for public media; defaults to the bucket's storage.googleapis.com URL. */
+    private readonly publicBaseUrl?: string,
+  ) {
     this.buckets = {
       quarantine: storage.bucket(names.quarantine),
       sensitive: storage.bucket(names.sensitive),
+      public_media: storage.bucket(names.public_media),
     };
+  }
+
+  publicUrl(key: string): string {
+    const base = this.publicBaseUrl ?? `https://storage.googleapis.com/${this.names.public_media}`;
+    return `${base.replace(/\/+$/, "")}/${key}`;
   }
 
   async createUploadUrl(
@@ -56,8 +67,11 @@ export class GcsObjectStorage implements ObjectStorage {
     await this.buckets[bucket].file(key).save(data, {
       contentType,
       resumable: false,
-      // Never let a CDN or browser cache sensitive objects.
-      metadata: { cacheControl: "private, no-store" },
+      // Public media is immutable (new uploads get new keys); everything else is never cached.
+      metadata: {
+        cacheControl:
+          bucket === "public_media" ? "public, max-age=31536000, immutable" : "private, no-store",
+      },
     });
   }
 

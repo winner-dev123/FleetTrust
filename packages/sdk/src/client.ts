@@ -1,5 +1,15 @@
 import {
   acceptInvitationRequestSchema,
+  addMediaRequestSchema,
+  branchLocationRequestSchema,
+  type ProviderErrorReason,
+  providerErrorReasonSchema,
+  type ProviderProfileDto,
+  providerProfileSchema,
+  type PublicProviderProfile,
+  publicProviderProfileSchema,
+  type UpdateProviderProfileRequest,
+  updateProviderProfileRequestSchema,
   type AddDocumentRequest,
   addDocumentRequestSchema,
   appealRequestSchema,
@@ -66,7 +76,11 @@ export interface ApiClientOptions {
 }
 
 export type ApiErrorReason =
-  AuthErrorReason | OrganizationErrorReason | EntitlementErrorReason | VerificationErrorReason;
+  | AuthErrorReason
+  | OrganizationErrorReason
+  | EntitlementErrorReason
+  | VerificationErrorReason
+  | ProviderErrorReason;
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
 export class ApiError extends Error {
@@ -155,6 +169,39 @@ export interface ApiClient {
   appealVerificationCase(caseId: string, statement: string): Promise<VerificationCaseDto>;
   appealBadge(badgeId: string, statement: string): Promise<BadgeDto>;
   badges(orgId?: string): Promise<BadgeDto[]>;
+  /** Provider setup wizard: the saved draft with per-step completeness. */
+  providerProfile(orgId: string): Promise<ProviderProfileDto>;
+  /** Save any subset of fields; the wizard resumes from the saved draft. */
+  updateProviderProfile(
+    orgId: string,
+    change: UpdateProviderProfileRequest,
+  ): Promise<ProviderProfileDto>;
+  updateBranchLocation(
+    orgId: string,
+    branchId: string,
+    change: z.input<typeof branchLocationRequestSchema>,
+  ): Promise<BranchDto>;
+  previewProviderProfile(orgId: string): Promise<{
+    visitor: PublicProviderProfile;
+    signedIn: PublicProviderProfile;
+    issues: { path: string; message: string }[];
+  }>;
+  /** 422 `profile_incomplete` with `issues` when something is missing. */
+  publishProviderProfile(orgId: string): Promise<ProviderProfileDto>;
+  unpublishProviderProfile(orgId: string): Promise<ProviderProfileDto>;
+  /** Then PUT the image to `upload.url` and call completeProfileMedia. */
+  addProfileMedia(
+    orgId: string,
+    media: z.input<typeof addMediaRequestSchema>,
+  ): Promise<{
+    mediaId: string;
+    upload: { url: string; method: "PUT"; headers: Record<string, string>; expiresAt: string };
+  }>;
+  completeProfileMedia(orgId: string, mediaId: string): Promise<{ id: string; url: string }>;
+  removeProfileMedia(orgId: string, mediaId: string): Promise<void>;
+  /** A published provider. Signed-in callers get contact details and exact locations. */
+  provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
+
   /** Public trust labels: "verified" or "unverified" per badge type. */
   verificationLabels(subject: {
     type: "user" | "organization";
@@ -178,6 +225,7 @@ const errorBodySchema = z
         organizationErrorReasonSchema,
         entitlementErrorReasonSchema,
         verificationErrorReasonSchema,
+        providerErrorReasonSchema,
       ])
       .optional(),
     message: z.unknown().optional(),
@@ -503,6 +551,91 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
             : orgPath(orgId, "verification", "badges"),
         schema: z.array(badgeSchema),
         authenticated: true,
+      }),
+    providerProfile: (orgId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "provider-profile"),
+        schema: providerProfileSchema,
+        authenticated: true,
+      }),
+    updateProviderProfile: async (orgId, change) =>
+      send({
+        method: "PATCH",
+        path: orgPath(orgId, "provider-profile"),
+        schema: providerProfileSchema,
+        body: updateProviderProfileRequestSchema.parse(change),
+        authenticated: true,
+      }),
+    updateBranchLocation: async (orgId, branchId, change) =>
+      send({
+        method: "PATCH",
+        path: orgPath(orgId, "provider-profile", "branches", branchId),
+        schema: branchSchema,
+        body: branchLocationRequestSchema.parse(change),
+        authenticated: true,
+      }),
+    previewProviderProfile: (orgId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "provider-profile", "preview"),
+        schema: z.object({
+          visitor: publicProviderProfileSchema,
+          signedIn: publicProviderProfileSchema,
+          issues: z.array(z.object({ path: z.string(), message: z.string() })),
+        }),
+        authenticated: true,
+      }),
+    publishProviderProfile: (orgId) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "provider-profile", "publish"),
+        schema: providerProfileSchema,
+        authenticated: true,
+      }),
+    unpublishProviderProfile: (orgId) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "provider-profile", "unpublish"),
+        schema: providerProfileSchema,
+        authenticated: true,
+      }),
+    addProfileMedia: async (orgId, media) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "provider-profile", "media"),
+        schema: z.object({
+          mediaId: z.uuid(),
+          upload: z.object({
+            url: z.string(),
+            method: z.literal("PUT"),
+            headers: z.record(z.string(), z.string()),
+            expiresAt: z.iso.datetime(),
+          }),
+        }),
+        body: addMediaRequestSchema.parse(media),
+        authenticated: true,
+      }),
+    completeProfileMedia: (orgId, mediaId) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "provider-profile", "media", mediaId, "complete"),
+        schema: z.object({ id: z.uuid(), url: z.string() }),
+        authenticated: true,
+      }),
+    removeProfileMedia: (orgId, mediaId) =>
+      send({
+        method: "DELETE",
+        path: orgPath(orgId, "provider-profile", "media", mediaId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    provider: (slug, options) =>
+      send({
+        method: "GET",
+        path: `/v1/providers/${encodeURIComponent(slug)}${options?.signedIn ? "/full" : ""}`,
+        schema: publicProviderProfileSchema,
+        authenticated: options?.signedIn === true,
       }),
     verificationLabels: (subject) =>
       send({

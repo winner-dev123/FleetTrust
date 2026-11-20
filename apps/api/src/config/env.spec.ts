@@ -15,6 +15,7 @@ const production = {
   STORAGE_DRIVER: "gcs",
   STORAGE_QUARANTINE_BUCKET: "fleettrust-prod-quarantine",
   STORAGE_SENSITIVE_BUCKET: "fleettrust-prod-sensitive",
+  STORAGE_PUBLIC_MEDIA_BUCKET: "fleettrust-prod-public-media",
   DOCUMENT_KEY_PROVIDER: "kms",
   DOCUMENT_KMS_KEY:
     "projects/fleettrust-prod/locations/europe-west1/keyRings/documents/cryptoKeys/verification",

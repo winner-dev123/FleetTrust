@@ -8,6 +8,8 @@ Setup and checks for the document pipeline ([ADR-0016](../adr/0016-verification-
 | -------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------- |
 | `STORAGE_DRIVER`                       | `gcs` (required)                                                             | `memory`                              |
 | `STORAGE_QUARANTINE_BUCKET`            | e.g. `fleettrust-stg-quarantine`                                             | —                                     |
+| `STORAGE_PUBLIC_MEDIA_BUCKET`          | e.g. `fleettrust-stg-public-media` (profile images, publicly readable)       | —                                     |
+| `PUBLIC_MEDIA_BASE_URL`                | optional CDN origin in front of the public media bucket                      | storage.googleapis.com                |
 | `STORAGE_SENSITIVE_BUCKET`             | e.g. `fleettrust-stg-sensitive`                                              | —                                     |
 | `DOCUMENT_KEY_PROVIDER`                | `kms` (required)                                                             | `local`                               |
 | `DOCUMENT_KMS_KEY`                     | `projects/<p>/locations/<region>/keyRings/documents/cryptoKeys/verification` | —                                     |
@@ -17,7 +19,7 @@ Setup and checks for the document pipeline ([ADR-0016](../adr/0016-verification-
 | `PUBLIC_API_URL`                       | the API's public origin (reviewer links point here)                          | `http://localhost:8080`               |
 | `VERIFICATION_DOCUMENT_RETENTION_DAYS` | 90 until OQ-14 is answered                                                   | 90                                    |
 
-The staging workflow reads these from repository variables: `STAGING_PUBLIC_API_URL`, `STAGING_QUARANTINE_BUCKET`, `STAGING_SENSITIVE_BUCKET`, `STAGING_DOCUMENT_KMS_KEY` and `STAGING_CLAMAV_HOST`.
+The staging workflow reads these from repository variables: `STAGING_PUBLIC_API_URL`, `STAGING_QUARANTINE_BUCKET`, `STAGING_SENSITIVE_BUCKET`, `STAGING_PUBLIC_MEDIA_BUCKET`, `STAGING_DOCUMENT_KMS_KEY` and `STAGING_CLAMAV_HOST`.
 
 ## One-time Google Cloud setup (per environment)
 
@@ -40,8 +42,13 @@ gcloud storage buckets update gs://$PROJECT-quarantine --cors-file=- <<'EOF'
 [{"origin":["https://app.example.com"],"method":["PUT"],"responseHeader":["Content-Type","x-goog-content-length-range"],"maxAgeSeconds":600}]
 EOF
 
-# The API may read/write both buckets and sign URLs as itself.
-for b in quarantine sensitive; do
+# Public media (provider profile images): world-readable objects, no listing.
+gcloud storage buckets create gs://$PROJECT-public-media --location=$REGION --uniform-bucket-level-access
+gcloud storage buckets add-iam-policy-binding gs://$PROJECT-public-media \
+  --member=allUsers --role=roles/storage.legacyObjectReader
+
+# The API may read/write all three buckets and sign URLs as itself.
+for b in quarantine sensitive public-media; do
   gcloud storage buckets add-iam-policy-binding gs://$PROJECT-$b \
     --member=serviceAccount:$API_SA --role=roles/storage.objectAdmin
 done

@@ -1,11 +1,12 @@
 import { randomBytes } from "node:crypto";
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
 import {
   BadRequestException,
   Controller,
   type DynamicModule,
   ForbiddenException,
+  Get,
   GoneException,
   HttpCode,
   Inject,
@@ -15,6 +16,7 @@ import {
   PayloadTooLargeException,
   Put,
   Req,
+  Res,
 } from "@nestjs/common";
 import { GoogleAuth } from "google-auth-library";
 
@@ -46,6 +48,25 @@ async function readBody(request: IncomingMessage, limit: number): Promise<Buffer
 class LocalStorageController {
   constructor(@Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage) {}
 
+  /** Serves public media locally (production serves it from the bucket or a CDN). */
+  @Get("public/*key")
+  @Public()
+  publicMedia(@Param("key") segments: string | string[], @Res() response: ServerResponse): void {
+    const key = Array.isArray(segments) ? segments.join("/") : segments;
+    const object =
+      this.storage instanceof MemoryObjectStorage ? this.storage.publicObject(key) : undefined;
+    if (!object) {
+      response.writeHead(404).end();
+      return;
+    }
+    response.writeHead(200, {
+      "Content-Type": object.contentType,
+      "Cache-Control": "public, max-age=3600",
+      "X-Content-Type-Options": "nosniff",
+    });
+    response.end(object.data);
+  }
+
   @Put(":token")
   @Public()
   @HttpCode(200)
@@ -75,10 +96,15 @@ export class StorageModule {
           useFactory: (): ObjectStorage =>
             memory
               ? new MemoryObjectStorage(env.PUBLIC_API_URL)
-              : new GcsObjectStorage({
-                  quarantine: env.STORAGE_QUARANTINE_BUCKET ?? "",
-                  sensitive: env.STORAGE_SENSITIVE_BUCKET ?? "",
-                }),
+              : new GcsObjectStorage(
+                  {
+                    quarantine: env.STORAGE_QUARANTINE_BUCKET ?? "",
+                    sensitive: env.STORAGE_SENSITIVE_BUCKET ?? "",
+                    public_media: env.STORAGE_PUBLIC_MEDIA_BUCKET ?? "",
+                  },
+                  undefined,
+                  env.PUBLIC_MEDIA_BASE_URL,
+                ),
         },
         {
           provide: KEY_WRAPPER,

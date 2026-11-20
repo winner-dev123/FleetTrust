@@ -36,6 +36,15 @@ export function toBranchDto(branch: Branch): BranchDto {
     id: branch.id,
     organizationId: branch.organizationId,
     name: branch.name,
+    addressLine1: branch.addressLine1,
+    addressLine2: branch.addressLine2,
+    locality: branch.locality,
+    region: branch.region,
+    postalCode: branch.postalCode,
+    countryCode: branch.countryCode,
+    location: branch.location,
+    serviceRadiusKm: branch.serviceRadiusKm,
+    phone: branch.phone,
     createdAt: branch.createdAt.toISOString(),
   };
 }

@@ -41,6 +41,8 @@ describe("migrations on a fresh database", () => {
       "0008_plans_triggers",
       "0009_verification",
       "0010_verification_triggers",
+      "0011_provider_profiles",
+      "0012_provider_profiles_triggers",
     ]);
   });
 
@@ -79,6 +81,8 @@ describe("migrations on a fresh database", () => {
       "plan_versions",
       "plans",
       "platform_staff",
+      "provider_media",
+      "provider_profiles",
       "quota_consumptions",
       "quota_counters",
       "quota_overrides",
