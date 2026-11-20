@@ -7,4 +7,5 @@ export * from "./catalog.js";
 export * from "./opening-hours.js";
 export * from "./providers.js";
 export * from "./public-provider.js";
+export * from "./search.js";
 export * from "./verification.js";

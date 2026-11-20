@@ -15,6 +15,7 @@ import {
   type ProviderProfile,
   providerProfiles,
   recordAuditEvent,
+  refreshProviderSearch,
   type User,
 } from "@fleettrust/db";
 import {
@@ -469,6 +470,8 @@ export class ProviderProfilesService {
         branches: snapshot.branches.length,
         offerings: snapshot.offerings?.length ?? 0,
       });
+      // Search serves only the published snapshot (ADR-0019).
+      await refreshProviderSearch(tx, orgId);
     });
     return this.get(access);
   }
@@ -483,6 +486,7 @@ export class ProviderProfilesService {
         .update(providerProfiles)
         .set({ status: "hidden" })
         .where(eq(providerProfiles.organizationId, orgId));
+      await refreshProviderSearch(tx, orgId);
       await this.audit(tx, actor, orgId, "provider_profile.unpublished");
     });
     return this.get(access);

@@ -22,6 +22,7 @@ We record significant decisions as short ADRs ([Nygard format](https://cognitect
 | [0016](0016-verification-documents.md)               | Verification documents: pipeline, encryption, reviewer access        | Accepted |
 | [0017](0017-provider-profile-publication.md)         | Provider profiles: draft, published snapshot, public visibility      | Accepted |
 | [0018](0018-catalog-pricing-and-hours.md)            | Catalog in the snapshot, exact indicative prices, live opening hours | Accepted |
+| [0019](0019-search-projection-and-ranking.md)        | Search projection, relevance-only ranking, rounded visitor locations | Accepted |
 
 ## Template
 
