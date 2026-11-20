@@ -291,6 +291,42 @@ describe("organizations", () => {
     await expect(client.updateProviderProfile(orgId, { slug: "Not A Slug" })).rejects.toThrow();
   });
 
+  it("catalog and hours: PUT routes, local validation and catalog reason codes", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(
+        jsonResponse({ statusCode: 400, error: "bad_request", reason: "too_many_decimals" }, 400),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    const offering = {
+      category: "workshop" as const,
+      name: "Brakes",
+      vehicleTypes: ["car" as const],
+      price: { type: "fixed" as const, currency: "JPY", amount: "1.5", unit: "job" as const },
+    };
+    const error = await client.replaceOffering(orgId, orgId, offering).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).reason).toBe("too_many_decimals");
+    expect(fetch.mock.calls[0]?.[0]).toBe(
+      `https://x.test/v1/orgs/${orgId}/provider-profile/offerings/${orgId}`,
+    );
+    expect(fetch.mock.calls[0]?.[1]?.method).toBe("PUT");
+    // Malformed input never reaches the network.
+    await expect(
+      client.createOffering(orgId, {
+        ...offering,
+        price: { type: "range", currency: "ZAR", min: "5", max: "1", unit: "job" },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      client.saveHoursException(orgId, orgId, "2026-02-30", { closed: true }),
+    ).rejects.toThrow();
+    await expect(
+      client.saveBranchHours(orgId, orgId, { timeZone: "Nowhere/City", weekly: {} }),
+    ).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

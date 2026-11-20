@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { BADGE_TYPES } from "./verification.js";
-
 /** Provider categories (SRS F-033). Each has its own required profile fields. */
 export const PROVIDER_CATEGORIES = [
   "workshop",
@@ -139,7 +137,8 @@ const categoryDetailsDraftSchema = z
   })
   .strict();
 
-const text = (max: number) =>
+/** Trimmed text without control characters (newlines and tabs allowed). */
+export const boundedText = (max: number) =>
   z
     .string()
     .trim()
@@ -159,9 +158,9 @@ export const updateProviderProfileRequestSchema = z
       .trim()
       .toLowerCase()
       .regex(SLUG_PATTERN, "3–60 characters: a–z, 0–9 and hyphens"),
-    legalName: text(200).nullable(),
-    tradingName: text(120).nullable(),
-    description: text(2000).nullable(),
+    legalName: boundedText(200).nullable(),
+    tradingName: boundedText(120).nullable(),
+    description: boundedText(2000).nullable(),
     categories: z.array(providerCategorySchema).max(PROVIDER_CATEGORIES.length),
     vehicleTypes: z.array(vehicleTypeSchema).max(VEHICLE_TYPES.length),
     categoryDetails: categoryDetailsDraftSchema,
@@ -182,11 +181,11 @@ export type UpdateProviderProfileRequest = z.input<typeof updateProviderProfileR
 
 export const branchLocationRequestSchema = z
   .object({
-    addressLine1: text(200).nullable(),
-    addressLine2: text(200).nullable(),
-    locality: text(100).nullable(),
-    region: text(100).nullable(),
-    postalCode: text(20).nullable(),
+    addressLine1: boundedText(200).nullable(),
+    addressLine2: boundedText(200).nullable(),
+    locality: boundedText(100).nullable(),
+    region: boundedText(100).nullable(),
+    postalCode: boundedText(20).nullable(),
     countryCode: z
       .string()
       .regex(/^[A-Z]{2}$/, "ISO 3166-1 alpha-2, e.g. ZA")
@@ -211,6 +210,8 @@ export const WIZARD_STEPS = [
   "vehicles",
   "contact",
   "branches",
+  "catalog",
+  "hours",
   "media",
 ] as const;
 
@@ -220,60 +221,6 @@ export const wizardStepSchema = z.object({
   /** Human-readable problems to fix before publishing. */
   issues: z.array(z.object({ path: z.string(), message: z.string() })),
 });
-
-export const publicBranchSchema = z.object({
-  id: z.uuid(),
-  name: z.string(),
-  /** Street lines are omitted for visitors who aren't signed in (OQ-11). */
-  addressLine1: z.string().nullable(),
-  addressLine2: z.string().nullable(),
-  locality: z.string().nullable(),
-  region: z.string().nullable(),
-  postalCode: z.string().nullable(),
-  countryCode: z.string().nullable(),
-  /** Rounded to about 1 km for visitors who aren't signed in. */
-  location: z.object({ lng: z.number(), lat: z.number(), approximate: z.boolean() }),
-  serviceRadiusKm: z.number().nullable(),
-  phone: z.string().nullable(),
-});
-
-export const publicMediaSchema = z.object({
-  id: z.uuid(),
-  kind: z.enum(["logo", "cover", "gallery"]),
-  url: z.string(),
-  altText: z.string().nullable(),
-});
-
-/** What the public sees. `contact` is null for visitors who aren't signed in (OQ-11). */
-export const publicProviderProfileSchema = z.object({
-  organizationId: z.uuid(),
-  slug: z.string(),
-  tradingName: z.string(),
-  legalName: z.string(),
-  description: z.string().nullable(),
-  categories: z.array(providerCategorySchema),
-  categoryDetails: z.record(z.string(), z.record(z.string(), z.unknown())),
-  vehicleTypes: z.array(vehicleTypeSchema),
-  contact: z
-    .object({
-      phone: z.string().nullable(),
-      email: z.string().nullable(),
-      website: z.string().nullable(),
-    })
-    .nullable(),
-  branches: z.array(publicBranchSchema),
-  media: z.array(publicMediaSchema),
-  /** Live verification labels; "unverified" until a badge is granted (SRS §8.1). */
-  verification: z.array(
-    z.object({
-      badgeType: z.enum(BADGE_TYPES),
-      status: z.enum(["verified", "unverified"]),
-      expiresAt: z.iso.datetime().nullable(),
-    }),
-  ),
-  publishedAt: z.iso.datetime(),
-});
-export type PublicProviderProfile = z.infer<typeof publicProviderProfileSchema>;
 
 export const providerProfileSchema = z.object({
   organizationId: z.uuid(),
@@ -306,7 +253,7 @@ export const addMediaRequestSchema = z
     kind: z.enum(["logo", "cover", "gallery"]),
     contentType: z.enum(PROFILE_IMAGE_TYPES),
     size: z.number().int().min(1).max(MAX_PROFILE_IMAGE_BYTES),
-    altText: text(200).nullable().default(null),
+    altText: boundedText(200).nullable().default(null),
   })
   .strict();
 

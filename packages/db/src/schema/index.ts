@@ -7,3 +7,4 @@ export * from "./organizations.js";
 export * from "./plans.js";
 export * from "./verification.js";
 export * from "./provider-profiles.js";
+export * from "./catalog.js";

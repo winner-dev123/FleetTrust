@@ -105,6 +105,8 @@ describe("save and resume", () => {
       "vehicles",
       "contact",
       "branches",
+      "catalog",
+      "hours",
       "media",
     ]);
 

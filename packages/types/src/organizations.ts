@@ -33,6 +33,10 @@ export const PERMISSIONS = [
   "verification.manage",
   /** Edit and publish the public provider profile (Prompt 10). */
   "profile.manage",
+  /** Edit service offerings and indicative prices (Prompt 11). Branch-scoped managers: their branch only. */
+  "catalog.manage",
+  /** Edit opening hours and holiday exceptions (Prompt 11). Branch-scoped managers: their branch only. */
+  "hours.manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -53,8 +57,10 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "invitations.manage",
     "verification.manage",
     "profile.manage",
+    "catalog.manage",
+    "hours.manage",
   ],
-  manager: ["org.read", "branches.read", "members.read"],
+  manager: ["org.read", "branches.read", "members.read", "catalog.manage", "hours.manage"],
   staff: ["org.read", "branches.read"],
   driver: ["org.read", "branches.read"],
   recruiter: ["org.read"],

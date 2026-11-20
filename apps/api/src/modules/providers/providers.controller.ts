@@ -2,7 +2,13 @@ import type { User } from "@fleettrust/db";
 import {
   addMediaRequestSchema,
   type BranchDto,
+  type BranchHoursDto,
+  branchHoursRequestSchema,
   branchLocationRequestSchema,
+  hoursExceptionRequestSchema,
+  localDateSchema,
+  type OfferingDto,
+  offeringRequestSchema,
   type ProviderProfileDto,
   type PublicProviderProfile,
   updateProviderProfileRequestSchema,
@@ -19,12 +25,15 @@ import {
   type PipeTransform,
   Patch,
   Post,
+  Put,
 } from "@nestjs/common";
 
 import { RateLimit } from "../../platform/rate-limit/index.js";
 import { parseBody } from "../../platform/validation.js";
 import { CurrentUser, Public } from "../identity/index.js";
 import { CurrentTenant, OrgPermission, type TenantAccess } from "../organizations/index.js";
+import { CatalogService } from "./catalog.service.js";
+import { HoursService } from "./hours.service.js";
 import { ProviderProfilesService } from "./provider-profiles.service.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -44,6 +53,13 @@ class SlugParam implements PipeTransform<string, string> {
       throw new NotFoundException({ statusCode: 404, error: "not_found" });
     }
     return value.toLowerCase();
+  }
+}
+
+@Injectable()
+class DateParam implements PipeTransform<string, string> {
+  transform(value: string): string {
+    return parseBody(localDateSchema, value);
   }
 }
 
@@ -143,6 +159,116 @@ export class ProviderProfileController {
     @Param("mediaId", IdParam) mediaId: string,
   ): Promise<void> {
     await this.profiles.removeMedia(access, user, mediaId);
+  }
+}
+
+/**
+ * Service catalog (SRS F-033, F-034). Offerings are part of the draft and go public when the
+ * profile is (re)published. Branch-scoped managers may only edit offerings limited to their branch.
+ */
+@Controller("v1/orgs/:orgId/provider-profile/offerings")
+export class CatalogController {
+  constructor(private readonly catalog: CatalogService) {}
+
+  @Get()
+  @OrgPermission("org.read")
+  list(@CurrentTenant() access: TenantAccess): Promise<OfferingDto[]> {
+    return this.catalog.list(access);
+  }
+
+  @Post()
+  @OrgPermission("catalog.manage")
+  @RateLimit({ name: "catalog-save", limit: 300, windowSeconds: 3600, by: "user" })
+  create(
+    @CurrentTenant() access: TenantAccess,
+    @CurrentUser() user: User,
+    @Body() body: unknown,
+  ): Promise<OfferingDto> {
+    return this.catalog.create(access, user, parseBody(offeringRequestSchema, body));
+  }
+
+  @Put(":offeringId")
+  @OrgPermission("catalog.manage")
+  @RateLimit({ name: "catalog-save", limit: 300, windowSeconds: 3600, by: "user" })
+  replace(
+    @CurrentTenant() access: TenantAccess,
+    @CurrentUser() user: User,
+    @Param("offeringId", IdParam) offeringId: string,
+    @Body() body: unknown,
+  ): Promise<OfferingDto> {
+    return this.catalog.replace(access, user, offeringId, parseBody(offeringRequestSchema, body));
+  }
+
+  @Delete(":offeringId")
+  @HttpCode(204)
+  @OrgPermission("catalog.manage")
+  async remove(
+    @CurrentTenant() access: TenantAccess,
+    @CurrentUser() user: User,
+    @Param("offeringId", IdParam) offeringId: string,
+  ): Promise<void> {
+    await this.catalog.remove(access, user, offeringId);
+  }
+}
+
+/**
+ * Opening hours and holiday exceptions per branch (SRS F-035), in the branch's local time.
+ * Live: changes reach the public profile without republishing.
+ */
+@Controller("v1/orgs/:orgId/provider-profile/branches/:branchId/hours")
+export class HoursController {
+  constructor(private readonly hours: HoursService) {}
+
+  @Get()
+  @OrgPermission("org.read")
+  get(
+    @CurrentTenant() access: TenantAccess,
+    @Param("branchId", IdParam) branchId: string,
+  ): Promise<BranchHoursDto> {
+    return this.hours.get(access, branchId);
+  }
+
+  @Put()
+  @OrgPermission("hours.manage")
+  @RateLimit({ name: "hours-save", limit: 300, windowSeconds: 3600, by: "user" })
+  put(
+    @CurrentTenant() access: TenantAccess,
+    @CurrentUser() user: User,
+    @Param("branchId", IdParam) branchId: string,
+    @Body() body: unknown,
+  ): Promise<BranchHoursDto> {
+    return this.hours.put(access, user, branchId, parseBody(branchHoursRequestSchema, body));
+  }
+
+  @Put("exceptions/:date")
+  @OrgPermission("hours.manage")
+  @RateLimit({ name: "hours-save", limit: 300, windowSeconds: 3600, by: "user" })
+  putException(
+    @CurrentTenant() access: TenantAccess,
+    @CurrentUser() user: User,
+    @Param("branchId", IdParam) branchId: string,
+    @Param("date", DateParam) date: string,
+    @Body() body: unknown,
+  ): Promise<BranchHoursDto> {
+    return this.hours.putException(
+      access,
+      user,
+      branchId,
+      date,
+      parseBody(hoursExceptionRequestSchema, body),
+    );
+  }
+
+  @Delete("exceptions/:date")
+  @HttpCode(204)
+  @OrgPermission("hours.manage")
+  async removeException(
+    @CurrentTenant() access: TenantAccess,
+    @CurrentUser() user: User,
+    @Param("branchId", IdParam) branchId: string,
+    @Param("date", DateParam) date: string,
+  ): Promise<void> {
+    await this.hours.removeException(access, user, branchId, date);
   }
 }
 

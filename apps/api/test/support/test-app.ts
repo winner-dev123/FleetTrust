@@ -8,7 +8,7 @@ import { Test } from "@nestjs/testing";
 
 import { AppModule } from "../../src/app.module.js";
 import { loadApiEnv } from "../../src/config/env.js";
-import { CLOCK, type Clock, systemClock } from "../../src/modules/entitlements/index.js";
+import { CLOCK, type Clock, systemClock } from "../../src/platform/clock/index.js";
 import { DATABASE } from "../../src/database/database.module.js";
 import {
   APP_CHECK_VERIFIER,

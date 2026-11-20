@@ -37,7 +37,7 @@ import {
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
-import { CLOCK, type Clock } from "./clock.js";
+import { CLOCK, type Clock } from "../../platform/clock/index.js";
 
 export type EntitlementSubject =
   | { type: "organization"; id: string; audience: "provider" | "fleet"; timeZone: string }

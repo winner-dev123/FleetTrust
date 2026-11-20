@@ -1,4 +1,16 @@
 import {
+  type BranchHoursDto,
+  branchHoursRequestSchema,
+  branchHoursSchema,
+  type CatalogErrorReason,
+  catalogErrorReasonSchema,
+  type HoursExceptionRequest,
+  hoursExceptionRequestSchema,
+  localDateSchema,
+  type OfferingDto,
+  type OfferingRequest,
+  offeringRequestSchema,
+  offeringSchema,
   acceptInvitationRequestSchema,
   addMediaRequestSchema,
   branchLocationRequestSchema,
@@ -80,7 +92,8 @@ export type ApiErrorReason =
   | OrganizationErrorReason
   | EntitlementErrorReason
   | VerificationErrorReason
-  | ProviderErrorReason;
+  | ProviderErrorReason
+  | CatalogErrorReason;
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
 export class ApiError extends Error {
@@ -199,6 +212,31 @@ export interface ApiClient {
   }>;
   completeProfileMedia(orgId: string, mediaId: string): Promise<{ id: string; url: string }>;
   removeProfileMedia(orgId: string, mediaId: string): Promise<void>;
+  /** Service catalog (draft): published with the profile. Prices are indicative only. */
+  offerings(orgId: string): Promise<OfferingDto[]>;
+  createOffering(orgId: string, offering: OfferingRequest): Promise<OfferingDto>;
+  /** Replaces the whole offering. */
+  replaceOffering(
+    orgId: string,
+    offeringId: string,
+    offering: OfferingRequest,
+  ): Promise<OfferingDto>;
+  deleteOffering(orgId: string, offeringId: string): Promise<void>;
+  /** Opening hours in the branch's local time, with open-now status. Live (no republish). */
+  branchHours(orgId: string, branchId: string): Promise<BranchHoursDto>;
+  saveBranchHours(
+    orgId: string,
+    branchId: string,
+    hours: z.input<typeof branchHoursRequestSchema>,
+  ): Promise<BranchHoursDto>;
+  /** Holiday or special day for a local date (YYYY-MM-DD). */
+  saveHoursException(
+    orgId: string,
+    branchId: string,
+    date: string,
+    exception: HoursExceptionRequest,
+  ): Promise<BranchHoursDto>;
+  removeHoursException(orgId: string, branchId: string, date: string): Promise<void>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -226,6 +264,7 @@ const errorBodySchema = z
         entitlementErrorReasonSchema,
         verificationErrorReasonSchema,
         providerErrorReasonSchema,
+        catalogErrorReasonSchema,
       ])
       .optional(),
     message: z.unknown().optional(),
@@ -233,7 +272,7 @@ const errorBodySchema = z
   .loose();
 
 interface RequestSpec<TSchema extends z.ZodType | undefined> {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   path: string;
   schema: TSchema;
   body?: unknown;
@@ -627,6 +666,82 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       send({
         method: "DELETE",
         path: orgPath(orgId, "provider-profile", "media", mediaId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    offerings: (orgId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "provider-profile", "offerings"),
+        schema: z.array(offeringSchema),
+        authenticated: true,
+      }),
+    createOffering: async (orgId, offering) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "provider-profile", "offerings"),
+        schema: offeringSchema,
+        body: offeringRequestSchema.parse(offering),
+        authenticated: true,
+      }),
+    replaceOffering: async (orgId, offeringId, offering) =>
+      send({
+        method: "PUT",
+        path: orgPath(orgId, "provider-profile", "offerings", offeringId),
+        schema: offeringSchema,
+        body: offeringRequestSchema.parse(offering),
+        authenticated: true,
+      }),
+    deleteOffering: (orgId, offeringId) =>
+      send({
+        method: "DELETE",
+        path: orgPath(orgId, "provider-profile", "offerings", offeringId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    branchHours: (orgId, branchId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "provider-profile", "branches", branchId, "hours"),
+        schema: branchHoursSchema,
+        authenticated: true,
+      }),
+    saveBranchHours: async (orgId, branchId, hours) =>
+      send({
+        method: "PUT",
+        path: orgPath(orgId, "provider-profile", "branches", branchId, "hours"),
+        schema: branchHoursSchema,
+        body: branchHoursRequestSchema.parse(hours),
+        authenticated: true,
+      }),
+    saveHoursException: async (orgId, branchId, date, exception) =>
+      send({
+        method: "PUT",
+        path: orgPath(
+          orgId,
+          "provider-profile",
+          "branches",
+          branchId,
+          "hours",
+          "exceptions",
+          localDateSchema.parse(date),
+        ),
+        schema: branchHoursSchema,
+        body: hoursExceptionRequestSchema.parse(exception),
+        authenticated: true,
+      }),
+    removeHoursException: async (orgId, branchId, date) =>
+      send({
+        method: "DELETE",
+        path: orgPath(
+          orgId,
+          "provider-profile",
+          "branches",
+          branchId,
+          "hours",
+          "exceptions",
+          localDateSchema.parse(date),
+        ),
         schema: undefined,
         authenticated: true,
       }),
