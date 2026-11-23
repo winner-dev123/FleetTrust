@@ -1,4 +1,17 @@
 import {
+  type CreateServiceRequest,
+  createAttachmentSchema,
+  createServiceRequestSchema,
+  declineSchema,
+  evidenceSchema,
+  type InquiryDto,
+  inquirySchema,
+  reasonSchema,
+  type RequestErrorReason,
+  requestErrorReasonSchema,
+  type ServiceRequestDto,
+  serviceRequestSchema,
+  submitQuoteSchema,
   createdShareLinkSchema,
   createListRequestSchema,
   createShareLinkRequestSchema,
@@ -129,7 +142,9 @@ export type ApiErrorReason =
   | CatalogErrorReason
   | "invalid_cursor"
   | ListErrorReason
-  | "insufficient_role";
+  | "insufficient_role"
+  | RequestErrorReason
+  | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
 export class ApiError extends Error {
@@ -315,6 +330,58 @@ export interface ApiClient {
   setListMemberRole(listId: string, userId: string, role: "viewer" | "editor"): Promise<void>;
   /** Owner removes a member, or a member leaves by passing their own user ID. */
   removeListMember(listId: string, userId: string): Promise<void>;
+  /**
+   * Service requests (requester side). Pass `orgId` to act for a fleet; omit it for a personal
+   * request. Reuse the same `clientRequestId` when retrying: it never consumes quota twice.
+   */
+  createServiceRequest(
+    request: CreateServiceRequest,
+    options?: RequesterOptions,
+  ): Promise<ServiceRequestDto>;
+  serviceRequests(options?: RequesterOptions): Promise<ServiceRequestDto[]>;
+  serviceRequest(requestId: string, options?: RequesterOptions): Promise<ServiceRequestDto>;
+  /** Records which quote was accepted. Informational only: payment is arranged outside FleetTrust. */
+  acceptQuote(
+    requestId: string,
+    quoteId: string,
+    options?: RequesterOptions,
+  ): Promise<ServiceRequestDto>;
+  cancelServiceRequest(
+    requestId: string,
+    reason: string,
+    options?: RequesterOptions,
+  ): Promise<ServiceRequestDto>;
+  completeServiceRequest(requestId: string, options?: RequesterOptions): Promise<ServiceRequestDto>;
+  addRequestEvidence(
+    requestId: string,
+    evidence: z.input<typeof evidenceSchema>,
+    options?: RequesterOptions,
+  ): Promise<ServiceRequestDto>;
+  /** Then PUT the photo to `upload.url` and call completeRequestAttachment. */
+  createRequestAttachment(file: z.input<typeof createAttachmentSchema>): Promise<{
+    attachmentId: string;
+    upload: { url: string; method: "PUT"; headers: Record<string, string>; expiresAt: string };
+  }>;
+  completeRequestAttachment(attachmentId: string): Promise<{ id: string; status: "available" }>;
+  /** Provider inquiry inbox. */
+  inquiries(orgId: string): Promise<InquiryDto[]>;
+  /** Opening an inquiry marks it viewed. */
+  inquiry(orgId: string, recipientId: string): Promise<InquiryDto>;
+  submitQuote(
+    orgId: string,
+    recipientId: string,
+    quote: z.input<typeof submitQuoteSchema>,
+  ): Promise<InquiryDto>;
+  withdrawQuote(orgId: string, recipientId: string, quoteId: string): Promise<InquiryDto>;
+  declineInquiry(orgId: string, recipientId: string, reason?: string | null): Promise<InquiryDto>;
+  /** The accepted provider cancels the agreement; the request reopens. */
+  cancelInquiry(orgId: string, recipientId: string, reason: string): Promise<InquiryDto>;
+  completeInquiry(orgId: string, recipientId: string): Promise<InquiryDto>;
+  addInquiryEvidence(
+    orgId: string,
+    recipientId: string,
+    evidence: z.input<typeof evidenceSchema>,
+  ): Promise<InquiryDto>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -327,6 +394,18 @@ export interface ApiClient {
 
 const casePath = (caseId: string, ...rest: string[]) =>
   ["/v1/verification/cases", encodeURIComponent(caseId), ...rest.map(encodeURIComponent)].join("/");
+
+/** Requester routes: a fleet's when `orgId` is given, otherwise the caller's own. */
+export interface RequesterOptions {
+  orgId?: string;
+}
+
+const requestsPath = (options: RequesterOptions | undefined, ...rest: string[]) =>
+  options?.orgId
+    ? orgPath(options.orgId, "service-requests", ...rest)
+    : ["/v1/me/service-requests", ...rest]
+        .map((part, i) => (i === 0 ? part : encodeURIComponent(part)))
+        .join("/");
 
 const meListPath = (listId: string, ...rest: string[]) =>
   ["/v1/me/lists", listId, ...rest]
@@ -351,6 +430,8 @@ const errorBodySchema = z
         searchErrorReasonSchema,
         listErrorReasonSchema,
         z.literal("insufficient_role"),
+        requestErrorReasonSchema,
+        z.literal("quota_exceeded"),
       ])
       .optional(),
     message: z.unknown().optional(),
@@ -983,6 +1064,141 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         method: "DELETE",
         path: meListPath(listId, "members", userId),
         schema: undefined,
+        authenticated: true,
+      }),
+    createServiceRequest: async (request, options) =>
+      send({
+        method: "POST",
+        path: requestsPath(options),
+        schema: serviceRequestSchema,
+        body: createServiceRequestSchema.parse(request),
+        authenticated: true,
+      }),
+    serviceRequests: (options) =>
+      send({
+        method: "GET",
+        path: requestsPath(options),
+        schema: z.array(serviceRequestSchema),
+        authenticated: true,
+      }),
+    serviceRequest: (requestId, options) =>
+      send({
+        method: "GET",
+        path: requestsPath(options, requestId),
+        schema: serviceRequestSchema,
+        authenticated: true,
+      }),
+    acceptQuote: (requestId, quoteId, options) =>
+      send({
+        method: "POST",
+        path: requestsPath(options, requestId, "quotes", quoteId, "accept"),
+        schema: serviceRequestSchema,
+        authenticated: true,
+      }),
+    cancelServiceRequest: async (requestId, reason, options) =>
+      send({
+        method: "POST",
+        path: requestsPath(options, requestId, "cancel"),
+        schema: serviceRequestSchema,
+        body: reasonSchema.parse({ reason }),
+        authenticated: true,
+      }),
+    completeServiceRequest: (requestId, options) =>
+      send({
+        method: "POST",
+        path: requestsPath(options, requestId, "complete"),
+        schema: serviceRequestSchema,
+        authenticated: true,
+      }),
+    addRequestEvidence: async (requestId, evidence, options) =>
+      send({
+        method: "POST",
+        path: requestsPath(options, requestId, "evidence"),
+        schema: serviceRequestSchema,
+        body: evidenceSchema.parse(evidence),
+        authenticated: true,
+      }),
+    createRequestAttachment: async (file) =>
+      send({
+        method: "POST",
+        path: "/v1/service-request-attachments",
+        schema: z.object({
+          attachmentId: z.uuid(),
+          upload: z.object({
+            url: z.string(),
+            method: z.literal("PUT"),
+            headers: z.record(z.string(), z.string()),
+            expiresAt: z.iso.datetime(),
+          }),
+        }),
+        body: createAttachmentSchema.parse(file),
+        authenticated: true,
+      }),
+    completeRequestAttachment: (attachmentId) =>
+      send({
+        method: "POST",
+        path: `/v1/service-request-attachments/${encodeURIComponent(attachmentId)}/complete`,
+        schema: z.object({ id: z.uuid(), status: z.literal("available") }),
+        authenticated: true,
+      }),
+    inquiries: (orgId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "inquiries"),
+        schema: z.array(inquirySchema),
+        authenticated: true,
+      }),
+    inquiry: (orgId, recipientId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "inquiries", recipientId),
+        schema: inquirySchema,
+        authenticated: true,
+      }),
+    submitQuote: async (orgId, recipientId, quote) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "inquiries", recipientId, "quotes"),
+        schema: inquirySchema,
+        body: submitQuoteSchema.parse(quote),
+        authenticated: true,
+      }),
+    withdrawQuote: (orgId, recipientId, quoteId) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "inquiries", recipientId, "quotes", quoteId, "withdraw"),
+        schema: inquirySchema,
+        authenticated: true,
+      }),
+    declineInquiry: async (orgId, recipientId, reason = null) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "inquiries", recipientId, "decline"),
+        schema: inquirySchema,
+        body: declineSchema.parse({ reason }),
+        authenticated: true,
+      }),
+    cancelInquiry: async (orgId, recipientId, reason) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "inquiries", recipientId, "cancel"),
+        schema: inquirySchema,
+        body: reasonSchema.parse({ reason }),
+        authenticated: true,
+      }),
+    completeInquiry: (orgId, recipientId) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "inquiries", recipientId, "complete"),
+        schema: inquirySchema,
+        authenticated: true,
+      }),
+    addInquiryEvidence: async (orgId, recipientId, evidence) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "inquiries", recipientId, "evidence"),
+        schema: inquirySchema,
+        body: evidenceSchema.parse(evidence),
         authenticated: true,
       }),
     provider: (slug, options) =>

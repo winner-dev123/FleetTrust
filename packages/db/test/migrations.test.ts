@@ -49,6 +49,8 @@ describe("migrations on a fresh database", () => {
       "0016_provider_search_functions",
       "0017_saved_lists",
       "0018_saved_lists_triggers",
+      "0019_service_requests",
+      "0020_service_requests_triggers",
     ]);
   });
 
@@ -101,6 +103,11 @@ describe("migrations on a fresh database", () => {
       "saved_list_members",
       "saved_list_share_links",
       "saved_lists",
+      "service_quotes",
+      "service_request_attachments",
+      "service_request_events",
+      "service_request_recipients",
+      "service_requests",
       "users",
       "verification_appeals",
       "verification_badges",

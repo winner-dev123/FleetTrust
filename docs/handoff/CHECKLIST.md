@@ -16,8 +16,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 10  | Provider profile onboarding                | approved (merged, PR #11)          | [prompt-10.md](prompt-10.md) |
 | 11  | Service catalogs and published pricing     | approved (merged, PR #12)          | [prompt-11.md](prompt-11.md) |
 | 12  | Geospatial provider search                 | approved (merged, PR #13)          | [prompt-12.md](prompt-12.md) |
-| 13  | Route-aware discovery and saved lists      | awaiting approval                  | [prompt-13.md](prompt-13.md) |
-| 14  | Service requests and quotations            | todo                               |                              |
+| 13  | Route-aware discovery and saved lists      | approved (merged, PR #15)          | [prompt-13.md](prompt-13.md) |
+| 14  | Service requests and quotations            | awaiting approval                  | [prompt-14.md](prompt-14.md) |
 | 15  | Article publishing and knowledge hub       | todo                               |                              |
 | 16  | Friendships and communities                | todo                               |                              |
 | 17  | Messaging and community notifications      | todo                               |                              |
