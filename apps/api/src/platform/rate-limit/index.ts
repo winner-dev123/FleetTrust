@@ -1,3 +1,4 @@
+export { CACHE, type KeyValueCache, MemoryCache, RedisCache } from "./cache.js";
 export { clientIp } from "./client-ip.js";
 export {
   enforceRateLimit,

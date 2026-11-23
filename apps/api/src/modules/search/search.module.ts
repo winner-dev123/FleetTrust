@@ -1,7 +1,8 @@
 import { Module } from "@nestjs/common";
 
 import { ProvidersModule } from "../providers/index.js";
-import { GeoController, SearchController } from "./search.controller.js";
+import { RouteSearchService } from "./route-search.service.js";
+import { GeoController, RouteSearchController, SearchController } from "./search.controller.js";
 import { SearchService } from "./search.service.js";
 
 /**
@@ -10,7 +11,7 @@ import { SearchService } from "./search.service.js";
  */
 @Module({
   imports: [ProvidersModule],
-  controllers: [SearchController, GeoController],
-  providers: [SearchService],
+  controllers: [SearchController, RouteSearchController, GeoController],
+  providers: [SearchService, RouteSearchService],
 })
 export class SearchModule {}

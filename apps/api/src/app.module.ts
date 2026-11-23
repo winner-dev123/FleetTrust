@@ -6,6 +6,7 @@ import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { EntitlementsModule } from "./modules/entitlements/index.js";
 import { IdentityModule } from "./modules/identity/index.js";
+import { ListsModule } from "./modules/lists/index.js";
 import { OrganizationsModule } from "./modules/organizations/index.js";
 import { ProvidersModule } from "./modules/providers/index.js";
 import { SearchModule } from "./modules/search/index.js";
@@ -15,6 +16,7 @@ import { ObservabilityModule } from "./observability/observability.module.js";
 import { ClockModule } from "./platform/clock/index.js";
 import { MapsModule } from "./platform/maps/index.js";
 import { RateLimitModule } from "./platform/rate-limit/index.js";
+import { RoutingModule } from "./platform/routing/index.js";
 import { StorageModule } from "./platform/storage/index.js";
 
 /** Builds the structured logger for an environment (one per process). */
@@ -48,6 +50,8 @@ export class AppModule {
         ClockModule,
         // Map vendor adapter (tiles config, geocoding).
         MapsModule.forRoot(env),
+        // Routing adapter for route-corridor search (degrades to point search).
+        RoutingModule.forRoot(env),
         // Registers the global AuthGuard: every route requires sign-in unless marked @Public().
         IdentityModule.forRoot(env),
         // Tenancy: @OrgPermission() routes check membership and role after sign-in.
@@ -60,6 +64,8 @@ export class AppModule {
         ProvidersModule,
         // Provider search (PostGIS), ranked by relevance only.
         SearchModule,
+        // Favorites and saved provider lists.
+        ListsModule,
         HealthModule,
       ],
     };

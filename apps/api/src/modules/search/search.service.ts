@@ -162,8 +162,8 @@ export class SearchService {
     };
   }
 
-  /** Card details for one page: live hours, live badges, logo and indicative price highlights. */
-  private async enrich(
+  /** Card details for one page: live hours, live badges, logo and indicative price highlights. Shared with route search. */
+  async enrich(
     rows: readonly ProviderSearchRow[],
     at: Date,
     signedIn: boolean,

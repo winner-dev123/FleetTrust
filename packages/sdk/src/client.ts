@@ -1,4 +1,22 @@
 import {
+  createdShareLinkSchema,
+  createListRequestSchema,
+  createShareLinkRequestSchema,
+  joinListRequestSchema,
+  memberRoleRequestSchema,
+  type ListErrorReason,
+  listErrorReasonSchema,
+  listItemRequestSchema,
+  type RouteSearchRequest,
+  type RouteSearchResponse,
+  routeSearchRequestSchema,
+  routeSearchResponseSchema,
+  type SavedListDto,
+  savedListSchema,
+  type SavedListSummary,
+  savedListSummarySchema,
+  shareLinkSchema,
+  updateListRequestSchema,
   type GeocodeResult,
   geocodeQuerySchema,
   geocodeResultSchema,
@@ -109,7 +127,9 @@ export type ApiErrorReason =
   | VerificationErrorReason
   | ProviderErrorReason
   | CatalogErrorReason
-  | "invalid_cursor";
+  | "invalid_cursor"
+  | ListErrorReason
+  | "insufficient_role";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
 export class ApiError extends Error {
@@ -264,6 +284,37 @@ export interface ApiClient {
   /** Place-name lookup through the map adapter (search near the result). */
   geocode(query: string, options?: { country?: string; limit?: number }): Promise<GeocodeResult[]>;
   mapConfig(): Promise<MapConfig>;
+  /**
+   * Providers along a route (signed in). Check `mode`: `waypoints` means routing was
+   * unavailable and results are point searches around the stops. Always show `disclaimer`.
+   */
+  searchRoute(request: RouteSearchRequest): Promise<RouteSearchResponse>;
+  favorites(): Promise<SavedListDto>;
+  addFavorite(organizationId: string): Promise<SavedListDto>;
+  removeFavorite(organizationId: string): Promise<void>;
+  /** Favorites first, then own lists, then lists shared with the caller. */
+  lists(): Promise<SavedListSummary[]>;
+  createList(list: z.input<typeof createListRequestSchema>): Promise<SavedListDto>;
+  list(listId: string): Promise<SavedListDto>;
+  updateList(
+    listId: string,
+    change: z.input<typeof updateListRequestSchema>,
+  ): Promise<SavedListDto>;
+  deleteList(listId: string): Promise<void>;
+  /** Adds a provider (or updates its note). Owner or editor. */
+  putListItem(listId: string, organizationId: string, note?: string | null): Promise<SavedListDto>;
+  removeListItem(listId: string, organizationId: string): Promise<void>;
+  /** Owner only. The token is returned once: build the invite from `joinPath`. */
+  createShareLink(
+    listId: string,
+    options?: z.input<typeof createShareLinkRequestSchema>,
+  ): Promise<z.infer<typeof createdShareLinkSchema>>;
+  shareLinks(listId: string): Promise<z.infer<typeof shareLinkSchema>[]>;
+  revokeShareLink(listId: string, linkId: string): Promise<void>;
+  joinList(token: string): Promise<SavedListSummary>;
+  setListMemberRole(listId: string, userId: string, role: "viewer" | "editor"): Promise<void>;
+  /** Owner removes a member, or a member leaves by passing their own user ID. */
+  removeListMember(listId: string, userId: string): Promise<void>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -276,6 +327,11 @@ export interface ApiClient {
 
 const casePath = (caseId: string, ...rest: string[]) =>
   ["/v1/verification/cases", encodeURIComponent(caseId), ...rest.map(encodeURIComponent)].join("/");
+
+const meListPath = (listId: string, ...rest: string[]) =>
+  ["/v1/me/lists", listId, ...rest]
+    .map((part, i) => (i === 0 ? part : encodeURIComponent(part)))
+    .join("/");
 
 const orgPath = (orgId: string, ...rest: string[]) =>
   ["/v1/orgs", orgId, ...rest]
@@ -293,6 +349,8 @@ const errorBodySchema = z
         providerErrorReasonSchema,
         catalogErrorReasonSchema,
         searchErrorReasonSchema,
+        listErrorReasonSchema,
+        z.literal("insufficient_role"),
       ])
       .optional(),
     message: z.unknown().optional(),
@@ -805,6 +863,127 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         path: "/v1/geo/map-config",
         schema: mapConfigSchema,
         authenticated: false,
+      }),
+    searchRoute: async (request) =>
+      send({
+        method: "POST",
+        path: "/v1/search/route",
+        schema: routeSearchResponseSchema,
+        body: routeSearchRequestSchema.parse(request),
+        authenticated: true,
+      }),
+    favorites: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/favorites",
+        schema: savedListSchema,
+        authenticated: true,
+      }),
+    addFavorite: (organizationId) =>
+      send({
+        method: "PUT",
+        path: `/v1/me/favorites/${encodeURIComponent(organizationId)}`,
+        schema: savedListSchema,
+        authenticated: true,
+      }),
+    removeFavorite: (organizationId) =>
+      send({
+        method: "DELETE",
+        path: `/v1/me/favorites/${encodeURIComponent(organizationId)}`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    lists: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/lists",
+        schema: z.array(savedListSummarySchema),
+        authenticated: true,
+      }),
+    createList: async (list) =>
+      send({
+        method: "POST",
+        path: "/v1/me/lists",
+        schema: savedListSchema,
+        body: createListRequestSchema.parse(list),
+        authenticated: true,
+      }),
+    list: (listId) =>
+      send({
+        method: "GET",
+        path: meListPath(listId),
+        schema: savedListSchema,
+        authenticated: true,
+      }),
+    updateList: async (listId, change) =>
+      send({
+        method: "PATCH",
+        path: meListPath(listId),
+        schema: savedListSchema,
+        body: updateListRequestSchema.parse(change),
+        authenticated: true,
+      }),
+    deleteList: (listId) =>
+      send({ method: "DELETE", path: meListPath(listId), schema: undefined, authenticated: true }),
+    putListItem: async (listId, organizationId, note = null) =>
+      send({
+        method: "PUT",
+        path: meListPath(listId, "items", organizationId),
+        schema: savedListSchema,
+        body: listItemRequestSchema.parse({ note }),
+        authenticated: true,
+      }),
+    removeListItem: (listId, organizationId) =>
+      send({
+        method: "DELETE",
+        path: meListPath(listId, "items", organizationId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    createShareLink: async (listId, options) =>
+      send({
+        method: "POST",
+        path: meListPath(listId, "share-links"),
+        schema: createdShareLinkSchema,
+        body: createShareLinkRequestSchema.parse(options ?? {}),
+        authenticated: true,
+      }),
+    shareLinks: (listId) =>
+      send({
+        method: "GET",
+        path: meListPath(listId, "share-links"),
+        schema: z.array(shareLinkSchema),
+        authenticated: true,
+      }),
+    revokeShareLink: (listId, linkId) =>
+      send({
+        method: "DELETE",
+        path: meListPath(listId, "share-links", linkId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    joinList: async (token) =>
+      send({
+        method: "POST",
+        path: "/v1/lists/join",
+        schema: savedListSummarySchema,
+        body: joinListRequestSchema.parse({ token }),
+        authenticated: true,
+      }),
+    setListMemberRole: async (listId, userId, role) =>
+      send({
+        method: "PATCH",
+        path: meListPath(listId, "members", userId),
+        schema: undefined,
+        body: memberRoleRequestSchema.parse({ role }),
+        authenticated: true,
+      }),
+    removeListMember: (listId, userId) =>
+      send({
+        method: "DELETE",
+        path: meListPath(listId, "members", userId),
+        schema: undefined,
+        authenticated: true,
       }),
     provider: (slug, options) =>
       send({

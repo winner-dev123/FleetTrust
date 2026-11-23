@@ -361,6 +361,35 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("route search posts coordinates in the body; lists encode IDs and surface list reasons", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 403, error: "forbidden", reason: "insufficient_role" }, 403),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    await client
+      .searchRoute({ origin: { lng: 18.4, lat: -33.9 }, destination: { lng: 19, lat: -33.9 } })
+      .catch(() => undefined);
+    expect(fetch.mock.calls[0]?.[0]).toBe("https://x.test/v1/search/route");
+    expect(fetch.mock.calls[0]?.[1]?.method).toBe("POST");
+    expect(fetch.mock.calls[0]?.[1]?.body as string).toContain('"corridorKm":5');
+
+    const error = await client.putListItem(orgId, orgId, "note").catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("insufficient_role");
+    expect(fetch.mock.calls[1]?.[0]).toBe(`https://x.test/v1/me/lists/${orgId}/items/${orgId}`);
+    expect(fetch.mock.calls[1]?.[1]?.method).toBe("PUT");
+
+    // Rejected locally: same origin and destination, malformed join token.
+    await expect(
+      client.searchRoute({ origin: { lng: 1, lat: 1 }, destination: { lng: 1, lat: 1 } }),
+    ).rejects.toThrow();
+    await expect(client.joinList("short")).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

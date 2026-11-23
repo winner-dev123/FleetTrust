@@ -16,6 +16,7 @@ import {
   refreshProviderSearch,
   searchProviders,
   searchTerms,
+  thinLine,
 } from "../src/search.js";
 import { createTestDatabase, type TestDatabase } from "../src/testing/index.js";
 import { grantBadge, project, publishProvider, suspend } from "./support/search-fixtures.js";
@@ -440,5 +441,103 @@ describe("query plans", () => {
     expect(await plan({ ...near({ lng: 1, lat: 1 }, 1), precise: false, area: bbox })).toMatch(
       /provider_search_entries_approx_geom_gist/,
     );
+  });
+});
+
+describe("route corridor", () => {
+  // A route heading due east along latitude -27.5, about 100 km long.
+  const start = { lng: 23.0, lat: -27.5 };
+  const corridor = (
+    width: number,
+    extra: Partial<ProviderSearchParams> = {},
+  ): ProviderSearchParams => ({
+    at: AT,
+    precise: true,
+    area: { kind: "corridor", line: [start, { lng: 24.0, lat: -27.5 }], widthMeters: width },
+    limit: 50,
+    ...extra,
+  });
+
+  beforeAll(async () => {
+    // Follow the route's own geodesic (its initial azimuth), then step off it at right angles.
+    const [heading] = await queryRows<{ deg: number }>(
+      t.db,
+      sql`SELECT degrees(ST_Azimuth('SRID=4326;POINT(23 -27.5)'::geography,
+                                    'SRID=4326;POINT(24 -27.5)'::geography)) AS deg`,
+    );
+    const azimuth = Number(heading?.deg);
+    const along = async (km: number, offsetKm: number, side: 0 | 180) => {
+      const onRoute = await project(
+        t.db,
+        start,
+        Math.abs(km) * 1000,
+        km < 0 ? azimuth + 180 : azimuth,
+      );
+      return offsetKm === 0
+        ? onRoute
+        : project(t.db, onRoute, offsetKm * 1000, azimuth - 90 + side);
+    };
+    await publishProvider(t.db, {
+      name: "Corridor 80km",
+      branches: [{ at: await along(80, 1, 0) }],
+    });
+    await publishProvider(t.db, {
+      name: "Corridor 10km",
+      branches: [{ at: await along(10, 4.9, 180) }],
+    });
+    await publishProvider(t.db, {
+      name: "Corridor 50km",
+      branches: [{ at: await along(50, 0, 0) }],
+    });
+    await publishProvider(t.db, {
+      name: "Corridor too far",
+      branches: [{ at: await along(40, 5.1, 0) }],
+    });
+    await publishProvider(t.db, {
+      name: "Corridor before start",
+      branches: [{ at: await along(-8, 0, 0) }],
+    });
+  });
+
+  it("finds branches within the corridor width, in order along the route", async () => {
+    const rows = await searchProviders(t.db, corridor(5_000));
+    expect(rows.map((r) => r.tradingName)).toEqual([
+      "Corridor 10km",
+      "Corridor 50km",
+      "Corridor 80km",
+    ]);
+    expect(rows.map((r) => Math.round((r.routeFraction ?? 0) * 10) / 10)).toEqual([0.1, 0.5, 0.8]);
+    // Distances are measured from the route line, not from the start.
+    expect(rows[0]?.distanceMeters).toBeGreaterThan(4_800);
+    expect(rows[0]?.distanceMeters).toBeLessThan(5_000);
+    expect(rows[1]?.distanceMeters).toBeLessThan(50);
+  });
+
+  it("applies the same filters as point search", async () => {
+    expect(await searchProviders(t.db, corridor(5_000, { text: "80km" }))).toHaveLength(1);
+    expect(await searchProviders(t.db, corridor(5_000, { categories: ["towing"] }))).toEqual([]);
+  });
+
+  it("thins long routes evenly, keeping both ends", () => {
+    const long = Array.from({ length: 10_001 }, (_, i) => ({ lng: i / 10_000, lat: 0 }));
+    const thin = thinLine(long, 2_000);
+    expect(thin).toHaveLength(2_000);
+    expect(thin[0]).toEqual(long[0]);
+    expect(thin.at(-1)).toEqual(long.at(-1));
+  });
+
+  it("uses the GiST index", async () => {
+    await t.db.execute(sql`SET enable_seqscan = off`);
+    try {
+      const rows = await queryRows<{ "QUERY PLAN": string }>(
+        t.db,
+        sql`EXPLAIN ${buildSearchQuery(corridor(5_000))}`,
+      );
+      expect(rows.map((r) => r["QUERY PLAN"]).join("\n")).toMatch(
+        /provider_search_entries_location_gist/,
+      );
+    } finally {
+      await t.db.execute(sql`RESET enable_seqscan`);
+    }
   });
 });

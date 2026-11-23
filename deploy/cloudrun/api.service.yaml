@@ -58,6 +58,8 @@ spec:
             - { name: CLAMAV_HOST, value: "${CLAMAV_HOST}" }
             # Map adapter (docs/architecture/search.md). Vendor pending (OQ-13); production needs MAP_TILE_URL.
             - { name: MAP_PROVIDER, value: stub }
+            # Routing vendor pending (OQ-13): route search degrades to point search around stops.
+            - { name: ROUTING_PROVIDER, value: none }
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef: { name: fleettrust-database-url, key: latest }

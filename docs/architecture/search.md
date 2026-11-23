@@ -1,6 +1,6 @@
 # Provider search
 
-SRS F-040..F-042, FR-06. Design: [ADR-0019](../adr/0019-search-projection-and-ranking.md). Ranking rules: [ADR-0009](../adr/0009-trust-independent-of-payment.md).
+SRS F-040..F-042, FR-06. Route-corridor search builds on this: [routes-and-lists.md](routes-and-lists.md). Design: [ADR-0019](../adr/0019-search-projection-and-ranking.md). Ranking rules: [ADR-0009](../adr/0009-trust-independent-of-payment.md).
 
 ## API
 

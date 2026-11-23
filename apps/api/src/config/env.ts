@@ -108,6 +108,15 @@ export const apiEnvSchema = z
     /** XYZ tile template handed to clients, e.g. https://tiles.example.com/{z}/{x}/{y}.png. */
     MAP_TILE_URL: z.url({ protocol: /^https$/ }).optional(),
     MAP_ATTRIBUTION: z.string().min(1).max(300).optional(),
+    /**
+     * Routing adapter for route-corridor search (OQ-13). `none` (default): route searches fall back
+     * to point searches around the waypoints. `straight-line`: development only, refused in production.
+     */
+    ROUTING_PROVIDER: z.enum(["none", "straight-line"]).default("none"),
+    /** Abandon a routing call after this long and fall back to point search. */
+    ROUTING_TIMEOUT_MS: z.coerce.number().int().min(200).max(20_000).default(4_000),
+    /** How long computed routes are cached (0 disables). Check the vendor's caching terms (OQ-13). */
+    ROUTING_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(86_400).default(3_600),
   })
   .superRefine((env, ctx) => {
     const deployed = env.APP_ENV === "staging" || env.APP_ENV === "production";
@@ -176,6 +185,9 @@ export const apiEnvSchema = z
     // geocoder) is a launch blocker tracked as OQ-13.
     if (env.APP_ENV === "production" && env.MAP_TILE_URL === undefined) {
       issue("MAP_TILE_URL", "is required in production (map tiles for clients)");
+    }
+    if (env.APP_ENV === "production" && env.ROUTING_PROVIDER === "straight-line") {
+      issue("ROUTING_PROVIDER", "straight-line is for development only");
     }
     if (deployed && env.NODE_ENV !== "production") {
       ctx.addIssue({

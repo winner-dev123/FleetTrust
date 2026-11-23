@@ -9,6 +9,7 @@ import {
 import { createClient } from "redis";
 
 import type { ApiEnv } from "../../config/env.js";
+import { CACHE, type KeyValueCache, MemoryCache, RedisCache } from "./cache.js";
 import { MemoryRateLimiter, RATE_LIMITER, type RateLimiter } from "./rate-limiter.js";
 import { RedisRateLimiter } from "./redis-rate-limiter.js";
 
@@ -46,7 +47,8 @@ class RedisLifecycle implements OnApplicationShutdown {
 
 /**
  * Provides RATE_LIMITER: Redis-backed (shared across instances) when REDIS_URL is set,
- * otherwise in-memory. Env validation requires REDIS_URL in staging and production.
+ * otherwise in-memory, and CACHE on the same connection. Env validation requires REDIS_URL in
+ * staging and production.
  */
 @Module({})
 export class RateLimitModule {
@@ -66,9 +68,15 @@ export class RateLimitModule {
           useFactory: (client: RedisHandle): RateLimiter =>
             client ? new RedisRateLimiter(client) : new MemoryRateLimiter(),
         },
+        {
+          provide: CACHE,
+          inject: [REDIS_CLIENT],
+          useFactory: (client: RedisHandle): KeyValueCache =>
+            client ? new RedisCache(client) : new MemoryCache(),
+        },
         RedisLifecycle,
       ],
-      exports: [RATE_LIMITER],
+      exports: [RATE_LIMITER, CACHE],
     };
   }
 }
