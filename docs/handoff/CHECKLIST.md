@@ -20,8 +20,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 14  | Service requests and quotations            | approved (merged, PR #16)          | [prompt-14.md](prompt-14.md) |
 | 15  | Article publishing and knowledge hub       | approved (merged, PR #17)          | [prompt-15.md](prompt-15.md) |
 | 16  | Friendships and communities                | approved (merged, PR #18)          | [prompt-16.md](prompt-16.md) |
-| 17  | Messaging and community notifications      | awaiting approval                  | [prompt-17.md](prompt-17.md) |
-| 18  | Emergency assistance and trusted circles   | todo                               |                              |
+| 17  | Messaging and community notifications      | approved (merged, PR #19)          | [prompt-17.md](prompt-17.md) |
+| 18  | Emergency assistance and trusted circles   | awaiting approval                  | [prompt-18.md](prompt-18.md) |
 | 19  | Vehicle profiles and maintenance           | todo                               |                              |
 | 20  | Provider CRM and appointments              | todo                               |                              |
 | 21  | Parts inventory and provider referrals     | todo                               |                              |

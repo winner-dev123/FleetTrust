@@ -1,4 +1,17 @@
 import {
+  type CreateIncident,
+  createIncidentSchema,
+  emergencyAssistSettingsSchema,
+  type EmergencyErrorReason,
+  emergencyErrorReasonSchema,
+  type EmergencyGuidance,
+  emergencyGuidanceSchema,
+  type IncidentDto,
+  incidentSchema,
+  type ProviderAlertDto,
+  providerAlertSchema,
+  type TrustedContactDto,
+  trustedContactSchema,
   type ConversationDto,
   conversationSchema,
   createMessageAttachmentSchema,
@@ -229,6 +242,7 @@ export type ApiErrorReason =
   | ModerationErrorReason
   | CommunityErrorReason
   | MessagingErrorReason
+  | EmergencyErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -602,6 +616,49 @@ export interface ApiClient {
   unregisterDevice(fid: string): Promise<void>;
   /** WebSocket URL for realtime delivery; send `{ type: "auth", token }` as the first frame. */
   realtimeUrl(): string;
+  /** Official emergency guidance for the first screen (no sign-in needed). */
+  emergencyGuidance(countryCode?: string): Promise<EmergencyGuidance>;
+  trustedContacts(): Promise<TrustedContactDto[]>;
+  /** The person must accept before they can be alerted. */
+  inviteTrustedContact(userId: string, priority?: "primary" | "backup"): Promise<TrustedContactDto>;
+  respondToTrustedContact(contactId: string, accept: boolean): Promise<TrustedContactDto>;
+  /** As a contact: pause or resume alerts from this person. */
+  muteTrustedContact(contactId: string, muted: boolean): Promise<TrustedContactDto>;
+  setTrustedContactPriority(
+    contactId: string,
+    priority: "primary" | "backup",
+  ): Promise<TrustedContactDto>;
+  removeTrustedContact(contactId: string): Promise<void>;
+  /**
+   * Raises an emergency incident and alerts contacts at once. Never limited by plans or quotas.
+   * Reuse `clientIncidentId` on retry.
+   */
+  raiseIncident(incident: CreateIncident): Promise<IncidentDto>;
+  myIncidents(): Promise<IncidentDto[]>;
+  incident(incidentId: string): Promise<IncidentDto>;
+  updateIncidentLocation(
+    incidentId: string,
+    location: { lng: number; lat: number; accuracyM?: number | null },
+  ): Promise<IncidentDto>;
+  /** As a contact: "I've seen it" (stops escalation; it doesn't mean help is arranged). */
+  acknowledgeIncident(incidentId: string): Promise<IncidentDto>;
+  /** "I'm safe". */
+  resolveIncident(incidentId: string): Promise<IncidentDto>;
+  /** "False alarm". */
+  cancelIncident(incidentId: string): Promise<IncidentDto>;
+  /** Alerts where you are a trusted contact. */
+  emergencyAlerts(): Promise<IncidentDto[]>;
+  emergencyAssist(orgId: string): Promise<{ optedIn: boolean; radiusKm: number }>;
+  setEmergencyAssist(
+    orgId: string,
+    settings: { optedIn: boolean; radiusKm?: number },
+  ): Promise<{ optedIn: boolean; radiusKm: number }>;
+  providerEmergencyAlerts(orgId: string): Promise<ProviderAlertDto[]>;
+  offerEmergencyHelp(
+    orgId: string,
+    recipientId: string,
+    message?: string | null,
+  ): Promise<ProviderAlertDto>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -640,6 +697,11 @@ const orgPath = (orgId: string, ...rest: string[]) =>
 const articlePath = (articleId: string, ...rest: string[]) =>
   ["/v1/me/articles", articleId, ...rest]
     .map((part, i) => (i === 0 ? part : encodeURIComponent(part)))
+    .join("/");
+
+const incidentPath = (incidentId: string, ...rest: string[]) =>
+  ["/v1/emergency/incidents", incidentId, ...rest]
+    .map((p, i) => (i === 0 ? p : encodeURIComponent(p)))
     .join("/");
 
 const conversationPath = (conversationId: string, ...rest: string[]) =>
@@ -684,6 +746,7 @@ const errorBodySchema = z
         moderationErrorReasonSchema,
         communityErrorReasonSchema,
         messagingErrorReasonSchema,
+        emergencyErrorReasonSchema,
         z.literal("quota_exceeded"),
       ])
       .optional(),
@@ -2004,6 +2067,148 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authenticated: true,
       }),
     realtimeUrl: () => `${baseUrl.replace(/^http/, "ws")}/v1/realtime`,
+    emergencyGuidance: (countryCode) =>
+      send({
+        method: "GET",
+        path: `/v1/emergency/guidance${countryCode === undefined ? "" : `?country=${encodeURIComponent(countryCode)}`}`,
+        schema: emergencyGuidanceSchema,
+        authenticated: false,
+      }),
+    trustedContacts: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/trusted-contacts",
+        schema: z.array(trustedContactSchema),
+        authenticated: true,
+      }),
+    inviteTrustedContact: async (userId, priority = "primary") =>
+      send({
+        method: "POST",
+        path: "/v1/me/trusted-contacts",
+        schema: trustedContactSchema,
+        body: { userId: z.uuid().parse(userId), priority },
+        authenticated: true,
+      }),
+    respondToTrustedContact: (contactId, accept) =>
+      send({
+        method: "POST",
+        path: `/v1/me/trusted-contacts/${encodeURIComponent(contactId)}/${accept ? "accept" : "decline"}`,
+        schema: trustedContactSchema,
+        authenticated: true,
+      }),
+    muteTrustedContact: (contactId, muted) =>
+      send({
+        method: "POST",
+        path: `/v1/me/trusted-contacts/${encodeURIComponent(contactId)}/mute`,
+        schema: trustedContactSchema,
+        body: { muted },
+        authenticated: true,
+      }),
+    setTrustedContactPriority: (contactId, priority) =>
+      send({
+        method: "PATCH",
+        path: `/v1/me/trusted-contacts/${encodeURIComponent(contactId)}`,
+        schema: trustedContactSchema,
+        body: { priority },
+        authenticated: true,
+      }),
+    removeTrustedContact: (contactId) =>
+      send({
+        method: "DELETE",
+        path: `/v1/me/trusted-contacts/${encodeURIComponent(contactId)}`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    raiseIncident: async (incident) =>
+      send({
+        method: "POST",
+        path: "/v1/emergency/incidents",
+        schema: incidentSchema,
+        body: createIncidentSchema.parse(incident),
+        authenticated: true,
+      }),
+    myIncidents: () =>
+      send({
+        method: "GET",
+        path: "/v1/emergency/incidents",
+        schema: z.array(incidentSchema),
+        authenticated: true,
+      }),
+    incident: (incidentId) =>
+      send({
+        method: "GET",
+        path: incidentPath(incidentId),
+        schema: incidentSchema,
+        authenticated: true,
+      }),
+    updateIncidentLocation: (incidentId, location) =>
+      send({
+        method: "POST",
+        path: incidentPath(incidentId, "location"),
+        schema: incidentSchema,
+        body: { location: { accuracyM: null, ...location } },
+        authenticated: true,
+      }),
+    acknowledgeIncident: (incidentId) =>
+      send({
+        method: "POST",
+        path: incidentPath(incidentId, "acknowledge"),
+        schema: incidentSchema,
+        authenticated: true,
+      }),
+    resolveIncident: (incidentId) =>
+      send({
+        method: "POST",
+        path: incidentPath(incidentId, "resolve"),
+        schema: incidentSchema,
+        body: {},
+        authenticated: true,
+      }),
+    cancelIncident: (incidentId) =>
+      send({
+        method: "POST",
+        path: incidentPath(incidentId, "cancel"),
+        schema: incidentSchema,
+        body: {},
+        authenticated: true,
+      }),
+    emergencyAlerts: () =>
+      send({
+        method: "GET",
+        path: "/v1/emergency/alerts",
+        schema: z.array(incidentSchema),
+        authenticated: true,
+      }),
+    emergencyAssist: (orgId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "emergency-assist"),
+        schema: z.object({ optedIn: z.boolean(), radiusKm: z.number().int() }),
+        authenticated: true,
+      }),
+    setEmergencyAssist: async (orgId, settings) =>
+      send({
+        method: "PUT",
+        path: orgPath(orgId, "emergency-assist"),
+        schema: z.object({ optedIn: z.boolean(), radiusKm: z.number().int() }),
+        body: emergencyAssistSettingsSchema.parse(settings),
+        authenticated: true,
+      }),
+    providerEmergencyAlerts: (orgId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "emergency-alerts"),
+        schema: z.array(providerAlertSchema),
+        authenticated: true,
+      }),
+    offerEmergencyHelp: (orgId, recipientId, message = null) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "emergency-alerts", recipientId, "offer"),
+        schema: providerAlertSchema,
+        body: { message },
+        authenticated: true,
+      }),
     provider: (slug, options) =>
       send({
         method: "GET",

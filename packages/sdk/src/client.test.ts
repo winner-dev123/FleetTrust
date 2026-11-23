@@ -532,6 +532,30 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("emergency: guidance without a token, incident paths, local validation", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 409, error: "conflict", reason: "incident_closed" }, 409),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    await client.emergencyGuidance("ZA").catch(() => undefined);
+    expect(fetch.mock.calls[0]?.[0]).toBe("https://x.test/v1/emergency/guidance?country=ZA");
+    expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get("authorization")).toBeNull();
+    const error = await client.acknowledgeIncident(orgId).catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("incident_closed");
+    expect(fetch.mock.calls[1]?.[0]).toBe(
+      `https://x.test/v1/emergency/incidents/${orgId}/acknowledge`,
+    );
+    // Rejected locally: sharing a location without one.
+    await expect(
+      client.raiseIncident({ clientIncidentId: orgId, category: "breakdown", shareLocation: true }),
+    ).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

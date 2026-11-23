@@ -1,6 +1,6 @@
 # ADR-0010: Emergency functionality is exempt from ordinary quotas
 
-- Status: Accepted
+- Status: Accepted. Implemented in Prompt 18 ([ADR-0025](0025-emergency-incidents-and-dispatch.md))
 - Date: 2026-11-19
 
 ## Context

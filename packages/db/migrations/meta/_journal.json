@@ -190,6 +190,20 @@
       "when": 1795464125111,
       "tag": "0026_messaging_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1795466155334,
+      "tag": "0027_emergency",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1795466156493,
+      "tag": "0028_emergency_triggers",
+      "breakpoints": true
     }
   ]
 }

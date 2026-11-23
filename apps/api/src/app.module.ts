@@ -15,6 +15,7 @@ import { ModerationModule } from "./modules/moderation/index.js";
 import { CommunityModule } from "./modules/community/index.js";
 import { MessagingModule } from "./modules/messaging/index.js";
 import { NotificationsModule } from "./modules/notifications/index.js";
+import { EmergencyModule } from "./modules/emergency/index.js";
 import { SearchModule } from "./modules/search/index.js";
 import { VerificationModule } from "./modules/verification/index.js";
 import { type AppLogger, createLogger } from "./observability/logger.js";
@@ -22,6 +23,7 @@ import { ObservabilityModule } from "./observability/observability.module.js";
 import { ClockModule } from "./platform/clock/index.js";
 import { MapsModule } from "./platform/maps/index.js";
 import { RateLimitModule } from "./platform/rate-limit/index.js";
+import { EmailModule } from "./platform/email/index.js";
 import { PushModule } from "./platform/push/index.js";
 import { RealtimeModule } from "./platform/realtime/index.js";
 import { RoutingModule } from "./platform/routing/index.js";
@@ -62,6 +64,7 @@ export class AppModule {
         RoutingModule.forRoot(env),
         RealtimeModule.forRoot(env),
         PushModule.forRoot(env),
+        EmailModule.forRoot(env),
         // Registers the global AuthGuard: every route requires sign-in unless marked @Public().
         IdentityModule.forRoot(env),
         // Tenancy: @OrgPermission() routes check membership and role after sign-in.
@@ -83,6 +86,7 @@ export class AppModule {
         CommunityModule,
         MessagingModule,
         NotificationsModule,
+        EmergencyModule,
         HealthModule,
       ],
     };

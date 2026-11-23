@@ -16,12 +16,13 @@ import {
 
 import { communityGroups } from "./community.js";
 import { id, timestamps } from "./columns.js";
+import { emergencyIncidents } from "./emergency.js";
 import { serviceRequestRecipients } from "./requests.js";
 import { users } from "./users.js";
 
 const list = (values: readonly string[]) => sql.raw(values.map((v) => `'${v}'`).join(", "));
 
-export const CONVERSATION_KIND_VALUES = ["direct", "request", "group"] as const;
+export const CONVERSATION_KIND_VALUES = ["direct", "request", "group", "incident"] as const;
 export const MESSAGE_STATUS_VALUES = ["visible", "deleted", "removed", "hidden"] as const;
 
 /**
@@ -40,6 +41,10 @@ export const conversations = pgTable(
       onDelete: "cascade",
     }),
     groupId: uuid("group_id").references(() => communityGroups.id, { onDelete: "cascade" }),
+    /** Incident rooms (Prompt 18): time-limited, for the owner and alerted contacts. */
+    incidentId: uuid("incident_id").references(() => emergencyIncidents.id, {
+      onDelete: "cascade",
+    }),
     lastSeq: bigint("last_seq", { mode: "number" }).notNull().default(0),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true, mode: "date" }),
     ...timestamps(),
@@ -50,13 +55,15 @@ export const conversations = pgTable(
       .where(sql`${t.kind} = 'direct'`),
     uniqueIndex("conversations_request_key").on(t.requestRecipientId),
     uniqueIndex("conversations_group_key").on(t.groupId),
+    uniqueIndex("conversations_incident_key").on(t.incidentId),
     index("conversations_direct_b_idx").on(t.directUserB),
     check("conversations_kind_valid", sql`${t.kind} IN (${list(CONVERSATION_KIND_VALUES)})`),
     check(
       "conversations_kind_fields",
-      sql`(${t.kind} = 'direct' AND ${t.directUserA} IS NOT NULL AND ${t.directUserB} IS NOT NULL AND ${t.directUserA} < ${t.directUserB} AND ${t.requestRecipientId} IS NULL AND ${t.groupId} IS NULL)
-       OR (${t.kind} = 'request' AND ${t.requestRecipientId} IS NOT NULL AND ${t.directUserA} IS NULL AND ${t.groupId} IS NULL)
-       OR (${t.kind} = 'group' AND ${t.groupId} IS NOT NULL AND ${t.directUserA} IS NULL AND ${t.requestRecipientId} IS NULL)`,
+      sql`(${t.kind} = 'direct' AND ${t.directUserA} IS NOT NULL AND ${t.directUserB} IS NOT NULL AND ${t.directUserA} < ${t.directUserB} AND ${t.requestRecipientId} IS NULL AND ${t.groupId} IS NULL AND ${t.incidentId} IS NULL)
+       OR (${t.kind} = 'request' AND ${t.requestRecipientId} IS NOT NULL AND ${t.directUserA} IS NULL AND ${t.groupId} IS NULL AND ${t.incidentId} IS NULL)
+       OR (${t.kind} = 'group' AND ${t.groupId} IS NOT NULL AND ${t.directUserA} IS NULL AND ${t.requestRecipientId} IS NULL AND ${t.incidentId} IS NULL)
+       OR (${t.kind} = 'incident' AND ${t.incidentId} IS NOT NULL AND ${t.directUserA} IS NULL AND ${t.requestRecipientId} IS NULL AND ${t.groupId} IS NULL)`,
     ),
     check("conversations_last_seq_non_negative", sql`${t.lastSeq} >= 0`),
   ],

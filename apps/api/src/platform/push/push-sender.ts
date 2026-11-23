@@ -29,8 +29,14 @@ export class RecordingPushSender implements PushSender {
   readonly sent: { fids: string[]; message: PushMessage }[] = [];
   /** Installations to report as gone (tests). */
   readonly gone = new Set<string>();
+  /** The next sends throw, as if FCM were unavailable (retry tests). */
+  failNext = 0;
 
   send(fids: readonly string[], message: PushMessage): Promise<PushResult> {
+    if (this.failNext > 0) {
+      this.failNext -= 1;
+      return Promise.reject(new Error("push provider unavailable"));
+    }
     const invalid = fids.filter((f) => this.gone.has(f));
     const valid = fids.filter((f) => !this.gone.has(f));
     if (valid.length > 0) this.sent.push({ fids: valid, message });

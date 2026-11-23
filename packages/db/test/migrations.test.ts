@@ -57,6 +57,8 @@ describe("migrations on a fresh database", () => {
       "0024_community_triggers",
       "0025_messaging",
       "0026_messaging_triggers",
+      "0027_emergency",
+      "0028_emergency_triggers",
     ]);
   });
 
@@ -97,8 +99,12 @@ describe("migrations on a fresh database", () => {
       "conversations",
       "currencies",
       "document_access_grants",
+      "emergency_guidance",
+      "emergency_incidents",
       "friend_requests",
       "friendships",
+      "incident_deliveries",
+      "incident_recipients",
       "invitations",
       "memberships",
       "message_attachments",
@@ -113,6 +119,7 @@ describe("migrations on a fresh database", () => {
       "plan_versions",
       "plans",
       "platform_staff",
+      "provider_emergency_settings",
       "provider_media",
       "provider_offering_branches",
       "provider_offerings",
@@ -132,6 +139,7 @@ describe("migrations on a fresh database", () => {
       "service_request_recipients",
       "service_requests",
       "social_settings",
+      "trusted_contacts",
       "user_blocks",
       "users",
       "verification_appeals",
