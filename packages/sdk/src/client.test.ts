@@ -424,6 +424,54 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
+  it("articles: public search without a token, author and moderation paths, local validation", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 400, error: "bad_request", reason: "rating_content" }, 400),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    await client.searchArticles({ q: "brakes", tag: "tyres" }).catch(() => undefined);
+    expect(fetch.mock.calls[0]?.[0]).toBe("https://x.test/v1/articles?q=brakes&tag=tyres");
+    const headers = new Headers(fetch.mock.calls[0]?.[1]?.headers);
+    expect(headers.get("authorization")).toBeNull();
+    const error = await client.createArticle({ title: "Tyres" }).catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("rating_content");
+    expect(fetch.mock.calls[1]?.[0]).toBe("https://x.test/v1/me/articles");
+    await client.publishArticle(orgId).catch(() => undefined);
+    expect(fetch.mock.calls[2]?.[0]).toBe(`https://x.test/v1/me/articles/${orgId}/publish`);
+    await client.moderate("article_comment", orgId, "dismiss-reports").catch(() => undefined);
+    expect(fetch.mock.calls[3]?.[0]).toBe(
+      `https://x.test/v1/moderation/comments/${orgId}/dismiss-reports`,
+    );
+    // Rejected locally: unknown fields, script links, empty comments.
+    await expect(client.createArticle({ title: "x", rating: 5 } as never)).rejects.toThrow();
+    await expect(
+      client.createArticle({
+        title: "x",
+        body: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: "x",
+                  marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }],
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    ).rejects.toThrow();
+    await expect(client.addComment(orgId, { body: "  " })).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

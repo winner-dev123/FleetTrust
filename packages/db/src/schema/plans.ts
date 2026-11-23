@@ -260,7 +260,11 @@ export const quotaConsumptions = pgTable(
   ],
 );
 
-export const PLATFORM_ROLES = ["billing_operator", "verification_reviewer"] as const;
+export const PLATFORM_ROLES = [
+  "billing_operator",
+  "verification_reviewer",
+  "trust_safety_moderator",
+] as const;
 export type PlatformRole = (typeof PLATFORM_ROLES)[number];
 
 /**

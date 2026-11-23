@@ -51,6 +51,8 @@ describe("migrations on a fresh database", () => {
       "0018_saved_lists_triggers",
       "0019_service_requests",
       "0020_service_requests_triggers",
+      "0021_articles",
+      "0022_articles_triggers",
     ]);
   });
 
@@ -76,14 +78,20 @@ describe("migrations on a fresh database", () => {
        ORDER BY table_name`,
     );
     expect(rows.map((row) => row.table_name)).toEqual([
+      "article_bookmarks",
+      "article_comments",
+      "article_images",
+      "articles",
       "audit_events",
       "branch_hours_exceptions",
       "branch_opening_hours",
       "branches",
+      "content_reports",
       "currencies",
       "document_access_grants",
       "invitations",
       "memberships",
+      "moderation_actions",
       "organizations",
       "outbox_events",
       "plan_assignments",

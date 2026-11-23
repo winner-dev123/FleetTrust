@@ -43,6 +43,8 @@ export const PERMISSIONS = [
   "requests.manage",
   /** Providers: read inquiries and send quotes (branch-scoped: inquiries routed to that branch). */
   "requests.respond",
+  /** Publish community articles on behalf of the organization (Prompt 15; uses its article quota). */
+  "articles.publish",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -68,6 +70,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "requests.create",
     "requests.manage",
     "requests.respond",
+    "articles.publish",
   ],
   manager: [
     "org.read",
@@ -78,6 +81,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "requests.create",
     "requests.manage",
     "requests.respond",
+    "articles.publish",
   ],
   staff: ["org.read", "branches.read", "requests.respond"],
   driver: ["org.read", "branches.read", "requests.create"],
