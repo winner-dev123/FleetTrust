@@ -22,7 +22,7 @@
     "@fleettrust/db": "workspace:*",
     "@fleettrust/env": "workspace:*",
     "@fleettrust/types": "workspace:*",
-    "@google-cloud/storage": "8.4.0",
+    "@google-cloud/storage": "9.0.0",
     "@nestjs/common": "12.5.1",
     "@nestjs/core": "12.5.1",
     "@nestjs/platform-express": "12.5.1",
