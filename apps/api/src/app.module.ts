@@ -13,6 +13,8 @@ import { RequestsModule } from "./modules/requests/index.js";
 import { ArticlesModule } from "./modules/articles/index.js";
 import { ModerationModule } from "./modules/moderation/index.js";
 import { CommunityModule } from "./modules/community/index.js";
+import { MessagingModule } from "./modules/messaging/index.js";
+import { NotificationsModule } from "./modules/notifications/index.js";
 import { SearchModule } from "./modules/search/index.js";
 import { VerificationModule } from "./modules/verification/index.js";
 import { type AppLogger, createLogger } from "./observability/logger.js";
@@ -20,6 +22,8 @@ import { ObservabilityModule } from "./observability/observability.module.js";
 import { ClockModule } from "./platform/clock/index.js";
 import { MapsModule } from "./platform/maps/index.js";
 import { RateLimitModule } from "./platform/rate-limit/index.js";
+import { PushModule } from "./platform/push/index.js";
+import { RealtimeModule } from "./platform/realtime/index.js";
 import { RoutingModule } from "./platform/routing/index.js";
 import { StorageModule } from "./platform/storage/index.js";
 
@@ -56,6 +60,8 @@ export class AppModule {
         MapsModule.forRoot(env),
         // Routing adapter for route-corridor search (degrades to point search).
         RoutingModule.forRoot(env),
+        RealtimeModule.forRoot(env),
+        PushModule.forRoot(env),
         // Registers the global AuthGuard: every route requires sign-in unless marked @Public().
         IdentityModule.forRoot(env),
         // Tenancy: @OrgPermission() routes check membership and role after sign-in.
@@ -75,6 +81,8 @@ export class AppModule {
         ArticlesModule,
         ModerationModule,
         CommunityModule,
+        MessagingModule,
+        NotificationsModule,
         HealthModule,
       ],
     };

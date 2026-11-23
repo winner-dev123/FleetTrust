@@ -1,4 +1,22 @@
 import {
+  type ConversationDto,
+  conversationSchema,
+  createMessageAttachmentSchema,
+  type InboxDto,
+  inboxSchema,
+  type MessageDto,
+  type MessagePage,
+  messagePageSchema,
+  messageSchema,
+  type MessagingErrorReason,
+  messagingErrorReasonSchema,
+  type MessagingPreferences,
+  messagingPreferencesSchema,
+  registerDeviceSchema,
+  reportMessageSchema,
+  type SendMessage,
+  sendMessageSchema,
+  updateMessagingPreferencesSchema,
   type BlockedUserDto,
   blockedUserSchema,
   type CommunityErrorReason,
@@ -210,6 +228,7 @@ export type ApiErrorReason =
   | ArticleErrorReason
   | ModerationErrorReason
   | CommunityErrorReason
+  | MessagingErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -535,6 +554,54 @@ export interface ApiClient {
   removeGroupMember(groupId: string, userId: string): Promise<void>;
   banFromGroup(groupId: string, userId: string): Promise<void>;
   unbanFromGroup(groupId: string, userId: string): Promise<void>;
+  /** Your conversations, most recent first, with unread counts. */
+  conversations(): Promise<ConversationDto[]>;
+  conversation(conversationId: string): Promise<ConversationDto>;
+  /** Finds or starts a direct conversation (blocks and their privacy setting apply). */
+  openDirectConversation(userId: string): Promise<ConversationDto>;
+  /** The conversation between the requester side and one recipient provider. */
+  openRequestConversation(recipientId: string): Promise<ConversationDto>;
+  openGroupConversation(groupId: string): Promise<ConversationDto>;
+  /** `after`: replay forwards from a cursor; `before`: older history. */
+  messages(
+    conversationId: string,
+    query?: { after?: number; before?: number; limit?: number },
+  ): Promise<MessagePage>;
+  /** Resending the same `clientMessageId` returns the original message. */
+  sendMessage(conversationId: string, message: SendMessage): Promise<MessageDto>;
+  deleteMessage(conversationId: string, messageId: string): Promise<MessageDto>;
+  reportMessage(
+    conversationId: string,
+    messageId: string,
+    report: z.input<typeof reportMessageSchema>,
+  ): Promise<{ id: string; status: "open" }>;
+  markConversationRead(conversationId: string, seq: number): Promise<{ lastReadSeq: number }>;
+  muteConversation(conversationId: string, muted: boolean): Promise<ConversationDto>;
+  /** Then PUT the file to `upload.url` and call completeMessageAttachment. */
+  createMessageAttachment(
+    conversationId: string,
+    file: z.input<typeof createMessageAttachmentSchema>,
+  ): Promise<{
+    attachmentId: string;
+    upload: { url: string; method: "PUT"; headers: Record<string, string>; expiresAt: string };
+  }>;
+  completeMessageAttachment(
+    conversationId: string,
+    attachmentId: string,
+  ): Promise<{ id: string; status: "available" }>;
+  /** Notifications plus unread counts. */
+  inbox(): Promise<InboxDto>;
+  markNotificationRead(notificationId: string): Promise<void>;
+  markAllNotificationsRead(): Promise<void>;
+  messagingPreferences(): Promise<MessagingPreferences>;
+  updateMessagingPreferences(
+    change: z.input<typeof updateMessagingPreferencesSchema>,
+  ): Promise<MessagingPreferences>;
+  /** Registers this app installation (Firebase Installation ID) for push. */
+  registerDevice(device: z.input<typeof registerDeviceSchema>): Promise<void>;
+  unregisterDevice(fid: string): Promise<void>;
+  /** WebSocket URL for realtime delivery; send `{ type: "auth", token }` as the first frame. */
+  realtimeUrl(): string;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -575,6 +642,11 @@ const articlePath = (articleId: string, ...rest: string[]) =>
     .map((part, i) => (i === 0 ? part : encodeURIComponent(part)))
     .join("/");
 
+const conversationPath = (conversationId: string, ...rest: string[]) =>
+  ["/v1/conversations", conversationId, ...rest]
+    .map((p, i) => (i === 0 ? p : encodeURIComponent(p)))
+    .join("/");
+
 const groupPath = (...parts: string[]) =>
   ["/v1/groups", ...parts.map(encodeURIComponent)].join("/");
 
@@ -583,6 +655,7 @@ const MODERATION_SEGMENT: Record<ReportTargetType, string> = {
   article_comment: "comments",
   group: "groups",
   user: "users",
+  message: "messages",
 };
 
 const moderationPath = (targetType: ReportTargetType, targetId: string, ...rest: string[]) =>
@@ -610,6 +683,7 @@ const errorBodySchema = z
         articleErrorReasonSchema,
         moderationErrorReasonSchema,
         communityErrorReasonSchema,
+        messagingErrorReasonSchema,
         z.literal("quota_exceeded"),
       ])
       .optional(),
@@ -1771,6 +1845,165 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         schema: undefined,
         authenticated: true,
       }),
+    conversations: () =>
+      send({
+        method: "GET",
+        path: "/v1/conversations",
+        schema: z.array(conversationSchema),
+        authenticated: true,
+      }),
+    conversation: (conversationId) =>
+      send({
+        method: "GET",
+        path: conversationPath(conversationId),
+        schema: conversationSchema,
+        authenticated: true,
+      }),
+    openDirectConversation: async (userId) =>
+      send({
+        method: "POST",
+        path: "/v1/conversations/direct",
+        schema: conversationSchema,
+        body: { userId: z.uuid().parse(userId) },
+        authenticated: true,
+      }),
+    openRequestConversation: async (recipientId) =>
+      send({
+        method: "POST",
+        path: "/v1/conversations/request",
+        schema: conversationSchema,
+        body: { recipientId: z.uuid().parse(recipientId) },
+        authenticated: true,
+      }),
+    openGroupConversation: async (groupId) =>
+      send({
+        method: "POST",
+        path: "/v1/conversations/group",
+        schema: conversationSchema,
+        body: { groupId: z.uuid().parse(groupId) },
+        authenticated: true,
+      }),
+    messages: (conversationId, query = {}) => {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(query)) params.set(key, String(value));
+      const qs = params.toString();
+      return send({
+        method: "GET",
+        path: `${conversationPath(conversationId, "messages")}${qs === "" ? "" : `?${qs}`}`,
+        schema: messagePageSchema,
+        authenticated: true,
+      });
+    },
+    sendMessage: async (conversationId, message) =>
+      send({
+        method: "POST",
+        path: conversationPath(conversationId, "messages"),
+        schema: messageSchema,
+        body: sendMessageSchema.parse(message),
+        authenticated: true,
+      }),
+    deleteMessage: (conversationId, messageId) =>
+      send({
+        method: "DELETE",
+        path: conversationPath(conversationId, "messages", messageId),
+        schema: messageSchema,
+        authenticated: true,
+      }),
+    reportMessage: async (conversationId, messageId, report) =>
+      send({
+        method: "POST",
+        path: conversationPath(conversationId, "messages", messageId, "report"),
+        schema: z.object({ id: z.uuid(), status: z.literal("open") }),
+        body: reportMessageSchema.parse(report),
+        authenticated: true,
+      }),
+    markConversationRead: (conversationId, seq) =>
+      send({
+        method: "POST",
+        path: conversationPath(conversationId, "read"),
+        schema: z.object({ lastReadSeq: z.number().int() }),
+        body: { seq },
+        authenticated: true,
+      }),
+    muteConversation: (conversationId, muted) =>
+      send({
+        method: "PATCH",
+        path: conversationPath(conversationId),
+        schema: conversationSchema,
+        body: { muted },
+        authenticated: true,
+      }),
+    createMessageAttachment: async (conversationId, file) =>
+      send({
+        method: "POST",
+        path: conversationPath(conversationId, "attachments"),
+        schema: z.object({
+          attachmentId: z.uuid(),
+          upload: z.object({
+            url: z.string(),
+            method: z.literal("PUT"),
+            headers: z.record(z.string(), z.string()),
+            expiresAt: z.iso.datetime(),
+          }),
+        }),
+        body: createMessageAttachmentSchema.parse(file),
+        authenticated: true,
+      }),
+    completeMessageAttachment: (conversationId, attachmentId) =>
+      send({
+        method: "POST",
+        path: conversationPath(conversationId, "attachments", attachmentId, "complete"),
+        schema: z.object({ id: z.uuid(), status: z.literal("available") }),
+        authenticated: true,
+      }),
+    inbox: () =>
+      send({ method: "GET", path: "/v1/me/inbox", schema: inboxSchema, authenticated: true }),
+    markNotificationRead: (notificationId) =>
+      send({
+        method: "POST",
+        path: `/v1/me/notifications/${encodeURIComponent(notificationId)}/read`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    markAllNotificationsRead: () =>
+      send({
+        method: "POST",
+        path: "/v1/me/notifications/read-all",
+        schema: undefined,
+        authenticated: true,
+      }),
+    messagingPreferences: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/messaging-preferences",
+        schema: messagingPreferencesSchema,
+        authenticated: true,
+      }),
+    updateMessagingPreferences: async (change) =>
+      send({
+        method: "PATCH",
+        path: "/v1/me/messaging-preferences",
+        schema: messagingPreferencesSchema,
+        body: updateMessagingPreferencesSchema.parse(change),
+        authenticated: true,
+      }),
+    registerDevice: async (device) =>
+      send({
+        method: "PUT",
+        path: "/v1/me/devices",
+        schema: undefined,
+        body: registerDeviceSchema.parse(device),
+        authenticated: true,
+      }),
+    unregisterDevice: (fid) =>
+      send({
+        method: "POST",
+        path: "/v1/me/devices/unregister",
+        schema: undefined,
+        body: { fid },
+        authenticated: true,
+      }),
+    realtimeUrl: () => `${baseUrl.replace(/^http/, "ws")}/v1/realtime`,
     provider: (slug, options) =>
       send({
         method: "GET",

@@ -1,7 +1,7 @@
 # Handoff — Prompt 16: Friendships and communities
 
 - Date: 2026-11-23
-- Status: **awaiting owner approval** · branch `feat/prompt-16-community`
+- Status: **approved** · PR **#18** squash-merged as `99af6bc` (CI 5/5 green on `d2f764e`)
 - Prompt 15 approved and merged (PR #17 → `3e5d27b`).
 
 ## Assumptions

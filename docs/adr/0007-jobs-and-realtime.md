@@ -1,6 +1,6 @@
 # ADR-0007: Background jobs, notifications and realtime delivery
 
-- Status: **Proposed**. Confirm in Prompt 03/05 once local-infrastructure parity is tested
+- Status: **Proposed**. Confirm in Prompt 03/05 once local-infrastructure parity is tested. The realtime and push parts were implemented in Prompt 17 ([ADR-0024](0024-messaging-and-notifications.md)): WebSockets on the API role, Redis pub/sub fan-out, FCM push by Firebase Installation ID, and an outbox relay in the worker role (polling; Pub/Sub push can call the same `drain()`)
 - Date: 2026-11-19
 
 ## Context

@@ -5,6 +5,7 @@ import {
   articles,
   asc,
   communityGroups,
+  messages,
   contentReports,
   type Database,
   enqueueOutboxEvent,
@@ -30,6 +31,7 @@ import type { z } from "zod";
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
 import { currentRequestContext } from "../../observability/request-context.js";
 import { CLOCK, type Clock } from "../../platform/clock/index.js";
+import { REALTIME_BUS, type RealtimeBus } from "../../platform/realtime/index.js";
 import { moderationError, notFound, violates } from "./shared.js";
 
 type ReportInput = z.output<typeof createReportSchema>;
@@ -64,6 +66,7 @@ const OUTBOX: Record<ReportTargetType, string> = {
   article_comment: "ArticleCommentModerated",
   group: "GroupModerated",
   user: "UserModerated",
+  message: "MessageModerated",
 };
 
 interface Target {
@@ -87,6 +90,7 @@ export class ModerationService {
   constructor(
     @Inject(DATABASE) private readonly database: DatabaseProvider,
     @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(REALTIME_BUS) private readonly bus: RealtimeBus,
   ) {}
 
   private get db(): Database {
@@ -99,8 +103,16 @@ export class ModerationService {
   // -------------------------------------------------------------------------------------------
 
   /** Public content and active members only; you can't report yourself or your own content. */
-  async report(user: User, input: ReportInput): Promise<{ id: string; status: "open" }> {
-    return this.db.transaction(async (tx) => {
+  async report(
+    user: User,
+    input: ReportInput,
+    options: { conversationAccessChecked?: boolean } = {},
+  ): Promise<{ id: string; status: "open" }> {
+    // Messages are private: they can only be reported from inside the conversation.
+    if (input.targetType === "message" && options.conversationAccessChecked !== true) {
+      throw notFound();
+    }
+    const result = await this.db.transaction(async (tx) => {
       const target = await this.target(tx, input.targetType, input.targetId, { publicOnly: true });
       if (target.authorUserId === user.id) throw moderationError(400, "own_content");
       let id: string;
@@ -138,9 +150,22 @@ export class ModerationService {
         eventType: "ContentReported",
         payload: { reportId: id, targetType: input.targetType, targetId: input.targetId },
       });
-      await this.autoFlag(tx, input.targetType, input.targetId);
-      return { id, status: "open" as const };
+      const flagged = await this.autoFlag(tx, input.targetType, input.targetId);
+      return { id, status: "open" as const, flagged };
     });
+    if (result.flagged && input.targetType === "message") await this.refreshMessage(input.targetId);
+    return { id: result.id, status: result.status };
+  }
+
+  /** Tells open sockets to reload a message whose visibility changed. */
+  private async refreshMessage(messageId: string): Promise<void> {
+    const [row] = await this.db
+      .select({ conversationId: messages.conversationId })
+      .from(messages)
+      .where(eq(messages.id, messageId));
+    if (row) {
+      await this.bus.publish(`conversation:${row.conversationId}`, { type: "refresh", messageId });
+    }
   }
 
   /** Loads a report target. `publicOnly`: only what members of the public can currently see. */
@@ -203,6 +228,19 @@ export class ModerationService {
           articleId: null,
         };
       }
+      case "message": {
+        const query = executor.select().from(messages).where(eq(messages.id, id));
+        const [row] = lock ? await query.for("update") : await query;
+        if (!row) throw notFound();
+        if (options.publicOnly === true && row.status !== "visible") throw notFound();
+        return {
+          authorUserId: row.senderUserId,
+          status: row.status,
+          title: row.body.slice(0, 120),
+          text: row.body,
+          articleId: null,
+        };
+      }
       case "user": {
         const [row] = await executor.select().from(users).where(eq(users.id, id));
         if (!row) throw notFound();
@@ -219,15 +257,15 @@ export class ModerationService {
   }
 
   /** Enough distinct reporters take content out of public view until a moderator decides. */
-  private async autoFlag(executor: Executor, type: ReportTargetType, id: string): Promise<void> {
+  private async autoFlag(executor: Executor, type: ReportTargetType, id: string): Promise<boolean> {
     // Members aren't suspended automatically: sanctions need a person (Prompt 23).
-    if (type === "user") return;
+    if (type === "user") return false;
     const [counted] = await queryRows<{ n: number }>(
       executor,
       sql`SELECT count(DISTINCT reporter_user_id)::int AS n FROM content_reports
           WHERE target_type = ${type} AND target_id = ${id} AND status = 'open'`,
     );
-    if ((counted?.n ?? 0) < AUTO_FLAG_REPORTS) return;
+    if ((counted?.n ?? 0) < AUTO_FLAG_REPORTS) return false;
     let moved: { id: string }[];
     if (type === "article") {
       moved = await executor
@@ -241,6 +279,12 @@ export class ModerationService {
         .set({ status: "hidden" })
         .where(and(eq(articleComments.id, id), eq(articleComments.status, "visible")))
         .returning({ id: articleComments.id });
+    } else if (type === "message") {
+      moved = await executor
+        .update(messages)
+        .set({ status: "hidden" })
+        .where(and(eq(messages.id, id), eq(messages.status, "visible")))
+        .returning({ id: messages.id });
     } else {
       moved = await executor
         .update(communityGroups)
@@ -248,8 +292,9 @@ export class ModerationService {
         .where(and(eq(communityGroups.id, id), eq(communityGroups.status, "active")))
         .returning({ id: communityGroups.id });
     }
-    if (moved.length === 0) return;
+    if (moved.length === 0) return false;
     await this.record(executor, null, type, id, "auto_flag", null, { reports: counted?.n });
+    return true;
   }
 
   // -------------------------------------------------------------------------------------------
@@ -298,6 +343,11 @@ export class ModerationService {
                  o.open_reports, o.reasons, o.first_report
           FROM users u
           JOIN open o ON o.target_type = 'user' AND o.target_id = u.id
+          UNION ALL
+          SELECT 'message', m.id, m.status, left(m.body, 120), m.sender_user_id,
+                 o.open_reports, o.reasons, o.first_report
+          FROM messages m
+          JOIN open o ON o.target_type = 'message' AND o.target_id = m.id
           ORDER BY waiting_since ASC
           LIMIT 100`,
     );
@@ -394,7 +444,7 @@ export class ModerationService {
   /** Hide or restore a comment or a group. */
   async decideVisibility(
     moderator: User,
-    type: "article_comment" | "group",
+    type: "article_comment" | "group" | "message",
     id: string,
     decision: VisibilityDecision,
     reason: string | null,
@@ -411,6 +461,11 @@ export class ModerationService {
           .update(communityGroups)
           .set({ status: to as "active" | "hidden" })
           .where(eq(communityGroups.id, id));
+      } else if (type === "message") {
+        await tx
+          .update(messages)
+          .set({ status: to as "visible" | "hidden" })
+          .where(eq(messages.id, id));
       } else {
         await tx
           .update(articleComments)
@@ -426,7 +481,28 @@ export class ModerationService {
         authorUserId: target.authorUserId,
       });
     });
+    if (type === "message") await this.refreshMessage(id);
     return this.case(type, id);
+  }
+
+  /**
+   * A moderator opens a case. Message cases show private conversation content, so every view is
+   * audited (SRS §2.3: no message content without an audited case).
+   */
+  async viewCase(moderator: User, type: ReportTargetType, id: string): Promise<ModerationCase> {
+    const result = await this.case(type, id);
+    if (type === "message") {
+      await recordAuditEvent(this.db, {
+        actorType: "admin",
+        actorId: moderator.id,
+        action: "moderation.message_viewed",
+        targetType: "message",
+        targetId: id,
+        requestId: currentRequestContext()?.requestId,
+        metadata: { openReports: result.reports.filter((r) => r.status === "open").length },
+      });
+    }
+    return result;
   }
 
   /** Closes open reports without changing anything (e.g. the reports were unfounded). */

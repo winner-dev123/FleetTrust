@@ -46,7 +46,13 @@ export const ARTICLE_STATUS_VALUES = [
   "hidden",
 ] as const;
 export const COMMENT_STATUS_VALUES = ["visible", "hidden", "deleted"] as const;
-export const REPORT_TARGET_VALUES = ["article", "article_comment", "group", "user"] as const;
+export const REPORT_TARGET_VALUES = [
+  "article",
+  "article_comment",
+  "group",
+  "user",
+  "message",
+] as const;
 export const REPORT_REASON_VALUES = [
   "spam",
   "scam",

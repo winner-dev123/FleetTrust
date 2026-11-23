@@ -83,6 +83,12 @@ export class ModerationController {
     return this.moderation.case("user", id);
   }
 
+  /** Reported message (audited view: it's private conversation content). */
+  @Get("messages/:id")
+  message(@CurrentUser() u: User, @Param("id", IdParam) id: string): Promise<ModerationCase> {
+    return this.moderation.viewCase(u, "message", id);
+  }
+
   @Post("articles/:id/approve")
   @HttpCode(200)
   approve(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
@@ -109,7 +115,7 @@ export class ModerationController {
 
   private visibility(
     u: User,
-    type: "article_comment" | "group",
+    type: "article_comment" | "group" | "message",
     id: string,
     decision: VisibilityDecision,
     b: unknown,
@@ -145,6 +151,24 @@ export class ModerationController {
   @HttpCode(200)
   restoreGroup(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
     return this.visibility(u, "group", id, "restore", b);
+  }
+
+  @Post("messages/:id/hide")
+  @HttpCode(200)
+  hideMessage(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
+    return this.visibility(u, "message", id, "hide", b);
+  }
+
+  @Post("messages/:id/restore")
+  @HttpCode(200)
+  restoreMessage(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
+    return this.visibility(u, "message", id, "restore", b);
+  }
+
+  @Post("messages/:id/dismiss-reports")
+  @HttpCode(200)
+  dismissMessage(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
+    return this.dismiss(u, "message", id, b);
   }
 
   private dismiss(u: User, type: ReportTargetType, id: string, b: unknown) {

@@ -22,6 +22,7 @@ const production = {
   MALWARE_SCANNER: "clamav",
   CLAMAV_HOST: "clamav.internal",
   MAP_TILE_URL: "https://tiles.example.test/{z}/{x}/{y}.png",
+  PUSH_PROVIDER: "fcm",
 } as const;
 
 describe("loadApiEnv", () => {
@@ -47,6 +48,8 @@ describe("loadApiEnv", () => {
       MAP_PROVIDER: "stub",
       ROUTING_PROVIDER: "none",
       ROUTING_TIMEOUT_MS: 4000,
+      PUSH_PROVIDER: "log",
+      OUTBOX_RELAY_INTERVAL_MS: 2000,
       ROUTING_CACHE_TTL_SECONDS: 3600,
     });
   });
@@ -92,6 +95,7 @@ describe("loadApiEnv", () => {
       ["STORAGE_DRIVER", "memory"],
       ["DOCUMENT_KEY_PROVIDER", "local"],
       ["MALWARE_SCANNER", "eicar-only"],
+      ["PUSH_PROVIDER", "log"],
     ] as const) {
       expect(() => loadApiEnv({ ...production, [field]: value })).toThrow(new RegExp(field));
     }
