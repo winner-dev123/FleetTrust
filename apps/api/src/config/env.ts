@@ -116,6 +116,10 @@ export const apiEnvSchema = z
     /** Abandon a routing call after this long and fall back to point search. */
     ROUTING_TIMEOUT_MS: z.coerce.number().int().min(200).max(20_000).default(4_000),
     /** How long computed routes are cached (0 disables). Check the vendor's caching terms (OQ-13). */
+    /** Push notifications: `fcm` (Firebase Cloud Messaging) or `log` (recorded, never sent; local only). */
+    PUSH_PROVIDER: z.enum(["log", "fcm"]).default("log"),
+    /** Worker role: how often the outbox relay looks for new events (notifications and push). */
+    OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().min(200).max(60_000).default(2_000),
     ROUTING_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(86_400).default(3_600),
   })
   .superRefine((env, ctx) => {
@@ -188,6 +192,9 @@ export const apiEnvSchema = z
     }
     if (env.APP_ENV === "production" && env.ROUTING_PROVIDER === "straight-line") {
       issue("ROUTING_PROVIDER", "straight-line is for development only");
+    }
+    if (deployed && env.PUSH_PROVIDER !== "fcm") {
+      issue("PUSH_PROVIDER", "must be 'fcm' in staging and production");
     }
     if (deployed && env.NODE_ENV !== "production") {
       ctx.addIssue({

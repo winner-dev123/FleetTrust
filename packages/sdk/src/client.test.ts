@@ -503,6 +503,35 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(5);
   });
 
+  it("messaging: conversation paths, realtime URL, error reasons, local validation", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 403, error: "forbidden", reason: "cannot_message" }, 403),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test/", fetch, getIdToken: () => "t" });
+    const error = await client
+      .sendMessage(orgId, { clientMessageId: orgId, body: "Hello" })
+      .catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("cannot_message");
+    expect(fetch.mock.calls[0]?.[0]).toBe(`https://x.test/v1/conversations/${orgId}/messages`);
+    await client.messages(orgId, { after: 12 }).catch(() => undefined);
+    expect(fetch.mock.calls[1]?.[0]).toBe(
+      `https://x.test/v1/conversations/${orgId}/messages?after=12`,
+    );
+    expect(client.realtimeUrl()).toBe("wss://x.test/v1/realtime");
+    // Rejected locally: empty message, bad installation ID.
+    await expect(
+      client.sendMessage(orgId, { clientMessageId: orgId, body: " " }),
+    ).rejects.toThrow();
+    await expect(
+      client.registerDevice({ fid: "has spaces in it!!", platform: "ios" }),
+    ).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

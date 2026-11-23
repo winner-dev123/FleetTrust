@@ -18,6 +18,8 @@ export class IdentityModule {
   static forRoot(env: ApiEnv): DynamicModule {
     return {
       module: IdentityModule,
+      // Global: the realtime gateway (messaging) authenticates sockets with the same verifier.
+      global: true,
       controllers: [MeController],
       providers: [
         UsersService,
@@ -32,7 +34,7 @@ export class IdentityModule {
         { provide: APP_GUARD, useClass: AuthGuard },
         { provide: APP_GUARD, useClass: RateLimitGuard },
       ],
-      exports: [UsersService],
+      exports: [UsersService, AUTH_VERIFIER],
     };
   }
 }

@@ -1,6 +1,7 @@
 # Cloud Run service template for the FleetTrust API (rendered with envsubst by
 # .github/workflows/deploy-staging.yml, then applied with `gcloud run services replace`).
-# The same image runs the worker: copy this file with APP_ROLE=worker and ingress internal.
+# The same image runs the worker: copy this file with APP_ROLE=worker and ingress internal, and
+# add run.googleapis.com/cpu-throttling: "false" so the outbox relay loop keeps running between requests.
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -25,7 +26,9 @@ spec:
     spec:
       serviceAccountName: ${API_SERVICE_ACCOUNT}
       containerConcurrency: 40
-      timeoutSeconds: 300
+      # Upper bound for one request, and for one WebSocket (/v1/realtime): clients reconnect and
+      # replay from their cursor, so the 60-minute maximum is enough.
+      timeoutSeconds: 3600
       containers:
         - name: api
           image: ${API_IMAGE}
@@ -60,6 +63,8 @@ spec:
             - { name: MAP_PROVIDER, value: stub }
             # Routing vendor pending (OQ-13): route search degrades to point search around stops.
             - { name: ROUTING_PROVIDER, value: none }
+            # Push notifications through Firebase Cloud Messaging (docs/architecture/messaging.md).
+            - { name: PUSH_PROVIDER, value: fcm }
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef: { name: fleettrust-database-url, key: latest }

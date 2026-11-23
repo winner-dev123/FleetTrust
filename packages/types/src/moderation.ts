@@ -18,7 +18,13 @@ export const REPORT_REASONS = [
   "impersonation",
   "other",
 ] as const;
-export const REPORT_TARGET_TYPES = ["article", "article_comment", "group", "user"] as const;
+export const REPORT_TARGET_TYPES = [
+  "article",
+  "article_comment",
+  "group",
+  "user",
+  "message",
+] as const;
 export type ReportTargetType = (typeof REPORT_TARGET_TYPES)[number];
 
 export const createReportSchema = z

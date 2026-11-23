@@ -10,5 +10,6 @@ import { ModerationService } from "./moderation.service.js";
 @Module({
   controllers: [ReportsController, ModerationController],
   providers: [ModerationService],
+  exports: [ModerationService],
 })
 export class ModerationModule {}
