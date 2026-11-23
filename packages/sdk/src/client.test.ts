@@ -390,6 +390,40 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("service requests: personal vs fleet paths, quota reason, local validation", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 403, error: "forbidden", reason: "quota_exceeded" }, 403),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    const request = {
+      clientRequestId: orgId,
+      category: "towing" as const,
+      vehicle: { vehicleType: "heavy_truck" as const },
+      location: { lng: 18.4, lat: -33.9 },
+      description: "Truck won't start at the depot.",
+      target: { mode: "match" as const },
+    };
+    const error = await client.createServiceRequest(request).catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("quota_exceeded");
+    expect(fetch.mock.calls[0]?.[0]).toBe("https://x.test/v1/me/service-requests");
+    await client.createServiceRequest(request, { orgId }).catch(() => undefined);
+    expect(fetch.mock.calls[1]?.[0]).toBe(`https://x.test/v1/orgs/${orgId}/service-requests`);
+    await client.acceptQuote(orgId, orgId).catch(() => undefined);
+    expect(fetch.mock.calls[2]?.[0]).toBe(
+      `https://x.test/v1/me/service-requests/${orgId}/quotes/${orgId}/accept`,
+    );
+    // Rejected locally: too short a description, a cancel without a reason.
+    await expect(
+      client.createServiceRequest({ ...request, description: "short" }),
+    ).rejects.toThrow();
+    await expect(client.cancelServiceRequest(orgId, "")).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

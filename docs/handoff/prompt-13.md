@@ -1,7 +1,7 @@
 # Handoff — Prompt 13: Route-aware discovery and saved lists
 
 - Date: 2026-11-23
-- Status: **awaiting owner approval** · branch `feat/prompt-13-routes`
+- Status: **approved** · PR **#15** squash-merged as `42f9c8c` (CI 5/5 green on `c41e68e`)
 - Prompt 12 approved and merged (PR #13 → `b0c1ee1`).
 
 ## Assumptions

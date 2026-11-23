@@ -37,6 +37,12 @@ export const PERMISSIONS = [
   "catalog.manage",
   /** Edit opening hours and holiday exceptions (Prompt 11). Branch-scoped managers: their branch only. */
   "hours.manage",
+  /** Fleets: raise service requests (Prompt 14). */
+  "requests.create",
+  /** Fleets: see and act on the organization's requests, not just your own (branch-scoped: that branch). */
+  "requests.manage",
+  /** Providers: read inquiries and send quotes (branch-scoped: inquiries routed to that branch). */
+  "requests.respond",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -59,10 +65,22 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "profile.manage",
     "catalog.manage",
     "hours.manage",
+    "requests.create",
+    "requests.manage",
+    "requests.respond",
   ],
-  manager: ["org.read", "branches.read", "members.read", "catalog.manage", "hours.manage"],
-  staff: ["org.read", "branches.read"],
-  driver: ["org.read", "branches.read"],
+  manager: [
+    "org.read",
+    "branches.read",
+    "members.read",
+    "catalog.manage",
+    "hours.manage",
+    "requests.create",
+    "requests.manage",
+    "requests.respond",
+  ],
+  staff: ["org.read", "branches.read", "requests.respond"],
+  driver: ["org.read", "branches.read", "requests.create"],
   recruiter: ["org.read"],
 };
 

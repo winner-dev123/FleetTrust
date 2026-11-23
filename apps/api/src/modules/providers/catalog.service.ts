@@ -58,7 +58,10 @@ function trimDecimal(value: string): string {
   return value.includes(".") ? value.replace(/\.?0+$/, "") : value;
 }
 
-function priceOf(row: ProviderOffering): IndicativePrice {
+/** Stored price columns (offerings, quotes) → the API shape. */
+export function priceOf(
+  row: Pick<ProviderOffering, "priceType" | "currency" | "priceAmount" | "priceMax" | "priceUnit">,
+): IndicativePrice {
   const currency = row.currency ?? "";
   const unit = (row.priceUnit ?? "job") as Extract<IndicativePrice, { unit: string }>["unit"];
   switch (row.priceType) {
@@ -78,7 +81,8 @@ function priceOf(row: ProviderOffering): IndicativePrice {
   }
 }
 
-function priceColumns(price: IndicativePrice) {
+/** The API price shape → stored columns (offerings, quotes). */
+export function priceColumns(price: IndicativePrice) {
   switch (price.type) {
     case "fixed":
     case "from":
@@ -105,6 +109,23 @@ function priceColumns(price: IndicativePrice) {
         priceMax: null,
         priceUnit: null,
       };
+  }
+}
+
+/** Active currency and no more decimals than it displays (offerings and quotes). */
+export async function assertPriceAllowed(
+  executor: Executor,
+  price: IndicativePrice,
+): Promise<void> {
+  if (price.type === "quote_required") return;
+  const [currency] = await executor
+    .select()
+    .from(currencies)
+    .where(eq(currencies.code, price.currency));
+  if (!currency?.isActive) throw catalogError(400, "unknown_currency");
+  const amounts = price.type === "range" ? [price.min, price.max] : [price.amount];
+  if (amounts.some((a) => fractionDigits(a) > currency.displayDecimals)) {
+    throw catalogError(400, "too_many_decimals");
   }
 }
 
@@ -172,18 +193,7 @@ export class CatalogService {
   }
 
   private async validate(executor: Executor, orgId: string, input: OfferingInput): Promise<void> {
-    if (input.price.type !== "quote_required") {
-      const [currency] = await executor
-        .select()
-        .from(currencies)
-        .where(eq(currencies.code, input.price.currency));
-      if (!currency?.isActive) throw catalogError(400, "unknown_currency");
-      const amounts =
-        input.price.type === "range" ? [input.price.min, input.price.max] : [input.price.amount];
-      if (amounts.some((a) => fractionDigits(a) > currency.displayDecimals)) {
-        throw catalogError(400, "too_many_decimals");
-      }
-    }
+    await assertPriceAllowed(executor, input.price);
     const wanted = [...new Set(input.branchIds)];
     if (wanted.length > 0) {
       const found = await executor
