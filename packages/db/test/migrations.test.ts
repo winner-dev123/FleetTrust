@@ -59,6 +59,8 @@ describe("migrations on a fresh database", () => {
       "0026_messaging_triggers",
       "0027_emergency",
       "0028_emergency_triggers",
+      "0029_vehicles",
+      "0030_vehicles_triggers",
     ]);
   });
 
@@ -106,6 +108,7 @@ describe("migrations on a fresh database", () => {
       "incident_deliveries",
       "incident_recipients",
       "invitations",
+      "maintenance_schedules",
       "memberships",
       "message_attachments",
       "messages",
@@ -134,6 +137,7 @@ describe("migrations on a fresh database", () => {
       "saved_list_share_links",
       "saved_lists",
       "service_quotes",
+      "service_records",
       "service_request_attachments",
       "service_request_events",
       "service_request_recipients",
@@ -142,6 +146,10 @@ describe("migrations on a fresh database", () => {
       "trusted_contacts",
       "user_blocks",
       "users",
+      "vehicle_assignments",
+      "vehicle_document_shares",
+      "vehicle_documents",
+      "vehicles",
       "verification_appeals",
       "verification_badges",
       "verification_cases",

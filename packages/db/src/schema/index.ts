@@ -10,6 +10,7 @@ export * from "./provider-profiles.js";
 export * from "./catalog.js";
 export * from "./search.js";
 export * from "./lists.js";
+export * from "./vehicles.js";
 export * from "./requests.js";
 export * from "./articles.js";
 export * from "./community.js";

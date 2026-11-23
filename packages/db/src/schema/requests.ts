@@ -21,6 +21,7 @@ import { currencies } from "./currencies.js";
 import { branches, organizations } from "./organizations.js";
 import { providerProfiles } from "./provider-profiles.js";
 import { users } from "./users.js";
+import { vehicles } from "./vehicles.js";
 
 const CATEGORY_LIST = sql.raw(
   "'workshop', 'fuel_station', 'towing', 'tyres', 'parts', 'parking', 'mobile_mechanic'",
@@ -51,6 +52,8 @@ export const serviceRequests = pgTable(
     vehicleModel: text("vehicle_model"),
     vehicleYear: smallint("vehicle_year"),
     vehicleRegistration: text("vehicle_registration"),
+    /** Linked vehicle (Prompt 19); the snapshot columns keep what was sent. */
+    vehicleId: uuid("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
     location: geographyPoint("location").notNull(),
     locationNote: text("location_note"),
     description: text("description").notNull(),

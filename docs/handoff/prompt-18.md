@@ -1,7 +1,7 @@
 # Handoff — Prompt 18: Emergency assistance and trusted circles
 
 - Date: 2026-11-23
-- Status: **awaiting owner approval** · branch `feat/prompt-18-emergency`
+- Status: **approved** · PR **#20** squash-merged as `ab611fa` (CI 5/5 green on `d5adc9a`)
 - Prompt 17 approved and merged (PR #19 → `0a6b2cc`).
 
 ## Assumptions
