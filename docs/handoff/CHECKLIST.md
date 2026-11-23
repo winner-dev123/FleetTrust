@@ -18,8 +18,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 12  | Geospatial provider search                 | approved (merged, PR #13)          | [prompt-12.md](prompt-12.md) |
 | 13  | Route-aware discovery and saved lists      | approved (merged, PR #15)          | [prompt-13.md](prompt-13.md) |
 | 14  | Service requests and quotations            | approved (merged, PR #16)          | [prompt-14.md](prompt-14.md) |
-| 15  | Article publishing and knowledge hub       | awaiting approval                  | [prompt-15.md](prompt-15.md) |
-| 16  | Friendships and communities                | todo                               |                              |
+| 15  | Article publishing and knowledge hub       | approved (merged, PR #17)          | [prompt-15.md](prompt-15.md) |
+| 16  | Friendships and communities                | awaiting approval                  | [prompt-16.md](prompt-16.md) |
 | 17  | Messaging and community notifications      | todo                               |                              |
 | 18  | Emergency assistance and trusted circles   | todo                               |                              |
 | 19  | Vehicle profiles and maintenance           | todo                               |                              |

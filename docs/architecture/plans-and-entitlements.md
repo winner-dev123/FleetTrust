@@ -4,14 +4,14 @@ How plans, quotas and billing-operator actions work (SRS F-010..F-013, FR-03..FR
 
 ## Capabilities
 
-| Key                      | Kind     | Applies to         | Counted as                                 | Enforced from                                    |
-| ------------------------ | -------- | ------------------ | ------------------------------------------ | ------------------------------------------------ |
-| `friend_requests.daily`  | daily    | user               | successful outgoing requests per local day | Prompt 16                                        |
-| `service_requests.daily` | daily    | user, organization | requests created per local day             | Prompt 14                                        |
-| `articles.daily`         | daily    | user, organization | articles submitted per local day           | **now**: first publication of each article       |
-| `groups.daily`           | daily    | user, organization | groups created per local day               | Prompt 16                                        |
-| `staff.seats`            | capacity | organization       | members + pending (unexpired) invitations  | **now**: inviting; accepting checks members only |
-| `branches.max`           | capacity | organization       | branches                                   | **now**: creating a branch                       |
+| Key                                               | Kind     | Applies to         | Counted as                                | Enforced from                                    |
+| ------------------------------------------------- | -------- | ------------------ | ----------------------------------------- | ------------------------------------------------ |
+| $1**now**: requests actually sent (refusals free) |
+| `service_requests.daily`                          | daily    | user, organization | requests created per local day            | Prompt 14                                        |
+| `articles.daily`                                  | daily    | user, organization | articles submitted per local day          | **now**: first publication of each article       |
+| $1**now**: group creation                         |
+| `staff.seats`                                     | capacity | organization       | members + pending (unexpired) invitations | **now**: inviting; accepting checks members only |
+| `branches.max`                                    | capacity | organization       | branches                                  | **now**: creating a branch                       |
 
 ## Sample catalog (OQ-09: limits and prices are placeholders)
 
@@ -64,7 +64,7 @@ Staff routes answer **404** to everyone without the role and check token revocat
 
 ## Granting staff roles
 
-Roles: `billing_operator` (plans), `verification_reviewer` (evidence), `trust_safety_moderator` (reports and article moderation, Prompt 15).
+Roles: `billing_operator` (plans), `verification_reviewer` (evidence), `trust_safety_moderator` (reports and moderation of articles, comments, groups and members; Prompts 15–16).
 
 ```sh
 pnpm db:staff grant ops@example.com billing_operator   # the person must have signed in once

@@ -1,7 +1,7 @@
 # Handoff — Prompt 15: Article publishing and knowledge hub
 
 - Date: 2026-11-23
-- Status: **awaiting owner approval** · branch `feat/prompt-15-articles`
+- Status: **approved** · PR **#17** squash-merged as `3e5d27b` (CI 5/5 green on `68f5221`)
 - Prompt 14 approved and merged (PR #16 → `3df0759`).
 
 ## Assumptions

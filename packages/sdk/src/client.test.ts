@@ -472,6 +472,37 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(4);
   });
 
+  it("community: friend, group and moderation paths, error reasons, local validation", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 403, error: "forbidden", reason: "cannot_send" }, 403),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    const error = await client.sendFriendRequest(orgId).catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("cannot_send");
+    expect(fetch.mock.calls[0]?.[0]).toBe("https://x.test/v1/me/friend-requests");
+    await client.banFromGroup(orgId, orgId).catch(() => undefined);
+    expect(fetch.mock.calls[1]?.[0]).toBe(`https://x.test/v1/groups/${orgId}/bans/${orgId}`);
+    expect(fetch.mock.calls[1]?.[1]?.method).toBe("PUT");
+    await client.groupMembers(orgId, "pending").catch(() => undefined);
+    expect(fetch.mock.calls[2]?.[0]).toBe(
+      `https://x.test/v1/groups/${orgId}/members?status=pending`,
+    );
+    await client.moderate("user", orgId, "dismiss-reports").catch(() => undefined);
+    expect(fetch.mock.calls[3]?.[0]).toBe(
+      `https://x.test/v1/moderation/users/${orgId}/dismiss-reports`,
+    );
+    await client.searchGroups({ kind: "route", q: "N1" }).catch(() => undefined);
+    expect(fetch.mock.calls[4]?.[0]).toBe("https://x.test/v1/groups?kind=route&q=N1");
+    // Rejected locally: a malformed user ID, a specialty group without a specialty.
+    await expect(client.sendFriendRequest("not-a-uuid")).rejects.toThrow();
+    await expect(client.createGroup({ name: "Tankers", kind: "specialty" })).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(5);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

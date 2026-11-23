@@ -60,7 +60,7 @@ export function hasUnsafeCharacters(value: string, allow = /[\n\t]/g): boolean {
   return /\p{Cc}/u.test(value.replace(allow, "")) || BIDI_CONTROLS.test(value);
 }
 
-const safeText = (max: number, options: { min?: number; multiline?: boolean } = {}) =>
+export const safeText = (max: number, options: { min?: number; multiline?: boolean } = {}) =>
   z
     .string()
     .min(options.min ?? 0)
@@ -465,29 +465,6 @@ export const updateCommentSchema = z
   })
   .strict();
 
-export const REPORT_REASONS = [
-  "spam",
-  "scam",
-  "harassment",
-  "hate",
-  "defamation",
-  "misinformation",
-  "sexual_content",
-  "violence",
-  "other",
-] as const;
-export const REPORT_TARGET_TYPES = ["article", "article_comment"] as const;
-export type ReportTargetType = (typeof REPORT_TARGET_TYPES)[number];
-
-export const createReportSchema = z
-  .object({
-    targetType: z.enum(REPORT_TARGET_TYPES),
-    targetId: z.uuid(),
-    reason: z.enum(REPORT_REASONS),
-    details: safeText(1_000, { multiline: true }).nullable().default(null),
-  })
-  .strict();
-
 export const searchArticlesQuerySchema = z
   .object({
     q: safeText(200).pipe(z.string().trim().min(1)).optional(),
@@ -499,13 +476,6 @@ export const searchArticlesQuerySchema = z
   })
   .strict();
 export type SearchArticlesQuery = z.input<typeof searchArticlesQuerySchema>;
-
-export const moderationReasonSchema = z
-  .object({ reason: safeText(1_000, { min: 1, multiline: true }).pipe(z.string().trim().min(3)) })
-  .strict();
-export const optionalModerationReasonSchema = z
-  .object({ reason: safeText(1_000, { multiline: true }).nullable().default(null) })
-  .strict();
 
 // ---------------------------------------------------------------------------------------------
 // Responses
@@ -591,51 +561,6 @@ export const commentListSchema = z.object({
 });
 export type CommentList = z.infer<typeof commentListSchema>;
 
-export const moderationQueueItemSchema = z.object({
-  targetType: z.enum(REPORT_TARGET_TYPES),
-  targetId: z.uuid(),
-  status: z.string(),
-  title: z.string(),
-  authorUserId: z.uuid(),
-  openReports: z.number().int(),
-  reasons: z.array(z.enum(REPORT_REASONS)),
-  waitingSince: z.iso.datetime(),
-});
-export type ModerationQueueItem = z.infer<typeof moderationQueueItemSchema>;
-
-export const moderationActionSchema = z.object({
-  id: z.uuid(),
-  targetType: z.enum(REPORT_TARGET_TYPES),
-  targetId: z.uuid(),
-  action: z.string(),
-  moderatorUserId: z.uuid().nullable(),
-  reason: z.string().nullable(),
-  createdAt: z.iso.datetime(),
-});
-export type ModerationActionDto = z.infer<typeof moderationActionSchema>;
-
-export const contentReportSchema = z.object({
-  id: z.uuid(),
-  reason: z.enum(REPORT_REASONS),
-  details: z.string().nullable(),
-  status: z.enum(["open", "actioned", "dismissed"]),
-  createdAt: z.iso.datetime(),
-});
-
-export const moderationCaseSchema = z.object({
-  targetType: z.enum(REPORT_TARGET_TYPES),
-  targetId: z.uuid(),
-  status: z.string(),
-  authorUserId: z.uuid(),
-  /** Article title or comment body, as submitted. */
-  title: z.string(),
-  text: z.string(),
-  articleId: z.uuid(),
-  reports: z.array(contentReportSchema),
-  actions: z.array(moderationActionSchema),
-});
-export type ModerationCase = z.infer<typeof moderationCaseSchema>;
-
 export const articleErrorReasonSchema = z.enum([
   "rating_content",
   "too_many_links",
@@ -648,8 +573,6 @@ export const articleErrorReasonSchema = z.enum([
   "invalid_transition",
   "comments_disabled",
   "invalid_parent",
-  "own_content",
-  "already_reported",
   "upload_missing",
   "upload_size_mismatch",
   "content_type_mismatch",

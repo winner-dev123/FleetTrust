@@ -53,6 +53,8 @@ describe("migrations on a fresh database", () => {
       "0020_service_requests_triggers",
       "0021_articles",
       "0022_articles_triggers",
+      "0023_community",
+      "0024_community_triggers",
     ]);
   });
 
@@ -86,9 +88,13 @@ describe("migrations on a fresh database", () => {
       "branch_hours_exceptions",
       "branch_opening_hours",
       "branches",
+      "community_group_members",
+      "community_groups",
       "content_reports",
       "currencies",
       "document_access_grants",
+      "friend_requests",
+      "friendships",
       "invitations",
       "memberships",
       "moderation_actions",
@@ -116,6 +122,8 @@ describe("migrations on a fresh database", () => {
       "service_request_events",
       "service_request_recipients",
       "service_requests",
+      "social_settings",
+      "user_blocks",
       "users",
       "verification_appeals",
       "verification_badges",
