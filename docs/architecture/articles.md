@@ -143,7 +143,7 @@ Responses include the document (`body`) and server-rendered, escaped `html`. Lin
 | `POST /v1/moderation/{articles,comments}/:id/dismiss-reports` | Close open reports, no change to the content                  |
 | `POST /v1/moderation/comments/:commentId/hide` and `/restore` | Hide needs `{ reason }`                                       |
 
-Moderators can't decide on their own content (409 `own_content`). Grant the role with `pnpm db:staff grant <email> trust_safety_moderator`.
+Moderators can't decide on their own content (409 `own_content`). Reports and moderation live in the shared `moderation` module, which also covers groups and members ([community.md](community.md)). Grant the role with `pnpm db:staff grant <email> trust_safety_moderator`.
 
 ## Automatic flagging
 

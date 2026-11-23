@@ -11,6 +11,8 @@ import { OrganizationsModule } from "./modules/organizations/index.js";
 import { ProvidersModule } from "./modules/providers/index.js";
 import { RequestsModule } from "./modules/requests/index.js";
 import { ArticlesModule } from "./modules/articles/index.js";
+import { ModerationModule } from "./modules/moderation/index.js";
+import { CommunityModule } from "./modules/community/index.js";
 import { SearchModule } from "./modules/search/index.js";
 import { VerificationModule } from "./modules/verification/index.js";
 import { type AppLogger, createLogger } from "./observability/logger.js";
@@ -71,6 +73,8 @@ export class AppModule {
         // Service requests and informational quotes.
         RequestsModule,
         ArticlesModule,
+        ModerationModule,
+        CommunityModule,
         HealthModule,
       ],
     };

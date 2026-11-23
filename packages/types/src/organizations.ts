@@ -45,6 +45,8 @@ export const PERMISSIONS = [
   "requests.respond",
   /** Publish community articles on behalf of the organization (Prompt 15; uses its article quota). */
   "articles.publish",
+  /** Host community groups on behalf of the organization (Prompt 16; uses its group quota). */
+  "groups.host",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -71,6 +73,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "requests.manage",
     "requests.respond",
     "articles.publish",
+    "groups.host",
   ],
   manager: [
     "org.read",
@@ -82,6 +85,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "requests.manage",
     "requests.respond",
     "articles.publish",
+    "groups.host",
   ],
   staff: ["org.read", "branches.read", "requests.respond"],
   driver: ["org.read", "branches.read", "requests.create"],

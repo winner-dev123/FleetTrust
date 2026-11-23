@@ -1,4 +1,35 @@
 import {
+  type BlockedUserDto,
+  blockedUserSchema,
+  type CommunityErrorReason,
+  communityErrorReasonSchema,
+  createGroupSchema,
+  type FriendDto,
+  friendSchema,
+  type FriendRequestDto,
+  friendRequestSchema,
+  type GroupDto,
+  groupSchema,
+  type GroupMemberDto,
+  groupMemberSchema,
+  type GroupPage,
+  groupPageSchema,
+  type GroupRole,
+  moderationErrorReasonSchema,
+  type ModerationErrorReason,
+  type PersonDto,
+  personSchema,
+  type PersonProfile,
+  personProfileSchema,
+  type ReportTargetType,
+  type SearchGroupsQuery,
+  searchGroupsQuerySchema,
+  type SendFriendRequestResult,
+  sendFriendRequestResultSchema,
+  type SocialSettings,
+  socialSettingsSchema,
+  updateGroupSchema,
+  updateSocialSettingsSchema,
   type ArticleCommentDto,
   articleCommentSchema,
   type ArticleErrorReason,
@@ -162,6 +193,9 @@ export type SearchQueryParams = Partial<
 /** Article search query string values (validated with `searchArticlesQuerySchema`). */
 export type ArticleQueryParams = Partial<Record<keyof SearchArticlesQuery, string | number>>;
 
+/** Group search query string values (validated with `searchGroupsQuerySchema`). */
+export type GroupQueryParams = Partial<Record<keyof SearchGroupsQuery, string | number>>;
+
 export type ApiErrorReason =
   | AuthErrorReason
   | OrganizationErrorReason
@@ -174,6 +208,8 @@ export type ApiErrorReason =
   | "insufficient_role"
   | RequestErrorReason
   | ArticleErrorReason
+  | ModerationErrorReason
+  | CommunityErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -445,17 +481,60 @@ export interface ApiClient {
   report(report: z.input<typeof createReportSchema>): Promise<{ id: string; status: "open" }>;
   /** Trust and safety console (platform role trust_safety_moderator). */
   moderationQueue(): Promise<ModerationQueueItem[]>;
-  moderationCase(
-    targetType: "article" | "article_comment",
-    targetId: string,
-  ): Promise<ModerationCase>;
-  /** `reject` and `hide` need a reason (shown to the author). */
+  moderationCase(targetType: ReportTargetType, targetId: string): Promise<ModerationCase>;
+  /**
+   * `reject` and `hide` need a reason (shown to the author). Articles: all decisions; comments
+   * and groups: hide, restore, dismiss-reports; members: dismiss-reports (sanctions: Prompt 23).
+   */
   moderate(
-    targetType: "article" | "article_comment",
+    targetType: ReportTargetType,
     targetId: string,
     decision: "approve" | "reject" | "hide" | "restore" | "dismiss-reports",
     reason?: string | null,
   ): Promise<ModerationCase>;
+  socialSettings(): Promise<SocialSettings>;
+  updateSocialSettings(change: z.input<typeof updateSocialSettingsSchema>): Promise<SocialSettings>;
+  friends(): Promise<FriendDto[]>;
+  unfriend(userId: string): Promise<void>;
+  /**
+   * Uses one friend_requests.daily unit only when a request is actually sent. If they already
+   * asked you, this accepts their request instead (`outcome: "accepted"`).
+   */
+  sendFriendRequest(userId: string): Promise<SendFriendRequestResult>;
+  friendRequests(direction?: "incoming" | "outgoing"): Promise<FriendRequestDto[]>;
+  acceptFriendRequest(requestId: string): Promise<FriendDto>;
+  declineFriendRequest(requestId: string): Promise<void>;
+  cancelFriendRequest(requestId: string): Promise<void>;
+  blockedUsers(): Promise<BlockedUserDto[]>;
+  /** Ends the friendship and pending requests. The other person isn't told. */
+  blockUser(userId: string): Promise<void>;
+  unblockUser(userId: string): Promise<void>;
+  /** Members who opted in to search, by display name prefix (at least 2 characters). */
+  searchPeople(q: string, limit?: number): Promise<PersonDto[]>;
+  person(userId: string): Promise<PersonProfile>;
+  personFriends(userId: string): Promise<FriendDto[]>;
+  /** Public group directory. */
+  searchGroups(query?: GroupQueryParams): Promise<GroupPage>;
+  group(slug: string): Promise<GroupDto>;
+  myGroups(): Promise<GroupDto[]>;
+  /** Uses one groups.daily unit (the organization's for hosted groups). */
+  createGroup(group: z.input<typeof createGroupSchema>): Promise<GroupDto>;
+  updateGroup(groupId: string, change: z.input<typeof updateGroupSchema>): Promise<GroupDto>;
+  archiveGroup(groupId: string): Promise<void>;
+  joinGroup(groupId: string): Promise<GroupDto>;
+  leaveGroup(groupId: string): Promise<void>;
+  /** Active members (members only); pending and banned (owners and moderators). */
+  groupMembers(
+    groupId: string,
+    status?: "active" | "pending" | "banned",
+  ): Promise<GroupMemberDto[]>;
+  approveGroupMember(groupId: string, userId: string): Promise<void>;
+  rejectGroupMember(groupId: string, userId: string): Promise<void>;
+  /** Owner only. Role "owner" hands over ownership. */
+  setGroupRole(groupId: string, userId: string, role: GroupRole): Promise<void>;
+  removeGroupMember(groupId: string, userId: string): Promise<void>;
+  banFromGroup(groupId: string, userId: string): Promise<void>;
+  unbanFromGroup(groupId: string, userId: string): Promise<void>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -496,14 +575,20 @@ const articlePath = (articleId: string, ...rest: string[]) =>
     .map((part, i) => (i === 0 ? part : encodeURIComponent(part)))
     .join("/");
 
-const moderationPath = (
-  targetType: "article" | "article_comment",
-  targetId: string,
-  ...rest: string[]
-) =>
+const groupPath = (...parts: string[]) =>
+  ["/v1/groups", ...parts.map(encodeURIComponent)].join("/");
+
+const MODERATION_SEGMENT: Record<ReportTargetType, string> = {
+  article: "articles",
+  article_comment: "comments",
+  group: "groups",
+  user: "users",
+};
+
+const moderationPath = (targetType: ReportTargetType, targetId: string, ...rest: string[]) =>
   [
     "/v1/moderation",
-    targetType === "article" ? "articles" : "comments",
+    MODERATION_SEGMENT[targetType],
     encodeURIComponent(targetId),
     ...rest.map(encodeURIComponent),
   ].join("/");
@@ -523,6 +608,8 @@ const errorBodySchema = z
         z.literal("insufficient_role"),
         requestErrorReasonSchema,
         articleErrorReasonSchema,
+        moderationErrorReasonSchema,
+        communityErrorReasonSchema,
         z.literal("quota_exceeded"),
       ])
       .optional(),
@@ -1467,6 +1554,221 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         path: moderationPath(targetType, targetId, decision),
         schema: moderationCaseSchema,
         body: { reason },
+        authenticated: true,
+      }),
+    socialSettings: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/social-settings",
+        schema: socialSettingsSchema,
+        authenticated: true,
+      }),
+    updateSocialSettings: async (change) =>
+      send({
+        method: "PATCH",
+        path: "/v1/me/social-settings",
+        schema: socialSettingsSchema,
+        body: updateSocialSettingsSchema.parse(change),
+        authenticated: true,
+      }),
+    friends: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/friends",
+        schema: z.array(friendSchema),
+        authenticated: true,
+      }),
+    unfriend: (userId) =>
+      send({
+        method: "DELETE",
+        path: `/v1/me/friends/${encodeURIComponent(userId)}`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    sendFriendRequest: async (userId) =>
+      send({
+        method: "POST",
+        path: "/v1/me/friend-requests",
+        schema: sendFriendRequestResultSchema,
+        body: { userId: z.uuid().parse(userId) },
+        authenticated: true,
+      }),
+    friendRequests: (direction = "incoming") =>
+      send({
+        method: "GET",
+        path: `/v1/me/friend-requests?direction=${direction}`,
+        schema: z.array(friendRequestSchema),
+        authenticated: true,
+      }),
+    acceptFriendRequest: (requestId) =>
+      send({
+        method: "POST",
+        path: `/v1/me/friend-requests/${encodeURIComponent(requestId)}/accept`,
+        schema: friendSchema,
+        authenticated: true,
+      }),
+    declineFriendRequest: (requestId) =>
+      send({
+        method: "POST",
+        path: `/v1/me/friend-requests/${encodeURIComponent(requestId)}/decline`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    cancelFriendRequest: (requestId) =>
+      send({
+        method: "POST",
+        path: `/v1/me/friend-requests/${encodeURIComponent(requestId)}/cancel`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    blockedUsers: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/blocks",
+        schema: z.array(blockedUserSchema),
+        authenticated: true,
+      }),
+    blockUser: (userId) =>
+      send({
+        method: "PUT",
+        path: `/v1/me/blocks/${encodeURIComponent(userId)}`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    unblockUser: (userId) =>
+      send({
+        method: "DELETE",
+        path: `/v1/me/blocks/${encodeURIComponent(userId)}`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    searchPeople: (q, limit = 20) =>
+      send({
+        method: "GET",
+        path: `/v1/people?${new URLSearchParams({ q, limit: String(limit) }).toString()}`,
+        schema: z.array(personSchema),
+        authenticated: true,
+      }),
+    person: (userId) =>
+      send({
+        method: "GET",
+        path: `/v1/people/${encodeURIComponent(userId)}`,
+        schema: personProfileSchema,
+        authenticated: true,
+      }),
+    personFriends: (userId) =>
+      send({
+        method: "GET",
+        path: `/v1/people/${encodeURIComponent(userId)}/friends`,
+        schema: z.array(friendSchema),
+        authenticated: true,
+      }),
+    searchGroups: async (query = {}) => {
+      searchGroupsQuerySchema.parse(query);
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(query)) params.set(key, String(value));
+      const qs = params.toString();
+      return send({
+        method: "GET",
+        path: `/v1/groups${qs === "" ? "" : `?${qs}`}`,
+        schema: groupPageSchema,
+        authenticated: false,
+      });
+    },
+    group: (slug) =>
+      send({ method: "GET", path: groupPath(slug), schema: groupSchema, authenticated: false }),
+    myGroups: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/groups",
+        schema: z.array(groupSchema),
+        authenticated: true,
+      }),
+    createGroup: async (group) =>
+      send({
+        method: "POST",
+        path: "/v1/groups",
+        schema: groupSchema,
+        body: createGroupSchema.parse(group),
+        authenticated: true,
+      }),
+    updateGroup: async (groupId, change) =>
+      send({
+        method: "PATCH",
+        path: groupPath(groupId),
+        schema: groupSchema,
+        body: updateGroupSchema.parse(change),
+        authenticated: true,
+      }),
+    archiveGroup: (groupId) =>
+      send({
+        method: "POST",
+        path: groupPath(groupId, "archive"),
+        schema: undefined,
+        authenticated: true,
+      }),
+    joinGroup: (groupId) =>
+      send({
+        method: "POST",
+        path: groupPath(groupId, "join"),
+        schema: groupSchema,
+        authenticated: true,
+      }),
+    leaveGroup: (groupId) =>
+      send({
+        method: "POST",
+        path: groupPath(groupId, "leave"),
+        schema: undefined,
+        authenticated: true,
+      }),
+    groupMembers: (groupId, status = "active") =>
+      send({
+        method: "GET",
+        path: `${groupPath(groupId, "members")}?status=${status}`,
+        schema: z.array(groupMemberSchema),
+        authenticated: true,
+      }),
+    approveGroupMember: (groupId, userId) =>
+      send({
+        method: "POST",
+        path: groupPath(groupId, "members", userId, "approve"),
+        schema: undefined,
+        authenticated: true,
+      }),
+    rejectGroupMember: (groupId, userId) =>
+      send({
+        method: "POST",
+        path: groupPath(groupId, "members", userId, "reject"),
+        schema: undefined,
+        authenticated: true,
+      }),
+    setGroupRole: (groupId, userId, role) =>
+      send({
+        method: "PATCH",
+        path: groupPath(groupId, "members", userId),
+        schema: undefined,
+        body: { role },
+        authenticated: true,
+      }),
+    removeGroupMember: (groupId, userId) =>
+      send({
+        method: "DELETE",
+        path: groupPath(groupId, "members", userId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    banFromGroup: (groupId, userId) =>
+      send({
+        method: "PUT",
+        path: groupPath(groupId, "bans", userId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    unbanFromGroup: (groupId, userId) =>
+      send({
+        method: "DELETE",
+        path: groupPath(groupId, "bans", userId),
+        schema: undefined,
         authenticated: true,
       }),
     provider: (slug, options) =>

@@ -7,13 +7,10 @@ import {
   ArticlesController,
   BookmarksController,
   CommentsController,
-  ModerationController,
   MyArticlesController,
-  ReportsController,
 } from "./articles.controller.js";
 import { ArticlesService } from "./articles.service.js";
 import { CommentsService } from "./comments.service.js";
-import { ModerationService } from "./moderation.service.js";
 
 /**
  * Community articles and the knowledge hub (SRS J7, F-110..F-112, ADR-0022): drafts, sanitised
@@ -28,9 +25,7 @@ import { ModerationService } from "./moderation.service.js";
     BookmarksController,
     ArticleImagesController,
     CommentsController,
-    ReportsController,
-    ModerationController,
   ],
-  providers: [ArticlesService, ArticleImagesService, CommentsService, ModerationService],
+  providers: [ArticlesService, ArticleImagesService, CommentsService],
 })
 export class ArticlesModule {}

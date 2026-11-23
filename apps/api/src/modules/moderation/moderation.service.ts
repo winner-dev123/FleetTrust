@@ -1,21 +1,21 @@
 import {
   and,
   type Article,
-  type ArticleComment,
   articleComments,
   articles,
   asc,
+  communityGroups,
   contentReports,
   type Database,
   enqueueOutboxEvent,
   eq,
   type Executor,
-  isNull,
   moderationActions,
   queryRows,
   recordAuditEvent,
   sql,
   type User,
+  users,
 } from "@fleettrust/db";
 import {
   AUTO_FLAG_REPORTS,
@@ -30,11 +30,13 @@ import type { z } from "zod";
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
 import { currentRequestContext } from "../../observability/request-context.js";
 import { CLOCK, type Clock } from "../../platform/clock/index.js";
-import { articleError, notFound, violates } from "./shared.js";
+import { moderationError, notFound, violates } from "./shared.js";
 
 type ReportInput = z.output<typeof createReportSchema>;
 export type ArticleDecision = "approve" | "reject" | "hide" | "restore";
-export type CommentDecision = "hide" | "restore";
+/** Comments and groups can be hidden and restored. */
+export type VisibilityDecision = "hide" | "restore";
+type Action = (typeof moderationActions.$inferInsert)["action"];
 
 type ArticleStatus = Article["status"];
 const ARTICLE_MOVES: Record<
@@ -47,9 +49,9 @@ const ARTICLE_MOVES: Record<
   restore: { from: ["hidden"], to: "published" },
 };
 /** Decisions that uphold reports ("actioned"); the others dismiss them. */
-const UPHOLDS = new Set(["reject", "hide"]);
+const UPHOLDS = new Set<string>(["reject", "hide"]);
 
-const OUTBOX_ACTION: Record<string, string> = {
+const PAST: Record<Action, string> = {
   approve: "approved",
   reject: "rejected",
   hide: "hidden",
@@ -57,11 +59,28 @@ const OUTBOX_ACTION: Record<string, string> = {
   dismiss_reports: "reports_dismissed",
   auto_flag: "auto_flagged",
 };
+const OUTBOX: Record<ReportTargetType, string> = {
+  article: "ArticleModerated",
+  article_comment: "ArticleCommentModerated",
+  group: "GroupModerated",
+  user: "UserModerated",
+};
+
+interface Target {
+  /** Who is responsible: the author, the group's creator, or the reported member. */
+  authorUserId: string;
+  status: string;
+  title: string;
+  text: string;
+  articleId: string | null;
+}
 
 /**
- * Reports and the trust and safety queue (F-112, SRS J9, AB-06/AB-13). Every decision is written
- * to the append-only `moderation_actions` history and the audit log, and goes to the outbox so
- * the author can be told (Prompt 17). Appeals and account sanctions come with Prompt 23.
+ * Reports and the trust and safety queue (SRS J9, F-112, AB-05/06/13), shared by articles,
+ * comments, groups and members. Every decision goes to the append-only `moderation_actions`
+ * history, the audit log and the outbox (so the person concerned can be told, Prompt 17).
+ * Member sanctions (warnings, suspensions) and appeals come with Prompt 23: member reports can
+ * only be dismissed for now.
  */
 @Injectable()
 export class ModerationService {
@@ -79,11 +98,11 @@ export class ModerationService {
   // Reports
   // -------------------------------------------------------------------------------------------
 
-  /** Public content only; your own content can't be reported. */
+  /** Public content and active members only; you can't report yourself or your own content. */
   async report(user: User, input: ReportInput): Promise<{ id: string; status: "open" }> {
     return this.db.transaction(async (tx) => {
-      const target = await this.publicTarget(tx, input.targetType, input.targetId);
-      if (target.authorUserId === user.id) throw articleError(400, "own_content");
+      const target = await this.target(tx, input.targetType, input.targetId, { publicOnly: true });
+      if (target.authorUserId === user.id) throw moderationError(400, "own_content");
       let id: string;
       try {
         const [row] = await tx
@@ -99,8 +118,9 @@ export class ModerationService {
         if (!row) throw new Error("report insert returned no row");
         id = row.id;
       } catch (error) {
-        if (violates(error, "content_reports_open_key"))
-          throw articleError(409, "already_reported");
+        if (violates(error, "content_reports_open_key")) {
+          throw moderationError(409, "already_reported");
+        }
         throw error;
       }
       await recordAuditEvent(tx, {
@@ -123,57 +143,111 @@ export class ModerationService {
     });
   }
 
-  private async publicTarget(
+  /** Loads a report target. `publicOnly`: only what members of the public can currently see. */
+  private async target(
     executor: Executor,
     type: ReportTargetType,
     id: string,
-  ): Promise<{ authorUserId: string }> {
-    if (type === "article") {
-      const [row] = await executor
-        .select({ authorUserId: articles.authorUserId })
-        .from(articles)
-        .where(
-          and(eq(articles.id, id), eq(articles.status, "published"), isNull(articles.deletedAt)),
-        );
-      if (!row) throw notFound();
-      return row;
+    options: { publicOnly?: boolean; lock?: boolean } = {},
+  ): Promise<Target> {
+    const lock = options.lock === true;
+    switch (type) {
+      case "article": {
+        const query = executor.select().from(articles).where(eq(articles.id, id));
+        const [row] = lock ? await query.for("update") : await query;
+        // Drafts are private to their author, even for moderators.
+        if (!row || row.status === "draft") throw notFound();
+        if (options.publicOnly === true && (row.status !== "published" || row.deletedAt !== null))
+          throw notFound();
+        return {
+          authorUserId: row.authorUserId,
+          status: row.status,
+          title: row.title,
+          text: row.bodyText,
+          articleId: row.id,
+        };
+      }
+      case "article_comment": {
+        const query = executor
+          .select({ comment: articleComments, article: articles })
+          .from(articleComments)
+          .innerJoin(articles, eq(articles.id, articleComments.articleId))
+          .where(eq(articleComments.id, id));
+        const [row] = lock ? await query.for("update", { of: articleComments }) : await query;
+        if (!row) throw notFound();
+        if (
+          options.publicOnly === true &&
+          (row.comment.status !== "visible" ||
+            row.article.status !== "published" ||
+            row.article.deletedAt !== null)
+        )
+          throw notFound();
+        return {
+          authorUserId: row.comment.authorUserId,
+          status: row.comment.status,
+          title: row.comment.body.slice(0, 120),
+          text: row.comment.body,
+          articleId: row.article.id,
+        };
+      }
+      case "group": {
+        const query = executor.select().from(communityGroups).where(eq(communityGroups.id, id));
+        const [row] = lock ? await query.for("update") : await query;
+        if (!row) throw notFound();
+        if (options.publicOnly === true && row.status !== "active") throw notFound();
+        return {
+          authorUserId: row.createdBy,
+          status: row.status,
+          title: row.name,
+          text: row.description ?? "",
+          articleId: null,
+        };
+      }
+      case "user": {
+        const [row] = await executor.select().from(users).where(eq(users.id, id));
+        if (!row) throw notFound();
+        if (options.publicOnly === true && row.status !== "active") throw notFound();
+        return {
+          authorUserId: row.id,
+          status: row.status,
+          title: row.displayName ?? "FleetTrust member",
+          text: "",
+          articleId: null,
+        };
+      }
     }
-    const [row] = await executor
-      .select({ authorUserId: articleComments.authorUserId })
-      .from(articleComments)
-      .innerJoin(articles, eq(articles.id, articleComments.articleId))
-      .where(
-        and(
-          eq(articleComments.id, id),
-          eq(articleComments.status, "visible"),
-          eq(articles.status, "published"),
-          isNull(articles.deletedAt),
-        ),
-      );
-    if (!row) throw notFound();
-    return row;
   }
 
   /** Enough distinct reporters take content out of public view until a moderator decides. */
   private async autoFlag(executor: Executor, type: ReportTargetType, id: string): Promise<void> {
+    // Members aren't suspended automatically: sanctions need a person (Prompt 23).
+    if (type === "user") return;
     const [counted] = await queryRows<{ n: number }>(
       executor,
       sql`SELECT count(DISTINCT reporter_user_id)::int AS n FROM content_reports
           WHERE target_type = ${type} AND target_id = ${id} AND status = 'open'`,
     );
     if ((counted?.n ?? 0) < AUTO_FLAG_REPORTS) return;
-    const moved =
-      type === "article"
-        ? await executor
-            .update(articles)
-            .set({ status: "pending_moderation" })
-            .where(and(eq(articles.id, id), eq(articles.status, "published")))
-            .returning({ id: articles.id })
-        : await executor
-            .update(articleComments)
-            .set({ status: "hidden" })
-            .where(and(eq(articleComments.id, id), eq(articleComments.status, "visible")))
-            .returning({ id: articleComments.id });
+    let moved: { id: string }[];
+    if (type === "article") {
+      moved = await executor
+        .update(articles)
+        .set({ status: "pending_moderation" })
+        .where(and(eq(articles.id, id), eq(articles.status, "published")))
+        .returning({ id: articles.id });
+    } else if (type === "article_comment") {
+      moved = await executor
+        .update(articleComments)
+        .set({ status: "hidden" })
+        .where(and(eq(articleComments.id, id), eq(articleComments.status, "visible")))
+        .returning({ id: articleComments.id });
+    } else {
+      moved = await executor
+        .update(communityGroups)
+        .set({ status: "hidden" })
+        .where(and(eq(communityGroups.id, id), eq(communityGroups.status, "active")))
+        .returning({ id: communityGroups.id });
+    }
     if (moved.length === 0) return;
     await this.record(executor, null, type, id, "auto_flag", null, { reports: counted?.n });
   }
@@ -188,7 +262,7 @@ export class ModerationService {
       target_type: ReportTargetType;
       target_id: string;
       status: string;
-      title: string;
+      title: string | null;
       author_user_id: string;
       open_reports: number;
       reasons: string[] | null;
@@ -214,6 +288,16 @@ export class ModerationService {
                  o.open_reports, o.reasons, o.first_report
           FROM article_comments c
           JOIN open o ON o.target_type = 'article_comment' AND o.target_id = c.id
+          UNION ALL
+          SELECT 'group', g.id, g.status, g.name, g.created_by,
+                 o.open_reports, o.reasons, o.first_report
+          FROM community_groups g
+          JOIN open o ON o.target_type = 'group' AND o.target_id = g.id
+          UNION ALL
+          SELECT 'user', u.id, u.status, u.display_name, u.id,
+                 o.open_reports, o.reasons, o.first_report
+          FROM users u
+          JOIN open o ON o.target_type = 'user' AND o.target_id = u.id
           ORDER BY waiting_since ASC
           LIMIT 100`,
     );
@@ -221,7 +305,7 @@ export class ModerationService {
       targetType: r.target_type,
       targetId: r.target_id,
       status: r.status,
-      title: r.title,
+      title: r.title ?? "FleetTrust member",
       authorUserId: r.author_user_id,
       openReports: r.open_reports,
       reasons: (r.reasons ?? []) as ModerationQueueItem["reasons"],
@@ -229,83 +313,28 @@ export class ModerationService {
     }));
   }
 
-  private async article(executor: Executor, id: string, lock = false): Promise<Article> {
-    const query = executor.select().from(articles).where(eq(articles.id, id));
-    const [row] = lock ? await query.for("update") : await query;
-    // Drafts are private to their author.
-    if (!row || row.status === "draft") throw notFound();
-    return row;
-  }
-
-  private async comment(executor: Executor, id: string, lock = false): Promise<ArticleComment> {
-    const query = executor.select().from(articleComments).where(eq(articleComments.id, id));
-    const [row] = lock ? await query.for("update") : await query;
-    if (!row) throw notFound();
-    return row;
-  }
-
-  async articleCase(id: string): Promise<ModerationCase> {
-    const row = await this.article(this.db, id);
-    return this.caseOf(
-      "article",
-      row.id,
-      row.status,
-      row.authorUserId,
-      row.title,
-      row.bodyText,
-      row.id,
-    );
-  }
-
-  async commentCase(id: string): Promise<ModerationCase> {
-    const row = await this.comment(this.db, id);
-    return this.caseOf(
-      "article_comment",
-      row.id,
-      row.status,
-      row.authorUserId,
-      row.body.slice(0, 120),
-      row.body,
-      row.articleId,
-    );
-  }
-
-  private async caseOf(
-    targetType: ReportTargetType,
-    targetId: string,
-    status: string,
-    authorUserId: string,
-    title: string,
-    text: string,
-    articleId: string,
-  ): Promise<ModerationCase> {
+  async case(type: ReportTargetType, id: string): Promise<ModerationCase> {
+    const target = await this.target(this.db, type, id);
     const [reports, actions] = await Promise.all([
       this.db
         .select()
         .from(contentReports)
-        .where(
-          and(eq(contentReports.targetType, targetType), eq(contentReports.targetId, targetId)),
-        )
+        .where(and(eq(contentReports.targetType, type), eq(contentReports.targetId, id)))
         .orderBy(asc(contentReports.createdAt)),
       this.db
         .select()
         .from(moderationActions)
-        .where(
-          and(
-            eq(moderationActions.targetType, targetType),
-            eq(moderationActions.targetId, targetId),
-          ),
-        )
+        .where(and(eq(moderationActions.targetType, type), eq(moderationActions.targetId, id)))
         .orderBy(asc(moderationActions.createdAt), asc(moderationActions.id)),
     ]);
     return {
-      targetType,
-      targetId,
-      status,
-      authorUserId,
-      title,
-      text,
-      articleId,
+      targetType: type,
+      targetId: id,
+      status: target.status,
+      authorUserId: target.authorUserId,
+      title: target.title,
+      text: target.text,
+      articleId: target.articleId,
       reports: reports.map((r) => ({
         id: r.id,
         reason: r.reason,
@@ -336,11 +365,12 @@ export class ModerationService {
     reason: string | null,
   ): Promise<ModerationCase> {
     await this.db.transaction(async (tx) => {
-      const row = await this.article(tx, id, true);
-      if (row.authorUserId === moderator.id) throw articleError(409, "own_content");
-      if (row.deletedAt !== null) throw articleError(409, "invalid_transition");
+      const target = await this.target(tx, "article", id, { lock: true });
+      if (target.authorUserId === moderator.id) throw moderationError(409, "own_content");
+      const [row] = await tx.select().from(articles).where(eq(articles.id, id));
+      if (row?.deletedAt !== null) throw moderationError(409, "invalid_transition");
       const move = ARTICLE_MOVES[decision];
-      if (!move.from.includes(row.status)) throw articleError(409, "invalid_transition");
+      if (!move.from.includes(row.status)) throw moderationError(409, "invalid_transition");
       const upheld = UPHOLDS.has(decision);
       await tx
         .update(articles)
@@ -358,35 +388,48 @@ export class ModerationService {
         authorUserId: row.authorUserId,
       });
     });
-    return this.articleCase(id);
+    return this.case("article", id);
   }
 
-  async decideComment(
+  /** Hide or restore a comment or a group. */
+  async decideVisibility(
     moderator: User,
+    type: "article_comment" | "group",
     id: string,
-    decision: CommentDecision,
+    decision: VisibilityDecision,
     reason: string | null,
   ): Promise<ModerationCase> {
     await this.db.transaction(async (tx) => {
-      const row = await this.comment(tx, id, true);
-      if (row.authorUserId === moderator.id) throw articleError(409, "own_content");
-      const from = decision === "hide" ? "visible" : "hidden";
-      if (row.status !== from) throw articleError(409, "invalid_transition");
-      const to = decision === "hide" ? "hidden" : "visible";
-      await tx.update(articleComments).set({ status: to }).where(eq(articleComments.id, row.id));
+      const target = await this.target(tx, type, id, { lock: true });
+      if (target.authorUserId === moderator.id) throw moderationError(409, "own_content");
+      const shown = type === "group" ? "active" : "visible";
+      const from = decision === "hide" ? shown : "hidden";
+      const to = decision === "hide" ? "hidden" : shown;
+      if (target.status !== from) throw moderationError(409, "invalid_transition");
+      if (type === "group") {
+        await tx
+          .update(communityGroups)
+          .set({ status: to as "active" | "hidden" })
+          .where(eq(communityGroups.id, id));
+      } else {
+        await tx
+          .update(articleComments)
+          .set({ status: to as "visible" | "hidden" })
+          .where(eq(articleComments.id, id));
+      }
       const upheld = decision === "hide";
-      const resolved = await this.resolveReports(tx, moderator, "article_comment", row.id, upheld);
-      await this.record(tx, moderator, "article_comment", row.id, decision, reason, {
+      const resolved = await this.resolveReports(tx, moderator, type, id, upheld);
+      await this.record(tx, moderator, type, id, decision, reason, {
         from,
         to,
         reports: resolved,
-        authorUserId: row.authorUserId,
+        authorUserId: target.authorUserId,
       });
     });
-    return this.commentCase(id);
+    return this.case(type, id);
   }
 
-  /** Closes open reports without changing the content (e.g. the reports were unfounded). */
+  /** Closes open reports without changing anything (e.g. the reports were unfounded). */
   async dismissReports(
     moderator: User,
     type: ReportTargetType,
@@ -394,14 +437,13 @@ export class ModerationService {
     reason: string | null,
   ): Promise<ModerationCase> {
     await this.db.transaction(async (tx) => {
-      const row =
-        type === "article" ? await this.article(tx, id, true) : await this.comment(tx, id, true);
-      if (row.authorUserId === moderator.id) throw articleError(409, "own_content");
+      const target = await this.target(tx, type, id, { lock: true });
+      if (target.authorUserId === moderator.id) throw moderationError(409, "own_content");
       const resolved = await this.resolveReports(tx, moderator, type, id, false);
-      if (resolved === 0) throw articleError(409, "invalid_transition");
+      if (resolved === 0) throw moderationError(409, "invalid_transition");
       await this.record(tx, moderator, type, id, "dismiss_reports", reason, { reports: resolved });
     });
-    return type === "article" ? this.articleCase(id) : this.commentCase(id);
+    return this.case(type, id);
   }
 
   private async resolveReports(
@@ -434,7 +476,7 @@ export class ModerationService {
     moderator: User | null,
     type: ReportTargetType,
     id: string,
-    action: (typeof moderationActions.$inferInsert)["action"],
+    action: Action,
     reason: string | null,
     metadata: Record<string, unknown>,
   ): Promise<void> {
@@ -449,7 +491,7 @@ export class ModerationService {
     await recordAuditEvent(executor, {
       actorType: moderator === null ? "system" : "admin",
       actorId: moderator?.id ?? null,
-      action: `moderation.${type}_${OUTBOX_ACTION[action] ?? action}`,
+      action: `moderation.${type}_${PAST[action]}`,
       targetType: type,
       targetId: id,
       requestId: currentRequestContext()?.requestId,
@@ -458,7 +500,7 @@ export class ModerationService {
     await enqueueOutboxEvent(executor, {
       aggregateType: type,
       aggregateId: id,
-      eventType: type === "article" ? "ArticleModerated" : "ArticleCommentModerated",
+      eventType: OUTBOX[type],
       payload: { targetId: id, action, ...metadata },
     });
   }

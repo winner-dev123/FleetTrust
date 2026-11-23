@@ -4,5 +4,6 @@ export type {
   ApiClientOptions,
   ApiErrorReason,
   ArticleQueryParams,
+  GroupQueryParams,
   SearchQueryParams,
 } from "./client.js";

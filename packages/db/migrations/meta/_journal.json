@@ -162,6 +162,20 @@
       "when": 1795456223115,
       "tag": "0022_articles_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795461152242,
+      "tag": "0023_community",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795461157882,
+      "tag": "0024_community_triggers",
+      "breakpoints": true
     }
   ]
 }
