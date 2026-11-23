@@ -45,6 +45,8 @@ describe("migrations on a fresh database", () => {
       "0012_provider_profiles_triggers",
       "0013_catalog_and_hours",
       "0014_catalog_triggers",
+      "0015_provider_search",
+      "0016_provider_search_functions",
     ]);
   });
 
@@ -89,6 +91,7 @@ describe("migrations on a fresh database", () => {
       "provider_offering_branches",
       "provider_offerings",
       "provider_profiles",
+      "provider_search_entries",
       "quota_consumptions",
       "quota_counters",
       "quota_overrides",

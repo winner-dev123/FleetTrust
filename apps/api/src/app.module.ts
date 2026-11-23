@@ -8,10 +8,12 @@ import { EntitlementsModule } from "./modules/entitlements/index.js";
 import { IdentityModule } from "./modules/identity/index.js";
 import { OrganizationsModule } from "./modules/organizations/index.js";
 import { ProvidersModule } from "./modules/providers/index.js";
+import { SearchModule } from "./modules/search/index.js";
 import { VerificationModule } from "./modules/verification/index.js";
 import { type AppLogger, createLogger } from "./observability/logger.js";
 import { ObservabilityModule } from "./observability/observability.module.js";
 import { ClockModule } from "./platform/clock/index.js";
+import { MapsModule } from "./platform/maps/index.js";
 import { RateLimitModule } from "./platform/rate-limit/index.js";
 import { StorageModule } from "./platform/storage/index.js";
 
@@ -44,6 +46,8 @@ export class AppModule {
         StorageModule.forRoot(env),
         // Time source (CLOCK), replaceable in tests.
         ClockModule,
+        // Map vendor adapter (tiles config, geocoding).
+        MapsModule.forRoot(env),
         // Registers the global AuthGuard: every route requires sign-in unless marked @Public().
         IdentityModule.forRoot(env),
         // Tenancy: @OrgPermission() routes check membership and role after sign-in.
@@ -54,6 +58,8 @@ export class AppModule {
         VerificationModule,
         // Provider profiles: setup wizard, publication, public views.
         ProvidersModule,
+        // Provider search (PostGIS), ranked by relevance only.
+        SearchModule,
         HealthModule,
       ],
     };

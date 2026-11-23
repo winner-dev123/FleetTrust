@@ -327,6 +327,40 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("search: query strings, visitor vs signed-in routes, local validation", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(() =>
+      Promise.resolve(
+        jsonResponse({
+          results: [],
+          nextCursor: null,
+          ranking: "relevance",
+          priceDisclaimer:
+            "Prices are indicative and are not a binding offer. Confirm the final price with the provider. FleetTrust does not process payments.",
+        }),
+      ),
+    );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    await client.searchProviders({
+      lat: -33.9,
+      lng: 18.4,
+      category: "towing,workshop",
+      openNow: "true",
+    });
+    expect(fetch.mock.calls[0]?.[0]).toBe(
+      "https://x.test/v1/search/providers?lat=-33.9&lng=18.4&category=towing%2Cworkshop&openNow=true",
+    );
+    expect(fetch.mock.calls[0]?.[1]?.headers).not.toHaveProperty("Authorization");
+    await client.searchProviders({ bbox: "18,-34,19,-33" }, { signedIn: true });
+    expect(fetch.mock.calls[1]?.[0]).toBe(
+      "https://x.test/v1/search/providers/full?bbox=18%2C-34%2C19%2C-33",
+    );
+    expect(fetch.mock.calls[1]?.[1]?.headers).toMatchObject({ Authorization: "Bearer t" });
+    // Neither a point nor a viewport, or a viewport that's too large: rejected locally.
+    await expect(client.searchProviders({})).rejects.toThrow();
+    await expect(client.searchProviders({ bbox: "0,0,40,1" })).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

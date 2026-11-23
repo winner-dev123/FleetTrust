@@ -100,6 +100,14 @@ export const apiEnvSchema = z
     CLAMAV_PORT: envFields.port(3310),
     /** Verification documents are deleted this many days after the case is decided (OQ-14). */
     VERIFICATION_DOCUMENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
+    /**
+     * Map and geocoding adapter (OQ-13: vendor not chosen yet). `stub` geocodes a small built-in
+     * list of cities; it is refused in production.
+     */
+    MAP_PROVIDER: z.enum(["stub"]).default("stub"),
+    /** XYZ tile template handed to clients, e.g. https://tiles.example.com/{z}/{x}/{y}.png. */
+    MAP_TILE_URL: z.url({ protocol: /^https$/ }).optional(),
+    MAP_ATTRIBUTION: z.string().min(1).max(300).optional(),
   })
   .superRefine((env, ctx) => {
     const deployed = env.APP_ENV === "staging" || env.APP_ENV === "production";
@@ -163,6 +171,11 @@ export const apiEnvSchema = z
         path: ["APP_VERSION"],
         message: "must be set to the release version in staging and production",
       });
+    }
+    // Clients need a tile source in production. Choosing the vendor (and replacing the stub
+    // geocoder) is a launch blocker tracked as OQ-13.
+    if (env.APP_ENV === "production" && env.MAP_TILE_URL === undefined) {
+      issue("MAP_TILE_URL", "is required in production (map tiles for clients)");
     }
     if (deployed && env.NODE_ENV !== "production") {
       ctx.addIssue({

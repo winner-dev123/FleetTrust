@@ -1,10 +1,13 @@
+import { sql } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createDatabase, type DatabaseHandle, runMigrations } from "../src/database.js";
 import { consumeDailyQuota, dailyUsage } from "../src/quotas.js";
+import { buildSearchQuery, queryRows, searchProviders } from "../src/search.js";
 import { runSeed } from "../src/seed/index.js";
 import { uuidv7 } from "uuidv7";
+import { publishProvider } from "./support/search-fixtures.js";
 
 /**
  * Runs against the real PostgreSQL 17 + PostGIS container (Cloud SQL's major version).
@@ -97,5 +100,54 @@ describe.skipIf(!url)("real PostgreSQL (DATABASE_URL_TEST)", () => {
     } finally {
       await pool.close();
     }
+  });
+
+  it("search uses the GiST index with real planner statistics (no hints) and returns results", async () => {
+    const { organizationId } = await publishProvider(handle.db, {
+      name: "PG17 Search",
+      branches: [{ at: { lng: 18.4241, lat: -33.9249 } }],
+    });
+    // Thousands of rows spread over a continent, so a 10 km search is highly selective.
+    await raw.query(
+      `INSERT INTO branches (organization_id, name)
+       SELECT $1, 'plan-' || g FROM generate_series(1, 4000) AS g`,
+      [organizationId],
+    );
+    await raw.query(
+      `INSERT INTO provider_search_entries (branch_id, organization_id, slug, trading_name,
+         branch_name, categories, vehicle_types, location, approx_location, search_document,
+         published_at)
+       SELECT b.id, b.organization_id, 'pg17-plan', 'Plan', b.name, '{workshop}', '{car}',
+              p.g, p.g, to_tsvector('simple', 'plan'), now()
+       FROM branches b
+       CROSS JOIN LATERAL (
+         -- Referencing b makes random() run per row instead of once.
+         SELECT ST_SetSRID(ST_MakePoint(random() * 40 + 10 + (b.id IS NULL)::int,
+                                        random() * 40 - 40), 4326)::geography AS g
+       ) p
+       WHERE b.organization_id = $1 AND b.name LIKE 'plan-%'`,
+      [organizationId],
+    );
+    await raw.query("ANALYZE provider_search_entries");
+    const params = {
+      at: new Date(),
+      precise: true,
+      area: {
+        kind: "near" as const,
+        point: { lng: 18.4241, lat: -33.9249 },
+        radiusMeters: 10_000,
+        coversLocationOnly: false,
+      },
+      limit: 20,
+    };
+    const plan = await queryRows<{ "QUERY PLAN": string }>(
+      handle.db,
+      sql`EXPLAIN ${buildSearchQuery(params)}`,
+    );
+    expect(plan.map((r) => r["QUERY PLAN"]).join("\n")).toMatch(
+      /provider_search_entries_location_gist/,
+    );
+    const rows = await searchProviders(handle.db, params);
+    expect(rows.map((r) => r.tradingName)).toContain("PG17 Search");
   });
 });

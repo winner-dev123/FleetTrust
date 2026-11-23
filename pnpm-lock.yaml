@@ -519,6 +519,9 @@ importers:
       '@fleettrust/config':
         specifier: workspace:*
         version: link:../config
+      '@fleettrust/types':
+        specifier: workspace:*
+        version: link:../types
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2

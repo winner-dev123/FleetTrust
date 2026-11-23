@@ -49,6 +49,8 @@ Defined in `CATEGORY_DETAIL_SCHEMAS` (`@fleettrust/types`). In drafts, lists may
 
 Only provider organizations have profiles; fleets get 400 `not_a_provider`.
 
+Publishing and unpublishing also rebuild the provider's [search](search.md) rows from the snapshot, in the same transaction.
+
 ## Audit events
 
 `provider_profile.draft_saved` (field names only), `branch_location_saved`, `published`, `unpublished`, `media_added`, `media_removed`.

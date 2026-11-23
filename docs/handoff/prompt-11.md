@@ -1,7 +1,7 @@
 # Handoff — Prompt 11: Service catalogs and published pricing
 
 - Date: 2026-11-19
-- Status: **awaiting owner approval** · branch `feat/prompt-11-catalog`
+- Status: **approved** · PR **#12** squash-merged as `b44b077` (CI 5/5 green on `f994196`)
 - Prompt 10 approved and merged (PR #11 → `ddb185e`).
 
 ## Assumptions
