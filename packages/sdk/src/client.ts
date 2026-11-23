@@ -1,4 +1,30 @@
 import {
+  type ArticleCommentDto,
+  articleCommentSchema,
+  type ArticleErrorReason,
+  articleErrorReasonSchema,
+  type ArticlePage,
+  articlePageSchema,
+  type ArticleSummary,
+  articleSummarySchema,
+  type CommentList,
+  commentListSchema,
+  createArticleImageSchema,
+  createArticleSchema,
+  createCommentSchema,
+  createReportSchema,
+  type ModerationCase,
+  moderationCaseSchema,
+  type ModerationQueueItem,
+  moderationQueueItemSchema,
+  type MyArticle,
+  myArticleSchema,
+  type PublicArticle,
+  publicArticleSchema,
+  type SearchArticlesQuery,
+  searchArticlesQuerySchema,
+  updateArticleSchema,
+  updateCommentSchema,
   type CreateServiceRequest,
   createAttachmentSchema,
   createServiceRequestSchema,
@@ -133,6 +159,9 @@ export type SearchQueryParams = Partial<
   Record<keyof SearchProvidersQuery, string | number | boolean>
 >;
 
+/** Article search query string values (validated with `searchArticlesQuerySchema`). */
+export type ArticleQueryParams = Partial<Record<keyof SearchArticlesQuery, string | number>>;
+
 export type ApiErrorReason =
   | AuthErrorReason
   | OrganizationErrorReason
@@ -144,6 +173,7 @@ export type ApiErrorReason =
   | ListErrorReason
   | "insufficient_role"
   | RequestErrorReason
+  | ArticleErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -382,6 +412,50 @@ export interface ApiClient {
     recipientId: string,
     evidence: z.input<typeof evidenceSchema>,
   ): Promise<InquiryDto>;
+
+  /** Public knowledge hub: published articles, newest first or by relevance when `q` is set. */
+  searchArticles(query?: ArticleQueryParams): Promise<ArticlePage>;
+  article(slug: string): Promise<PublicArticle>;
+  articleComments(slug: string): Promise<CommentList>;
+  /** Saves a draft (no quota). */
+  createArticle(article: z.input<typeof createArticleSchema>): Promise<MyArticle>;
+  myArticles(): Promise<MyArticle[]>;
+  myArticle(articleId: string): Promise<MyArticle>;
+  updateArticle(articleId: string, change: z.input<typeof updateArticleSchema>): Promise<MyArticle>;
+  /** First publication uses one articles.daily unit. New accounts go to moderation first. */
+  publishArticle(articleId: string): Promise<MyArticle>;
+  unpublishArticle(articleId: string): Promise<MyArticle>;
+  deleteArticle(articleId: string): Promise<void>;
+  /** Then PUT the image to `upload.url` and call completeArticleImage. */
+  createArticleImage(file: z.input<typeof createArticleImageSchema>): Promise<{
+    imageId: string;
+    upload: { url: string; method: "PUT"; headers: Record<string, string>; expiresAt: string };
+  }>;
+  completeArticleImage(imageId: string): Promise<{ id: string; url: string }>;
+  bookmarkArticle(articleId: string): Promise<void>;
+  unbookmarkArticle(articleId: string): Promise<void>;
+  bookmarkedArticles(): Promise<ArticleSummary[]>;
+  addComment(
+    articleId: string,
+    comment: z.input<typeof createCommentSchema>,
+  ): Promise<ArticleCommentDto>;
+  editComment(commentId: string, body: string): Promise<ArticleCommentDto>;
+  deleteComment(commentId: string): Promise<void>;
+  /** Reports an article or comment to the trust and safety team. */
+  report(report: z.input<typeof createReportSchema>): Promise<{ id: string; status: "open" }>;
+  /** Trust and safety console (platform role trust_safety_moderator). */
+  moderationQueue(): Promise<ModerationQueueItem[]>;
+  moderationCase(
+    targetType: "article" | "article_comment",
+    targetId: string,
+  ): Promise<ModerationCase>;
+  /** `reject` and `hide` need a reason (shown to the author). */
+  moderate(
+    targetType: "article" | "article_comment",
+    targetId: string,
+    decision: "approve" | "reject" | "hide" | "restore" | "dismiss-reports",
+    reason?: string | null,
+  ): Promise<ModerationCase>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -417,6 +491,23 @@ const orgPath = (orgId: string, ...rest: string[]) =>
     .map((part, i) => (i === 0 ? part : encodeURIComponent(part)))
     .join("/");
 
+const articlePath = (articleId: string, ...rest: string[]) =>
+  ["/v1/me/articles", articleId, ...rest]
+    .map((part, i) => (i === 0 ? part : encodeURIComponent(part)))
+    .join("/");
+
+const moderationPath = (
+  targetType: "article" | "article_comment",
+  targetId: string,
+  ...rest: string[]
+) =>
+  [
+    "/v1/moderation",
+    targetType === "article" ? "articles" : "comments",
+    encodeURIComponent(targetId),
+    ...rest.map(encodeURIComponent),
+  ].join("/");
+
 const errorBodySchema = z
   .object({
     reason: z
@@ -431,6 +522,7 @@ const errorBodySchema = z
         listErrorReasonSchema,
         z.literal("insufficient_role"),
         requestErrorReasonSchema,
+        articleErrorReasonSchema,
         z.literal("quota_exceeded"),
       ])
       .optional(),
@@ -1199,6 +1291,182 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         path: orgPath(orgId, "inquiries", recipientId, "evidence"),
         schema: inquirySchema,
         body: evidenceSchema.parse(evidence),
+        authenticated: true,
+      }),
+    searchArticles: async (query = {}) => {
+      searchArticlesQuerySchema.parse(query);
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(query)) {
+        params.set(key, String(value));
+      }
+      const qs = params.toString();
+      return send({
+        method: "GET",
+        path: `/v1/articles${qs === "" ? "" : `?${qs}`}`,
+        schema: articlePageSchema,
+        authenticated: false,
+      });
+    },
+    article: (slug) =>
+      send({
+        method: "GET",
+        path: `/v1/articles/${encodeURIComponent(slug)}`,
+        schema: publicArticleSchema,
+        authenticated: false,
+      }),
+    articleComments: (slug) =>
+      send({
+        method: "GET",
+        path: `/v1/articles/${encodeURIComponent(slug)}/comments`,
+        schema: commentListSchema,
+        authenticated: false,
+      }),
+    createArticle: async (article) =>
+      send({
+        method: "POST",
+        path: "/v1/me/articles",
+        schema: myArticleSchema,
+        body: createArticleSchema.parse(article),
+        authenticated: true,
+      }),
+    myArticles: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/articles",
+        schema: z.array(myArticleSchema),
+        authenticated: true,
+      }),
+    myArticle: (articleId) =>
+      send({
+        method: "GET",
+        path: articlePath(articleId),
+        schema: myArticleSchema,
+        authenticated: true,
+      }),
+    updateArticle: async (articleId, change) =>
+      send({
+        method: "PATCH",
+        path: articlePath(articleId),
+        schema: myArticleSchema,
+        body: updateArticleSchema.parse(change),
+        authenticated: true,
+      }),
+    publishArticle: (articleId) =>
+      send({
+        method: "POST",
+        path: articlePath(articleId, "publish"),
+        schema: myArticleSchema,
+        authenticated: true,
+      }),
+    unpublishArticle: (articleId) =>
+      send({
+        method: "POST",
+        path: articlePath(articleId, "unpublish"),
+        schema: myArticleSchema,
+        authenticated: true,
+      }),
+    deleteArticle: (articleId) =>
+      send({
+        method: "DELETE",
+        path: articlePath(articleId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    createArticleImage: async (file) =>
+      send({
+        method: "POST",
+        path: "/v1/article-images",
+        schema: z.object({
+          imageId: z.uuid(),
+          upload: z.object({
+            url: z.string(),
+            method: z.literal("PUT"),
+            headers: z.record(z.string(), z.string()),
+            expiresAt: z.iso.datetime(),
+          }),
+        }),
+        body: createArticleImageSchema.parse(file),
+        authenticated: true,
+      }),
+    completeArticleImage: (imageId) =>
+      send({
+        method: "POST",
+        path: `/v1/article-images/${encodeURIComponent(imageId)}/complete`,
+        schema: z.object({ id: z.uuid(), url: z.string() }),
+        authenticated: true,
+      }),
+    bookmarkArticle: (articleId) =>
+      send({
+        method: "PUT",
+        path: `/v1/me/bookmarks/articles/${encodeURIComponent(articleId)}`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    unbookmarkArticle: (articleId) =>
+      send({
+        method: "DELETE",
+        path: `/v1/me/bookmarks/articles/${encodeURIComponent(articleId)}`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    bookmarkedArticles: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/bookmarks/articles",
+        schema: z.array(articleSummarySchema),
+        authenticated: true,
+      }),
+    addComment: async (articleId, comment) =>
+      send({
+        method: "POST",
+        path: `/v1/articles/${encodeURIComponent(articleId)}/comments`,
+        schema: articleCommentSchema,
+        body: createCommentSchema.parse(comment),
+        authenticated: true,
+      }),
+    editComment: async (commentId, body) =>
+      send({
+        method: "PATCH",
+        path: `/v1/article-comments/${encodeURIComponent(commentId)}`,
+        schema: articleCommentSchema,
+        body: updateCommentSchema.parse({ body }),
+        authenticated: true,
+      }),
+    deleteComment: (commentId) =>
+      send({
+        method: "DELETE",
+        path: `/v1/article-comments/${encodeURIComponent(commentId)}`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    report: async (report) =>
+      send({
+        method: "POST",
+        path: "/v1/reports",
+        schema: z.object({ id: z.uuid(), status: z.literal("open") }),
+        body: createReportSchema.parse(report),
+        authenticated: true,
+      }),
+    moderationQueue: () =>
+      send({
+        method: "GET",
+        path: "/v1/moderation/queue",
+        schema: z.array(moderationQueueItemSchema),
+        authenticated: true,
+      }),
+    moderationCase: (targetType, targetId) =>
+      send({
+        method: "GET",
+        path: moderationPath(targetType, targetId),
+        schema: moderationCaseSchema,
+        authenticated: true,
+      }),
+    moderate: (targetType, targetId, decision, reason = null) =>
+      send({
+        method: "POST",
+        path: moderationPath(targetType, targetId, decision),
+        schema: moderationCaseSchema,
+        body: { reason },
         authenticated: true,
       }),
     provider: (slug, options) =>

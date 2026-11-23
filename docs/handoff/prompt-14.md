@@ -1,7 +1,7 @@
 # Handoff — Prompt 14: Service requests and quotations
 
 - Date: 2026-11-23
-- Status: **awaiting owner approval** · branch `feat/prompt-14-requests`
+- Status: **approved** · PR **#16** squash-merged as `3df0759` (CI 5/5 green on `f512510`)
 - Prompt 13 approved and merged (PR #15 → `42f9c8c`).
 
 ## Assumptions

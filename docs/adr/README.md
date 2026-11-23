@@ -25,6 +25,7 @@ We record significant decisions as short ADRs ([Nygard format](https://cognitect
 | [0019](0019-search-projection-and-ranking.md)        | Search projection, relevance-only ranking, rounded visitor locations                         | Accepted |
 | [0020](0020-route-discovery-and-saved-lists.md)      | Route corridors with graceful degradation; link-shared personal lists                        | Accepted |
 | [0021](0021-service-requests-and-quotes.md)          | Service requests: atomic quota, informational quotes, staged disclosure, append-only history | Accepted |
+| [0022](0022-community-articles-and-moderation.md)    | Articles as a validated document; quotas, pre-moderation, reports and an append-only log     | Accepted |
 
 ## Template
 
