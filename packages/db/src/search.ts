@@ -26,7 +26,16 @@ export type SearchArea =
       /** Only branches whose service radius reaches the point (mobile mechanics, towing). */
       coversLocationOnly: boolean;
     }
-  | { kind: "bbox"; box: BoundingBox; origin: LngLat };
+  | { kind: "bbox"; box: BoundingBox; origin: LngLat }
+  | {
+      /** Branches within `widthMeters` of a route line, returned in order along the route. */
+      kind: "corridor";
+      line: readonly LngLat[];
+      widthMeters: number;
+    };
+
+/** Most vertices sent to PostGIS for a corridor; longer routes are thinned evenly. */
+export const MAX_CORRIDOR_VERTICES = 2_000;
 
 export interface SearchCursor {
   score: string;
@@ -68,6 +77,8 @@ export interface ProviderSearchRow {
   textScore: number;
   /** Fixed-precision decimal string, stable for keyset pagination. */
   score: string;
+  /** Corridor searches: position along the route, 0 (start) to 1 (end). Otherwise null. */
+  routeFraction: number | null;
 }
 
 /** Ranking weights (sum 1). Documented in docs/architecture/search.md. */
@@ -95,6 +106,27 @@ function point(p: LngLat): SQL {
   return sql`ST_SetSRID(ST_MakePoint(${p.lng}::float8, ${p.lat}::float8), 4326)::geography`;
 }
 
+/** Evenly thins a polyline to at most `max` vertices, always keeping both ends. */
+export function thinLine(line: readonly LngLat[], max = MAX_CORRIDOR_VERTICES): LngLat[] {
+  if (line.length <= max) return [...line];
+  const step = (line.length - 1) / (max - 1);
+  return Array.from({ length: max }, (_, i) => line[Math.round(i * step)]).filter(
+    (p): p is LngLat => p !== undefined,
+  );
+}
+
+/** A route line as a geography, sent as one WKT parameter (coordinates validated first). */
+function lineString(line: readonly LngLat[]): SQL {
+  if (line.length < 2) throw new RangeError("A corridor needs at least two points");
+  const wkt = thinLine(line)
+    .map((p) => {
+      assertLngLat(p);
+      return `${p.lng.toFixed(6)} ${p.lat.toFixed(6)}`;
+    })
+    .join(",");
+  return sql`ST_GeogFromText(${`SRID=4326;LINESTRING(${wkt})`})`;
+}
+
 function envelope(box: BoundingBox, column: SQL): SQL {
   const one = (west: number, east: number) =>
     sql`(${column})::geometry && ST_MakeEnvelope(${west}::float8, ${box.south}::float8, ${east}::float8, ${box.north}::float8, 4326)`;
@@ -107,7 +139,14 @@ function envelope(box: BoundingBox, column: SQL): SQL {
 /** The search statement (exported so tests can EXPLAIN exactly what runs). */
 export function buildSearchQuery(params: ProviderSearchParams): SQL {
   const location = params.precise ? sql.raw("e.location") : sql.raw("e.approx_location");
-  const origin = params.area.kind === "near" ? params.area.point : params.area.origin;
+  const area = params.area;
+  // What distance and coverage are measured against: the point, the map centre, or the route.
+  const target =
+    area.kind === "near"
+      ? point(area.point)
+      : area.kind === "bbox"
+        ? point(area.origin)
+        : lineString(area.line);
   const at = params.at.toISOString();
   const terms = searchTerms(params.text);
   const tsquery = terms.length
@@ -115,17 +154,19 @@ export function buildSearchQuery(params: ProviderSearchParams): SQL {
     : null;
 
   const where: SQL[] = [sql`o.status = 'active'`];
-  if (params.area.kind === "near") {
-    const { radiusMeters, coversLocationOnly } = params.area;
+  if (area.kind === "near") {
+    const { radiusMeters, coversLocationOnly } = area;
     where.push(
       coversLocationOnly
-        ? sql`ST_DWithin(${location}, ${point(origin)}, ${MAX_SERVICE_RADIUS_METERS}::float8)
+        ? sql`ST_DWithin(${location}, ${target}, ${MAX_SERVICE_RADIUS_METERS}::float8)
               AND e.service_radius_km IS NOT NULL
-              AND ST_DWithin(${location}, ${point(origin)}, e.service_radius_km * 1000)`
-        : sql`ST_DWithin(${location}, ${point(origin)}, ${radiusMeters}::float8)`,
+              AND ST_DWithin(${location}, ${target}, e.service_radius_km * 1000)`
+        : sql`ST_DWithin(${location}, ${target}, ${radiusMeters}::float8)`,
     );
+  } else if (area.kind === "bbox") {
+    where.push(envelope(area.box, location));
   } else {
-    where.push(envelope(params.area.box, location));
+    where.push(sql`ST_DWithin(${location}, ${target}, ${area.widthMeters}::float8)`);
   }
   if (params.categories?.length) {
     where.push(
@@ -152,9 +193,14 @@ export function buildSearchQuery(params: ProviderSearchParams): SQL {
       e.branch_id, e.organization_id, e.slug, e.trading_name, e.branch_name, e.locality,
       e.country_code, e.categories, e.vehicle_types, e.service_radius_km,
       ST_X((${location})::geometry) AS lng, ST_Y((${location})::geometry) AS lat,
-      round(ST_Distance(${location}, ${point(origin)}))::int AS distance_m,
+      round(ST_Distance(${location}, ${target}))::int AS distance_m,
       (e.service_radius_km IS NOT NULL
-        AND ST_DWithin(${location}, ${point(origin)}, e.service_radius_km * 1000)) AS covers,
+        AND ST_DWithin(${location}, ${target}, e.service_radius_km * 1000)) AS covers,
+      ${
+        area.kind === "corridor"
+          ? sql`ST_LineLocatePoint((${target})::geometry, (${location})::geometry)`
+          : sql`NULL`
+      }::float8 AS route_fraction,
       branch_is_open(e.branch_id, coalesce(b.time_zone, o.timezone), ${at}::timestamptz) AS open_now,
       ${textScore}::float8 AS text_score
     FROM provider_search_entries e
@@ -168,7 +214,7 @@ export function buildSearchQuery(params: ProviderSearchParams): SQL {
   const halfDistance = sql.raw((DISTANCE_HALF_KM * 1000).toFixed(1));
   const outer: SQL[] = [];
   if (params.openNow) outer.push(sql`open_now`);
-  if (params.after) {
+  if (params.after && area.kind !== "corridor") {
     const { score, distanceMeters, branchId } = params.after;
     outer.push(sql`(score < ${score}::numeric
       OR (score = ${score}::numeric AND distance_m > ${distanceMeters})
@@ -187,7 +233,11 @@ export function buildSearchQuery(params: ProviderSearchParams): SQL {
     )
     SELECT * FROM scored
     ${outer.length ? sql`WHERE ${sql.join(outer, sql` AND `)}` : sql``}
-    ORDER BY score DESC, distance_m ASC, branch_id ASC
+    ORDER BY ${
+      area.kind === "corridor"
+        ? sql`route_fraction ASC, distance_m ASC, branch_id ASC`
+        : sql`score DESC, distance_m ASC, branch_id ASC`
+    }
     LIMIT ${params.limit}::int`;
   return query;
 }
@@ -216,6 +266,7 @@ export async function searchProviders(
     openNow: r["open_now"] === true,
     textScore: Number(r["text_score"]),
     score: normalizeDecimal(String(r["score"])),
+    routeFraction: r["route_fraction"] === null ? null : Number(r["route_fraction"]),
   }));
 }
 

@@ -9,6 +9,7 @@ import { Test } from "@nestjs/testing";
 import { AppModule } from "../../src/app.module.js";
 import { loadApiEnv } from "../../src/config/env.js";
 import { CLOCK, type Clock, systemClock } from "../../src/platform/clock/index.js";
+import { ROUTING_PROVIDER, type RoutingProvider } from "../../src/platform/routing/index.js";
 import { DATABASE } from "../../src/database/database.module.js";
 import {
   APP_CHECK_VERIFIER,
@@ -42,6 +43,8 @@ export async function createTestApp(
     authVerifier?: AuthVerifier;
     /** Time source for entitlements (daily periods, grace periods). */
     clock?: Clock;
+    /** Routing vendor double (route search). Defaults to the env-configured adapter. */
+    routing?: RoutingProvider;
   } = {},
 ): Promise<TestApp> {
   const env = loadApiEnv({
@@ -55,7 +58,7 @@ export async function createTestApp(
   const limiter = new MemoryRateLimiter();
   const logs = captureLogs();
 
-  const moduleRef = await Test.createTestingModule({
+  let builder = Test.createTestingModule({
     imports: [AppModule.register(env, { logger: logs.logger })],
     controllers: options.controllers ?? [],
   })
@@ -74,8 +77,10 @@ export async function createTestApp(
     .overrideProvider(RATE_LIMITER)
     .useValue(limiter)
     .overrideProvider(CLOCK)
-    .useValue(options.clock ?? systemClock)
-    .compile();
+    .useValue(options.clock ?? systemClock);
+  if (options.routing)
+    builder = builder.overrideProvider(ROUTING_PROVIDER).useValue(options.routing);
+  const moduleRef = await builder.compile();
 
   const app = moduleRef.createNestApplication();
   app.useLogger(false);

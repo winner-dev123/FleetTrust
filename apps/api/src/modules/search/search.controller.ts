@@ -3,14 +3,17 @@ import {
   type GeocodeResult,
   type MapConfig,
   type ProviderSearchPage,
+  routeSearchRequestSchema,
+  type RouteSearchResponse,
   searchProvidersQuerySchema,
 } from "@fleettrust/types";
-import { Controller, Get, Inject, Query } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Inject, Post, Query } from "@nestjs/common";
 
 import { MAP_PROVIDER, type MapProvider } from "../../platform/maps/index.js";
 import { RateLimit } from "../../platform/rate-limit/index.js";
 import { parseBody } from "../../platform/validation.js";
 import { Public } from "../identity/index.js";
+import { RouteSearchService } from "./route-search.service.js";
 import { SearchService } from "./search.service.js";
 
 /**
@@ -33,6 +36,22 @@ export class SearchController {
   @RateLimit({ name: "search", limit: 120, windowSeconds: 60, by: "user" })
   full(@Query() query: unknown): Promise<ProviderSearchPage> {
     return this.search.search(parseBody(searchProvidersQuerySchema, query), true);
+  }
+}
+
+/**
+ * Route-aware discovery (SRS J8). Signed in only. Coordinates travel in the body, so they never
+ * appear in URLs or access logs. Degrades to point search when routing is unavailable.
+ */
+@Controller("v1/search/route")
+export class RouteSearchController {
+  constructor(private readonly routes: RouteSearchService) {}
+
+  @Post()
+  @HttpCode(200)
+  @RateLimit({ name: "route-search", limit: 30, windowSeconds: 60, by: "user" })
+  search(@Body() body: unknown): Promise<RouteSearchResponse> {
+    return this.routes.searchRoute(parseBody(routeSearchRequestSchema, body));
   }
 }
 

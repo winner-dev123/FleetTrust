@@ -1,7 +1,7 @@
 # Handoff — Prompt 12: Geospatial provider search
 
 - Date: 2026-11-19
-- Status: **awaiting owner approval** · branch `feat/prompt-12-search`
+- Status: **approved** · PR **#13** squash-merged as `b0c1ee1` (CI 5/5 green on `e59e003`)
 - Prompt 11 approved and merged (PR #12 → `b44b077`).
 
 ## Assumptions

@@ -47,6 +47,8 @@ describe("migrations on a fresh database", () => {
       "0014_catalog_triggers",
       "0015_provider_search",
       "0016_provider_search_functions",
+      "0017_saved_lists",
+      "0018_saved_lists_triggers",
     ]);
   });
 
@@ -95,6 +97,10 @@ describe("migrations on a fresh database", () => {
       "quota_consumptions",
       "quota_counters",
       "quota_overrides",
+      "saved_list_items",
+      "saved_list_members",
+      "saved_list_share_links",
+      "saved_lists",
       "users",
       "verification_appeals",
       "verification_badges",

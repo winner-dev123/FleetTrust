@@ -45,6 +45,9 @@ describe("loadApiEnv", () => {
       CLAMAV_PORT: 3310,
       VERIFICATION_DOCUMENT_RETENTION_DAYS: 90,
       MAP_PROVIDER: "stub",
+      ROUTING_PROVIDER: "none",
+      ROUTING_TIMEOUT_MS: 4000,
+      ROUTING_CACHE_TTL_SECONDS: 3600,
     });
   });
 
@@ -97,6 +100,9 @@ describe("loadApiEnv", () => {
     ).toThrow(/DOCUMENT_LOCAL_KEK/);
     expect(() => loadApiEnv({ ...production, CLAMAV_HOST: undefined })).toThrow(/CLAMAV_HOST/);
     expect(() => loadApiEnv({ ...production, MAP_TILE_URL: undefined })).toThrow(/MAP_TILE_URL/);
+    expect(() => loadApiEnv({ ...production, ROUTING_PROVIDER: "straight-line" })).toThrow(
+      /ROUTING_PROVIDER/,
+    );
     expect(() =>
       loadApiEnv({ ...production, MAP_TILE_URL: "http://tiles.example.test/{z}" }),
     ).toThrow(/MAP_TILE_URL/);

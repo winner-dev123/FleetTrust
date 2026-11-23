@@ -31,6 +31,7 @@ export {
   type BoundingBox,
   buildSearchQuery,
   DISTANCE_HALF_KM,
+  MAX_CORRIDOR_VERTICES,
   type ProviderSearchParams,
   type ProviderSearchRow,
   queryRows,
@@ -40,6 +41,7 @@ export {
   type SearchCursor,
   searchProviders,
   searchTerms,
+  thinLine,
 } from "./search.js";
 export { distanceMeters, geographyOf, withinBoundingBox, withinMeters } from "./spatial.js";
 export {
