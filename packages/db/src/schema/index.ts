@@ -13,4 +13,5 @@ export * from "./lists.js";
 export * from "./requests.js";
 export * from "./articles.js";
 export * from "./community.js";
+export * from "./emergency.js";
 export * from "./messaging.js";

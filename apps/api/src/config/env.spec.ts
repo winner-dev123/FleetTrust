@@ -50,6 +50,13 @@ describe("loadApiEnv", () => {
       ROUTING_TIMEOUT_MS: 4000,
       PUSH_PROVIDER: "log",
       OUTBOX_RELAY_INTERVAL_MS: 2000,
+      EMAIL_PROVIDER: "log",
+      EMAIL_FROM: "FleetTrust <no-reply@fleettrust.invalid>",
+      EMERGENCY_ESCALATION_SECONDS: 120,
+      EMERGENCY_EMAIL_FALLBACK_SECONDS: 60,
+      EMERGENCY_INCIDENT_HOURS: 12,
+      EMERGENCY_SOFT_LIMIT_PER_HOUR: 3,
+      EMERGENCY_TICK_MS: 1000,
       ROUTING_CACHE_TTL_SECONDS: 3600,
     });
   });

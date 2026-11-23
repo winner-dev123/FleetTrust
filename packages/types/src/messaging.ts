@@ -18,7 +18,7 @@ export const MESSAGE_PAGE = 100;
 
 export const MESSAGE_ATTACHMENT_TYPES = [...PROFILE_IMAGE_TYPES, "application/pdf"] as const;
 
-export const CONVERSATION_KINDS = ["direct", "request", "group"] as const;
+export const CONVERSATION_KINDS = ["direct", "request", "group", "incident"] as const;
 export type ConversationKind = (typeof CONVERSATION_KINDS)[number];
 
 /** Shown on messages that ask for money with a link or account number (AB-07). */

@@ -120,6 +120,19 @@ export const apiEnvSchema = z
     PUSH_PROVIDER: z.enum(["log", "fcm"]).default("log"),
     /** Worker role: how often the outbox relay looks for new events (notifications and push). */
     OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().min(200).max(60_000).default(2_000),
+    /** Transactional email (emergency fallback). Vendor pending (OQ-06): `log` records only. */
+    EMAIL_PROVIDER: z.enum(["log"]).default("log"),
+    EMAIL_FROM: z.string().min(3).max(200).default("FleetTrust <no-reply@fleettrust.invalid>"),
+    /** Emergency: re-alert (next contacts) when nobody acknowledged within this many seconds. */
+    EMERGENCY_ESCALATION_SECONDS: z.coerce.number().int().min(15).max(3_600).default(120),
+    /** Emergency: email a contact who hasn't acknowledged a push within this many seconds. */
+    EMERGENCY_EMAIL_FALLBACK_SECONDS: z.coerce.number().int().min(10).max(3_600).default(60),
+    /** Emergency: incidents close automatically after this many hours. */
+    EMERGENCY_INCIDENT_HOURS: z.coerce.number().int().min(1).max(72).default(12),
+    /** Emergency: more incidents than this per hour flag the account (never block, ADR-0010). */
+    EMERGENCY_SOFT_LIMIT_PER_HOUR: z.coerce.number().int().min(1).max(100).default(3),
+    /** Worker role: how often emergency deliveries, escalations and expiry are processed. */
+    EMERGENCY_TICK_MS: z.coerce.number().int().min(200).max(30_000).default(1_000),
     ROUTING_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(86_400).default(3_600),
   })
   .superRefine((env, ctx) => {

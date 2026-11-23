@@ -8,12 +8,15 @@ import {
   conversations,
   type Database,
   desc,
+  emergencyIncidents,
   enqueueOutboxEvent,
   eq,
   type Executor,
   friendships,
   gt,
   inArray,
+  incidentRecipients,
+  isNotNull,
   lt,
   type Message,
   messageAttachments,
@@ -62,6 +65,9 @@ import { SocialService } from "../community/index.js";
 
 type SendInput = z.output<typeof sendMessageSchema>;
 type Side = "requester" | "provider";
+
+/** Incident rooms stay readable this long after the incident closes, then disappear. */
+const INCIDENT_ROOM_GRACE_MS = 24 * 60 * 60 * 1000;
 
 export function messagingError(status: 400 | 403 | 409, reason: MessagingErrorReason): Error {
   const error = status === 400 ? "bad_request" : status === 403 ? "forbidden" : "conflict";
@@ -281,6 +287,35 @@ export class MessagingService {
         readOnly: row.status === "active" ? null : "conversation_read_only",
       };
     }
+    if (conversation.kind === "incident") {
+      if (conversation.incidentId === null) return null;
+      const [incident] = await executor
+        .select()
+        .from(emergencyIncidents)
+        .where(eq(emergencyIncidents.id, conversation.incidentId));
+      if (!incident) return null;
+      let member = incident.ownerUserId === user.id;
+      if (!member) {
+        const [recipient] = await executor
+          .select({ id: incidentRecipients.id })
+          .from(incidentRecipients)
+          .where(
+            and(
+              eq(incidentRecipients.incidentId, incident.id),
+              eq(incidentRecipients.kind, "contact"),
+              eq(incidentRecipients.userId, user.id),
+              isNotNull(incidentRecipients.notifiedAt),
+            ),
+          );
+        member = recipient !== undefined;
+      }
+      if (!member) return null;
+      const now = this.clock.now();
+      const active = incident.status === "active" && incident.expiresAt > now;
+      const closedAt = incident.closedAt ?? incident.expiresAt;
+      if (!active && now.getTime() - closedAt.getTime() > INCIDENT_ROOM_GRACE_MS) return null;
+      return { ...base, readOnly: active ? null : "conversation_read_only" };
+    }
     if (conversation.requestRecipientId === null) return null;
     const side = await this.requestSide(executor, user, conversation.requestRecipientId);
     if (side === null) return null;
@@ -444,6 +479,10 @@ export class MessagingService {
           WHERE (c.kind = 'direct' AND (c.direct_user_a = ${user.id} OR c.direct_user_b = ${user.id}))
              OR (c.kind = 'group' AND c.group_id IN (
                   SELECT group_id FROM community_group_members WHERE user_id = ${user.id} AND status = 'active'))
+             OR (c.kind = 'incident' AND c.incident_id IN (
+                  SELECT id FROM emergency_incidents WHERE owner_user_id = ${user.id}
+                  UNION SELECT incident_id FROM incident_recipients
+                  WHERE kind = 'contact' AND user_id = ${user.id} AND notified_at IS NOT NULL))
              OR (c.kind = 'request' AND c.request_recipient_id IN (
                   SELECT r.id FROM service_request_recipients r
                   JOIN service_requests sr ON sr.id = r.request_id
@@ -525,6 +564,13 @@ export class MessagingService {
       title = g?.name ?? "Group";
     } else if (c.kind === "request" && c.requestRecipientId !== null) {
       title = await this.requestTitle(c.requestRecipientId, access.side);
+    } else if (c.kind === "incident" && c.incidentId !== null) {
+      const [row] = await this.db
+        .select({ name: users.displayName })
+        .from(emergencyIncidents)
+        .innerJoin(users, eq(users.id, emergencyIncidents.ownerUserId))
+        .where(eq(emergencyIncidents.id, c.incidentId));
+      title = `Emergency: ${row?.name ?? FALLBACK_NAME}`;
     }
     return {
       id: c.id,
@@ -615,6 +661,24 @@ export class MessagingService {
       return [conversation.directUserA, conversation.directUserB].filter(
         (v): v is string => v !== null,
       );
+    }
+    if (conversation.kind === "incident") {
+      const [incident] = await executor
+        .select({ owner: emergencyIncidents.ownerUserId })
+        .from(emergencyIncidents)
+        .where(eq(emergencyIncidents.id, conversation.incidentId ?? ""));
+      if (!incident) return [];
+      const contacts = await executor
+        .select({ id: incidentRecipients.userId })
+        .from(incidentRecipients)
+        .where(
+          and(
+            eq(incidentRecipients.incidentId, conversation.incidentId ?? ""),
+            eq(incidentRecipients.kind, "contact"),
+            isNotNull(incidentRecipients.notifiedAt),
+          ),
+        );
+      return [incident.owner, ...contacts.map((c) => c.id).filter((v): v is string => v !== null)];
     }
     if (conversation.kind === "group") {
       const rows = await executor

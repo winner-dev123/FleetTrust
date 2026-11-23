@@ -1,7 +1,7 @@
 # Handoff — Prompt 17: Messaging and community notifications
 
 - Date: 2026-11-23
-- Status: **awaiting owner approval** · branch `feat/prompt-17-messaging`
+- Status: **approved** · PR **#19** squash-merged as `0a6b2cc` (CI 5/5 green on `3b402b9`)
 - Prompt 16 approved and merged (PR #18 → `99af6bc`).
 
 ## Assumptions

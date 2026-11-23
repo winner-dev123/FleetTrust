@@ -4,22 +4,23 @@ SRS F-053..F-055, F-123. Design: [ADR-0024](../adr/0024-messaging-and-notificati
 
 ## Conversations
 
-| Method & path                                                   | Notes                                                                                                                      |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `GET /v1/conversations`                                         | Yours, most recent first: `unread`, `lastSeq`, `lastReadSeq`, `peerReadSeq`, `muted`, `canSend`, `warning`                 |
-| `POST /v1/conversations/direct`                                 | `{ userId }`. Finds or starts. 403 `cannot_message` if blocked or their setting doesn't allow it (default: friends only)   |
-| `POST /v1/conversations/request`                                | `{ recipientId }`. Requester side and that provider only                                                                   |
-| `POST /v1/conversations/group`                                  | `{ groupId }`. Active members only                                                                                         |
-| `GET /v1/conversations/:id`                                     | 404 without access                                                                                                         |
-| `PATCH /v1/conversations/:id`                                   | `{ muted }`                                                                                                                |
-| `GET /v1/conversations/:id/messages`                            | `after` (replay forwards), `before` (older), `limit` ≤ 100 → `{ items, more }`, ordered by `seq`                           |
-| `POST /v1/conversations/:id/messages`                           | `{ clientMessageId, body, attachmentIds? }` (60 per minute). Retrying with the same `clientMessageId` returns the original |
-| `DELETE /v1/conversations/:id/messages/:messageId`              | Your own (→ `deleted`); group owners and moderators remove others' (→ `removed`, audited)                                  |
-| `POST /v1/conversations/:id/messages/:messageId/report`         | `{ reason, details? }`. Not your own                                                                                       |
-| `POST /v1/conversations/:id/read`                               | `{ seq }`. Never moves back                                                                                                |
-| `POST /v1/conversations/:id/attachments`                        | `{ contentType: image/jpeg\|png\|webp \| application/pdf, size ≤ 8 MB }` → `{ attachmentId, upload }`                      |
-| `POST /v1/conversations/:id/attachments/:attachmentId/complete` | Scan, strip metadata, store privately                                                                                      |
-| `GET /v1/conversations/:id/attachments/:attachmentId`           | Participants, visible messages only; `private, no-store`                                                                   |
+| Method & path                                                   | Notes                                                                                                                         |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/conversations`                                         | Yours, most recent first: `unread`, `lastSeq`, `lastReadSeq`, `peerReadSeq`, `muted`, `canSend`, `warning`                    |
+| `POST /v1/conversations/direct`                                 | `{ userId }`. Finds or starts. 403 `cannot_message` if blocked or their setting doesn't allow it (default: friends only)      |
+| `POST /v1/conversations/request`                                | `{ recipientId }`. Requester side and that provider only                                                                      |
+| `POST /v1/conversations/group`                                  | `{ groupId }`. Active members only                                                                                            |
+| (incident rooms)                                                | Created with each emergency incident ([emergency.md](emergency.md)): owner and alerted contacts; read-only 24 h after closing |
+| `GET /v1/conversations/:id`                                     | 404 without access                                                                                                            |
+| `PATCH /v1/conversations/:id`                                   | `{ muted }`                                                                                                                   |
+| `GET /v1/conversations/:id/messages`                            | `after` (replay forwards), `before` (older), `limit` ≤ 100 → `{ items, more }`, ordered by `seq`                              |
+| `POST /v1/conversations/:id/messages`                           | `{ clientMessageId, body, attachmentIds? }` (60 per minute). Retrying with the same `clientMessageId` returns the original    |
+| `DELETE /v1/conversations/:id/messages/:messageId`              | Your own (→ `deleted`); group owners and moderators remove others' (→ `removed`, audited)                                     |
+| `POST /v1/conversations/:id/messages/:messageId/report`         | `{ reason, details? }`. Not your own                                                                                          |
+| `POST /v1/conversations/:id/read`                               | `{ seq }`. Never moves back                                                                                                   |
+| `POST /v1/conversations/:id/attachments`                        | `{ contentType: image/jpeg\|png\|webp \| application/pdf, size ≤ 8 MB }` → `{ attachmentId, upload }`                         |
+| `POST /v1/conversations/:id/attachments/:attachmentId/complete` | Scan, strip metadata, store privately                                                                                         |
+| `GET /v1/conversations/:id/attachments/:attachmentId`           | Participants, visible messages only; `private, no-store`                                                                      |
 
 **Request conversations:** people speak for their side.
 
