@@ -1,4 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
+import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 import { postgis } from "@electric-sql/pglite-postgis";
 import { drizzle } from "drizzle-orm/pglite";
 
@@ -32,8 +33,11 @@ export async function createTestDatabase(
   // migrate: false gives a truly empty database, for testing the migrations themselves.
   const client =
     (options.migrate ?? true)
-      ? await PGlite.create({ extensions: { postgis }, loadDataDir: await loadTemplate() })
-      : await PGlite.create({ extensions: { postgis } });
+      ? await PGlite.create({
+          extensions: { postgis, btree_gist },
+          loadDataDir: await loadTemplate(),
+        })
+      : await PGlite.create({ extensions: { postgis, btree_gist } });
   const db = drizzle(client, { schema }) as unknown as Database;
   return { db, client, close: () => client.close() };
 }

@@ -5,8 +5,11 @@ import {
   hoursExceptionRequestSchema,
   localClock,
   localDateSchema,
+  localStamp,
   openingStatus,
   type WeeklyHours,
+  zonedBoundaryToUtc,
+  zonedTimeToUtc,
 } from "./opening-hours.js";
 
 const everyDay = (opens: string, closes: string): WeeklyHours =>
@@ -220,5 +223,46 @@ describe("schemas", () => {
     expect(localDateSchema.safeParse("2026-12-25").success).toBe(true);
     expect(localDateSchema.safeParse("2026-02-30").success).toBe(false);
     expect(localDateSchema.safeParse("25/12/2026").success).toBe(false);
+  });
+});
+
+describe("zonedTimeToUtc", () => {
+  const iso = (d: Date | null) => d?.toISOString() ?? null;
+
+  it("converts local times with and without daylight saving", () => {
+    expect(iso(zonedTimeToUtc("2027-01-15", 9 * 60, "America/New_York"))).toBe(
+      "2027-01-15T14:00:00.000Z",
+    );
+    expect(iso(zonedTimeToUtc("2027-07-15", 9 * 60, "America/New_York"))).toBe(
+      "2027-07-15T13:00:00.000Z",
+    );
+    expect(iso(zonedTimeToUtc("2027-07-15", 9 * 60, "Africa/Johannesburg"))).toBe(
+      "2027-07-15T07:00:00.000Z",
+    );
+    expect(iso(zonedTimeToUtc("2027-07-15", 9 * 60 + 30, "Asia/Kolkata"))).toBe(
+      "2027-07-15T04:00:00.000Z",
+    );
+    // Minutes past midnight run into the next day.
+    expect(iso(zonedTimeToUtc("2027-07-15", 25 * 60, "UTC"))).toBe("2027-07-16T01:00:00.000Z");
+  });
+
+  it("refuses times skipped by a spring-forward change and picks the earlier of repeated times", () => {
+    // New York, 14 March 2027: 02:00 jumps to 03:00.
+    expect(zonedTimeToUtc("2027-03-14", 2 * 60 + 30, "America/New_York")).toBeNull();
+    expect(iso(zonedTimeToUtc("2027-03-14", 3 * 60, "America/New_York"))).toBe(
+      "2027-03-14T07:00:00.000Z",
+    );
+    expect(iso(zonedBoundaryToUtc("2027-03-14", 2 * 60 + 30, "America/New_York"))).toBe(
+      "2027-03-14T07:30:00.000Z",
+    );
+    // New York, 7 November 2027: 01:30 happens twice; the first is EDT (UTC−4).
+    expect(iso(zonedTimeToUtc("2027-11-07", 90, "America/New_York"))).toBe(
+      "2027-11-07T05:30:00.000Z",
+    );
+  });
+
+  it("round-trips through localStamp", () => {
+    const at = zonedTimeToUtc("2027-03-15", 8 * 60 + 45, "Europe/London");
+    expect(at && localStamp(at, "Europe/London")).toBe("2027-03-15T08:45");
   });
 });

@@ -1,4 +1,41 @@
 import {
+  analyticsQuerySchema,
+  type AppointmentDto,
+  appointmentQuerySchema,
+  appointmentSchema,
+  appointmentStatusRequestSchema,
+  createAppointmentSchema,
+  createTaskSchema,
+  type CrmErrorReason,
+  crmErrorReasonSchema,
+  type CrmInquiryDto,
+  crmInquirySchema,
+  type CrmQuoteDto,
+  crmQuoteSchema,
+  type CrmTaskDto,
+  crmTaskSchema,
+  type CustomerAppointmentDto,
+  customerAppointmentSchema,
+  inquiryNoteRequestSchema,
+  type PipelineDto,
+  pipelineQuerySchema,
+  pipelineSchema,
+  type ProviderAnalyticsDto,
+  providerAnalyticsSchema,
+  quoteListQuerySchema,
+  type ResponseStatusDto,
+  responseStatusSchema,
+  slotQuerySchema,
+  type SlotsDto,
+  slotsSchema,
+  staffAvailabilityRequestSchema,
+  type StaffMemberDto,
+  staffMemberSchema,
+  taskQuerySchema,
+  timeOffRequestSchema,
+  updateAppointmentSchema,
+  updateInquiryCrmSchema,
+  updateTaskSchema,
   completeScheduleSchema,
   type CreatedDocumentShare,
   createdDocumentShareSchema,
@@ -271,6 +308,7 @@ export type ApiErrorReason =
   | MessagingErrorReason
   | EmergencyErrorReason
   | VehicleErrorReason
+  | CrmErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -755,6 +793,71 @@ export interface ApiClient {
   ): Promise<CreatedDocumentShare>;
   documentShares(vehicleId: string, documentId: string): Promise<DocumentShareDto[]>;
   revokeDocumentShare(vehicleId: string, documentId: string, shareId: string): Promise<void>;
+
+  // Provider CRM and appointments (Prompt 20, ADR-0027).
+  /** Inquiry pipeline: stage counts and items, filtered by stage, assignee or priority. */
+  crmPipeline(orgId: string, query?: z.input<typeof pipelineQuerySchema>): Promise<PipelineDto>;
+  crmInquiry(orgId: string, recipientId: string): Promise<CrmInquiryDto>;
+  /** Assign or prioritise. Staff can only claim, release, or prioritise their own. */
+  updateCrmInquiry(
+    orgId: string,
+    recipientId: string,
+    change: z.input<typeof updateInquiryCrmSchema>,
+  ): Promise<CrmInquiryDto>;
+  /** Internal note, never shown to the customer. */
+  addInquiryNote(orgId: string, recipientId: string, body: string): Promise<CrmInquiryDto>;
+  deleteInquiryNote(orgId: string, recipientId: string, noteId: string): Promise<void>;
+  crmQuotes(orgId: string, query?: z.input<typeof quoteListQuerySchema>): Promise<CrmQuoteDto[]>;
+  crmTasks(orgId: string, query?: z.input<typeof taskQuerySchema>): Promise<CrmTaskDto[]>;
+  createCrmTask(orgId: string, task: z.input<typeof createTaskSchema>): Promise<CrmTaskDto>;
+  updateCrmTask(
+    orgId: string,
+    taskId: string,
+    change: z.input<typeof updateTaskSchema>,
+  ): Promise<CrmTaskDto>;
+  deleteCrmTask(orgId: string, taskId: string): Promise<void>;
+  crmStaff(orgId: string): Promise<StaffMemberDto[]>;
+  setStaffAvailability(
+    orgId: string,
+    userId: string,
+    availability: z.input<typeof staffAvailabilityRequestSchema>,
+  ): Promise<StaffMemberDto[]>;
+  addStaffTimeOff(
+    orgId: string,
+    userId: string,
+    timeOff: z.input<typeof timeOffRequestSchema>,
+  ): Promise<StaffMemberDto[]>;
+  removeStaffTimeOff(orgId: string, userId: string, timeOffId: string): Promise<void>;
+  /** Free slots on a local date in the branch's timezone. */
+  appointmentSlots(orgId: string, query: z.input<typeof slotQuerySchema>): Promise<SlotsDto>;
+  appointments(
+    orgId: string,
+    query?: z.input<typeof appointmentQuerySchema>,
+  ): Promise<AppointmentDto[]>;
+  /** 409 `slot_unavailable` when the staff member is already booked (checked atomically). */
+  bookAppointment(
+    orgId: string,
+    appointment: z.input<typeof createAppointmentSchema>,
+  ): Promise<AppointmentDto>;
+  appointment(orgId: string, appointmentId: string): Promise<AppointmentDto>;
+  updateAppointment(
+    orgId: string,
+    appointmentId: string,
+    change: z.input<typeof updateAppointmentSchema>,
+  ): Promise<AppointmentDto>;
+  setAppointmentStatus(
+    orgId: string,
+    appointmentId: string,
+    status: z.input<typeof appointmentStatusRequestSchema>,
+  ): Promise<AppointmentDto>;
+  providerAnalytics(
+    orgId: string,
+    query?: z.input<typeof analyticsQuerySchema>,
+  ): Promise<ProviderAnalyticsDto>;
+  /** Appointments on service requests you raised. */
+  myAppointments(): Promise<CustomerAppointmentDto[]>;
+  /** Public: "Usually responds within …" for a published provider. */
+  providerResponseStatus(slug: string): Promise<ResponseStatusDto>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -794,6 +897,23 @@ const articlePath = (articleId: string, ...rest: string[]) =>
   ["/v1/me/articles", articleId, ...rest]
     .map((part, i) => (i === 0 ? part : encodeURIComponent(part)))
     .join("/");
+
+const crmPath = (orgId: string, ...rest: string[]) =>
+  ["/v1/orgs", orgId, "crm", ...rest]
+    .map((p, i) => (i === 0 ? p : encodeURIComponent(p)))
+    .join("/");
+
+/** Validates a query object locally, then renders it as a query string. */
+function queryString(schema: z.ZodType, query: object | undefined): string {
+  if (query === undefined) return "";
+  schema.parse(query);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null) params.set(key, String(value));
+  }
+  const qs = params.toString();
+  return qs === "" ? "" : `?${qs}`;
+}
 
 const vehiclePath = (...parts: string[]) =>
   ["/v1/vehicles", ...parts.map(encodeURIComponent)].join("/");
@@ -847,6 +967,7 @@ const errorBodySchema = z
         messagingErrorReasonSchema,
         emergencyErrorReasonSchema,
         vehicleErrorReasonSchema,
+        crmErrorReasonSchema,
         z.literal("quota_exceeded"),
       ])
       .optional(),
@@ -2518,6 +2639,176 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         path: vehiclePath(vehicleId, "documents", documentId, "shares", shareId),
         schema: undefined,
         authenticated: true,
+      }),
+    crmPipeline: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${crmPath(orgId, "pipeline")}${queryString(pipelineQuerySchema, query)}`,
+        schema: pipelineSchema,
+        authenticated: true,
+      }),
+    crmInquiry: (orgId, recipientId) =>
+      send({
+        method: "GET",
+        path: crmPath(orgId, "inquiries", recipientId),
+        schema: crmInquirySchema,
+        authenticated: true,
+      }),
+    updateCrmInquiry: async (orgId, recipientId, change) =>
+      send({
+        method: "PATCH",
+        path: crmPath(orgId, "inquiries", recipientId),
+        schema: crmInquirySchema,
+        body: updateInquiryCrmSchema.parse(change),
+        authenticated: true,
+      }),
+    addInquiryNote: async (orgId, recipientId, body) =>
+      send({
+        method: "POST",
+        path: crmPath(orgId, "inquiries", recipientId, "notes"),
+        schema: crmInquirySchema,
+        body: inquiryNoteRequestSchema.parse({ body }),
+        authenticated: true,
+      }),
+    deleteInquiryNote: (orgId, recipientId, noteId) =>
+      send({
+        method: "DELETE",
+        path: crmPath(orgId, "inquiries", recipientId, "notes", noteId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    crmQuotes: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${crmPath(orgId, "quotes")}${queryString(quoteListQuerySchema, query)}`,
+        schema: z.array(crmQuoteSchema),
+        authenticated: true,
+      }),
+    crmTasks: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${crmPath(orgId, "tasks")}${queryString(taskQuerySchema, query)}`,
+        schema: z.array(crmTaskSchema),
+        authenticated: true,
+      }),
+    createCrmTask: async (orgId, task) =>
+      send({
+        method: "POST",
+        path: crmPath(orgId, "tasks"),
+        schema: crmTaskSchema,
+        body: createTaskSchema.parse(task),
+        authenticated: true,
+      }),
+    updateCrmTask: async (orgId, taskId, change) =>
+      send({
+        method: "PATCH",
+        path: crmPath(orgId, "tasks", taskId),
+        schema: crmTaskSchema,
+        body: updateTaskSchema.parse(change),
+        authenticated: true,
+      }),
+    deleteCrmTask: (orgId, taskId) =>
+      send({
+        method: "DELETE",
+        path: crmPath(orgId, "tasks", taskId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    crmStaff: (orgId) =>
+      send({
+        method: "GET",
+        path: crmPath(orgId, "staff"),
+        schema: z.array(staffMemberSchema),
+        authenticated: true,
+      }),
+    setStaffAvailability: async (orgId, userId, availability) =>
+      send({
+        method: "PUT",
+        path: crmPath(orgId, "staff", userId, "availability"),
+        schema: z.array(staffMemberSchema),
+        body: staffAvailabilityRequestSchema.parse(availability),
+        authenticated: true,
+      }),
+    addStaffTimeOff: async (orgId, userId, timeOff) =>
+      send({
+        method: "POST",
+        path: crmPath(orgId, "staff", userId, "time-off"),
+        schema: z.array(staffMemberSchema),
+        body: timeOffRequestSchema.parse(timeOff),
+        authenticated: true,
+      }),
+    removeStaffTimeOff: (orgId, userId, timeOffId) =>
+      send({
+        method: "DELETE",
+        path: crmPath(orgId, "staff", userId, "time-off", timeOffId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    appointmentSlots: async (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${crmPath(orgId, "slots")}${queryString(slotQuerySchema, query)}`,
+        schema: slotsSchema,
+        authenticated: true,
+      }),
+    appointments: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${crmPath(orgId, "appointments")}${queryString(appointmentQuerySchema, query)}`,
+        schema: z.array(appointmentSchema),
+        authenticated: true,
+      }),
+    bookAppointment: async (orgId, appointment) =>
+      send({
+        method: "POST",
+        path: crmPath(orgId, "appointments"),
+        schema: appointmentSchema,
+        body: createAppointmentSchema.parse(appointment),
+        authenticated: true,
+      }),
+    appointment: (orgId, appointmentId) =>
+      send({
+        method: "GET",
+        path: crmPath(orgId, "appointments", appointmentId),
+        schema: appointmentSchema,
+        authenticated: true,
+      }),
+    updateAppointment: async (orgId, appointmentId, change) =>
+      send({
+        method: "PATCH",
+        path: crmPath(orgId, "appointments", appointmentId),
+        schema: appointmentSchema,
+        body: updateAppointmentSchema.parse(change),
+        authenticated: true,
+      }),
+    setAppointmentStatus: async (orgId, appointmentId, status) =>
+      send({
+        method: "POST",
+        path: crmPath(orgId, "appointments", appointmentId, "status"),
+        schema: appointmentSchema,
+        body: appointmentStatusRequestSchema.parse(status),
+        authenticated: true,
+      }),
+    providerAnalytics: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${crmPath(orgId, "analytics")}${queryString(analyticsQuerySchema, query)}`,
+        schema: providerAnalyticsSchema,
+        authenticated: true,
+      }),
+    myAppointments: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/appointments",
+        schema: z.array(customerAppointmentSchema),
+        authenticated: true,
+      }),
+    providerResponseStatus: (slug) =>
+      send({
+        method: "GET",
+        path: `/v1/providers/${encodeURIComponent(slug)}/response-status`,
+        schema: responseStatusSchema,
+        authenticated: false,
       }),
     provider: (slug, options) =>
       send({

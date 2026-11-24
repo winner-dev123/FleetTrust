@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PGlite } from "@electric-sql/pglite";
+import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 import { postgis } from "@electric-sql/pglite-postgis";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
@@ -57,7 +58,7 @@ export function ensureTestDatabaseTemplate(): Promise<string> {
     } catch {
       // not built yet
     }
-    const client = await PGlite.create({ extensions: { postgis } });
+    const client = await PGlite.create({ extensions: { postgis, btree_gist } });
     try {
       await migrate(drizzle(client), { migrationsFolder });
       // Reference data (currencies, plan catalog) belongs in a realistic test database.

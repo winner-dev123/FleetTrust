@@ -218,6 +218,20 @@
       "when": 1795470763022,
       "tag": "0030_vehicles_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795489013065,
+      "tag": "0031_crm",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795489014179,
+      "tag": "0032_crm_constraints",
+      "breakpoints": true
     }
   ]
 }

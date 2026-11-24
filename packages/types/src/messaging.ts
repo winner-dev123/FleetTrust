@@ -208,6 +208,9 @@ export const NOTIFICATION_KINDS = [
   "provider_cancelled",
   "maintenance_due",
   "document_expiring",
+  "appointment_booked",
+  "appointment_changed",
+  "appointment_assigned",
 ] as const;
 
 export const notificationSchema = z.object({
