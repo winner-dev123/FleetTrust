@@ -626,6 +626,33 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
+  it("trust: public status without a token, error reasons, appeals validated locally", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 409, error: "conflict", reason: "not_eligible" }, 409),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    const error = await client.claimPowerUser().catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("not_eligible");
+    expect(fetch.mock.calls[0]?.[0]).toBe("https://x.test/v1/me/power-user");
+    await client.userStatus(orgId).catch(() => undefined);
+    expect(fetch.mock.calls[1]?.[0]).toBe(`https://x.test/v1/users/${orgId}/status`);
+    expect(new Headers(fetch.mock.calls[1]?.[1]?.headers).get("Authorization")).toBeNull();
+    await client.trustDashboard().catch(() => undefined);
+    expect(fetch.mock.calls[2]?.[0]).toBe("https://x.test/v1/trust-safety/dashboard");
+    // A statement is required, and suspensions are at most a year.
+    await expect(
+      client.fileAppeal({ kind: "power_user", statement: "Too short" }),
+    ).rejects.toThrow();
+    await expect(
+      client.sanctionMember(orgId, { kind: "suspension", reason: "Harassment", days: 400 }),
+    ).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
   it("fleet and jobs: paths, public board without a token, local validation", async () => {
     const fetch = vi
       .fn<typeof globalThis.fetch>()

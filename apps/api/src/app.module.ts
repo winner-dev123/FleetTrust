@@ -11,6 +11,7 @@ import { CrmModule } from "./modules/crm/index.js";
 import { PartsModule } from "./modules/parts/index.js";
 import { FleetModule } from "./modules/fleet/index.js";
 import { JobsModule } from "./modules/jobs/index.js";
+import { PowerUserModule } from "./modules/power-user/index.js";
 import { OrganizationsModule } from "./modules/organizations/index.js";
 import { ProvidersModule } from "./modules/providers/index.js";
 import { RequestsModule } from "./modules/requests/index.js";
@@ -97,6 +98,7 @@ export class AppModule {
         PartsModule,
         FleetModule,
         JobsModule,
+        PowerUserModule,
         HealthModule,
       ],
     };

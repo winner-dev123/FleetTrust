@@ -14,6 +14,7 @@ import {
   eq,
   type Executor,
   inArray,
+  memberSanctions,
   jobApplications,
   jobs,
   isNull,
@@ -198,6 +199,43 @@ export class NotificationsService {
       case "MessageModerated":
       case "JobModerated":
         return this.moderated(tx, event);
+      case "MemberSanctioned": {
+        const [s] = await tx
+          .select()
+          .from(memberSanctions)
+          .where(eq(memberSanctions.id, event.aggregateId));
+        if (!s) return [];
+        const until = s.endsAt ? ` until ${s.endsAt.toISOString().slice(0, 10)}` : "";
+        return this.notify(tx, event, [s.userId], "community", {
+          kind: "account_sanctioned",
+          title: s.kind === "warning" ? "Warning from FleetTrust" : "Account suspended",
+          body:
+            s.kind === "warning"
+              ? `FleetTrust moderators sent you a warning: ${s.reason} You can appeal within 30 days.`
+              : `Your account is suspended${until}: ${s.reason} You can still sign in to appeal.`,
+          data: { sanctionId: s.id },
+        });
+      }
+      case "PowerUserRevoked":
+        return this.notify(tx, event, [event.aggregateId], "community", {
+          kind: "power_user",
+          title: "Power User status removed",
+          body: `Your Power User status was removed: ${str(p["reason"]) ?? "moderation decision"}. You can appeal within 30 days.`,
+          data: {},
+        });
+      case "AppealDecided": {
+        const userId = str(p["userId"]);
+        if (userId === null) return [];
+        const overturned = p["outcome"] === "overturned";
+        return this.notify(tx, event, [userId], "community", {
+          kind: "appeal_decided",
+          title: overturned ? "Appeal accepted" : "Appeal decided",
+          body: overturned
+            ? "Your appeal was accepted and the decision was reversed."
+            : "Your appeal was reviewed and the decision stands.",
+          data: { appealId: event.aggregateId },
+        });
+      }
       case "JobApplicationReceived":
       case "JobApplicationUpdated":
         return this.jobApplicationChanged(tx, event);
@@ -615,6 +653,7 @@ export class NotificationsService {
       hide: "was hidden by FleetTrust moderators",
       restore: "was restored",
       auto_flag: "is hidden while moderators look at reports about it",
+      appeal_overturned: "was restored after your appeal",
     };
     const reason = latest?.reason ? ` Reason: ${latest.reason}` : "";
     return this.notify(tx, event, [authorId], "community", {

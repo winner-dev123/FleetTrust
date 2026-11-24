@@ -1,7 +1,7 @@
 # Handoff — Prompt 22: Fleet dashboards and job board
 
 - Date: 2026-11-24
-- Status: **awaiting owner approval** · branch `feat/prompt-22-fleet`
+- Status: **approved** · merged as PR #24 → `7bbfe0b` (CI 5/5 green on `2056618`)
 - Prompt 21 approved and merged (PR #23 → `6848643`).
 
 ## Assumptions

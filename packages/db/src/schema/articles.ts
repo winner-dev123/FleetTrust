@@ -73,6 +73,13 @@ export const MODERATION_ACTION_VALUES = [
   "restore",
   "dismiss_reports",
   "auto_flag",
+  // Member sanctions, Power User and appeals (Prompt 23).
+  "warn",
+  "suspend",
+  "lift_suspension",
+  "revoke_power_user",
+  "appeal_upheld",
+  "appeal_overturned",
 ] as const;
 
 /**

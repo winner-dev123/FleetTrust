@@ -1,4 +1,4 @@
-import { and, type Database, eq, type PlatformRole, platformStaff } from "@fleettrust/db";
+import { and, type Database, eq, inArray, type PlatformRole, platformStaff } from "@fleettrust/db";
 import {
   applyDecorators,
   type CanActivate,
@@ -30,11 +30,13 @@ export class PlatformRoleGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const role = this.reflector.getAllAndOverride<PlatformRole | undefined>(PLATFORM_ROLE, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (role === undefined) throw new Error("PlatformRoleGuard used without @PlatformRole()");
+    const roles = this.reflector.getAllAndOverride<readonly PlatformRole[] | undefined>(
+      PLATFORM_ROLE,
+      [context.getHandler(), context.getClass()],
+    );
+    if (roles === undefined || roles.length === 0) {
+      throw new Error("PlatformRoleGuard used without @PlatformRoleRequired()");
+    }
     const user = context.switchToHttp().getRequest<AuthenticatedRequest>().auth?.user;
     if (!user) throw new Error("PlatformRoleGuard ran before authentication");
     const db: Database | undefined = this.database?.db;
@@ -42,7 +44,7 @@ export class PlatformRoleGuard implements CanActivate {
     const [row] = await db
       .select({ role: platformStaff.role })
       .from(platformStaff)
-      .where(and(eq(platformStaff.userId, user.id), eq(platformStaff.role, role)))
+      .where(and(eq(platformStaff.userId, user.id), inArray(platformStaff.role, [...roles])))
       .limit(1);
     if (!row || user.status !== "active") {
       throw new NotFoundException({ statusCode: 404, error: "not_found" });
@@ -51,5 +53,6 @@ export class PlatformRoleGuard implements CanActivate {
   }
 }
 
-export const PlatformRoleRequired = (role: PlatformRole) =>
-  applyDecorators(SetMetadata(PLATFORM_ROLE, role), CheckRevoked(), UseGuards(PlatformRoleGuard));
+/** Any one of the roles is enough (e.g. the shared trust and safety dashboard). */
+export const PlatformRoleRequired = (...roles: [PlatformRole, ...PlatformRole[]]) =>
+  applyDecorators(SetMetadata(PLATFORM_ROLE, roles), CheckRevoked(), UseGuards(PlatformRoleGuard));

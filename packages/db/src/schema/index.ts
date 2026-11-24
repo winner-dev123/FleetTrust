@@ -19,3 +19,4 @@ export * from "./messaging.js";
 export * from "./crm.js";
 export * from "./parts.js";
 export * from "./fleet.js";
+export * from "./trust.js";

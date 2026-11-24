@@ -33,6 +33,7 @@ import {
 import {
   type AuthenticatedRequest,
   CHECK_REVOKED,
+  ALLOW_SUSPENDED,
   IS_PUBLIC,
   RECENT_LOGIN,
   REQUIRE_DISPLAY_NAME,
@@ -125,7 +126,16 @@ export class AuthGuard implements CanActivate {
       }
       throw error;
     }
-    if (user.status === "suspended") deny("account_suspended", 403);
+    if (user.status === "suspended") {
+      // A suspension that has ended reactivates the account on the next request.
+      user = await this.usersService.reactivateIfSuspensionEnded(user);
+    }
+    if (
+      user.status === "suspended" &&
+      !this.reflector.getAllAndOverride<boolean>(ALLOW_SUSPENDED, targets)
+    ) {
+      deny("account_suspended", 403);
+    }
     if (
       this.reflector.getAllAndOverride<boolean>(REQUIRE_DISPLAY_NAME, targets) &&
       !user.displayName

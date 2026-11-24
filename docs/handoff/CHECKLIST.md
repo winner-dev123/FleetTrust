@@ -25,8 +25,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 19  | Vehicle profiles and maintenance           | approved (merged, PR #21)          | [prompt-19.md](prompt-19.md) |
 | 20  | Provider CRM and appointments              | approved (merged, PR #22)          | [prompt-20.md](prompt-20.md) |
 | 21  | Parts inventory and provider referrals     | approved (merged, PR #23)          | [prompt-21.md](prompt-21.md) |
-| 22  | Fleet dashboards and job board             | awaiting approval                  | [prompt-22.md](prompt-22.md) |
-| 23  | Status, power users and moderation         | todo                               |                              |
+| 22  | Fleet dashboards and job board             | approved (merged, PR #24)          | [prompt-22.md](prompt-22.md) |
+| 23  | Status, power users and moderation         | awaiting approval                  | [prompt-23.md](prompt-23.md) |
 | 24  | Web product and design system              | todo                               |                              |
 | 25  | React Native mobile product                | todo                               |                              |
 | 26  | Administration and operations              | todo                               |                              |

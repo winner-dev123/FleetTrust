@@ -11,6 +11,13 @@ export const REQUIRE_DISPLAY_NAME = Symbol("require-display-name");
 /** Route needs no sign-in (health checks, public content). Everything else does, by default. */
 export const Public = () => SetMetadata(IS_PUBLIC, true);
 
+export const ALLOW_SUSPENDED = Symbol("allow-suspended");
+/**
+ * Suspended members may still call this route: seeing their sanctions and appealing them
+ * (SRS J9: the affected user can appeal). Everything else answers 403 `account_suspended`.
+ */
+export const AllowSuspended = () => SetMetadata(ALLOW_SUSPENDED, true);
+
 /**
  * Sensitive route: the token must not be revoked (extra lookup per call). Use for account
  * changes, admin actions and anything that acts on someone else's behalf.

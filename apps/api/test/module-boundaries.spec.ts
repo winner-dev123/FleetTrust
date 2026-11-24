@@ -42,6 +42,22 @@ describe("module boundaries", () => {
     },
   );
 
+  it.each(["verification", "power-user", "search"])(
+    "blocks %s from reading plan or quota tables (ADR-0009)",
+    async (moduleName) => {
+      const messages = await lint(
+        `src/modules/${moduleName}/service.ts`,
+        'import { planAssignments, users } from "@fleettrust/db";\nexport { planAssignments, users };\n',
+      );
+      expect(messages.join("\n")).toMatch(/plan or quota tables/);
+      const allowed = await lint(
+        `src/modules/${moduleName}/service.ts`,
+        'import { users } from "@fleettrust/db";\nexport { users };\n',
+      );
+      expect(allowed).toEqual([]);
+    },
+  );
+
   it("blocks deep imports into another module's internals (ADR-0002)", async () => {
     const messages = await lint(
       "src/modules/service-requests/request.service.ts",
