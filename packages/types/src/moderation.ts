@@ -24,6 +24,8 @@ export const REPORT_TARGET_TYPES = [
   "group",
   "user",
   "message",
+  /** Job listings (Prompt 22). */
+  "job",
 ] as const;
 export type ReportTargetType = (typeof REPORT_TARGET_TYPES)[number];
 

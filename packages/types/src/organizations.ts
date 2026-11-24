@@ -53,6 +53,8 @@ export const PERMISSIONS = [
   "crm.manage",
   /** Providers: list parts and indicative prices (Prompt 21; branch-scoped: that branch's stock). Staff with requests.respond confirm stock and answer availability inquiries. */
   "parts.manage",
+  /** Fleets: post jobs and handle applications (Prompt 22). Owners, admins and recruiters. */
+  "jobs.manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -83,6 +85,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "vehicles.manage",
     "crm.manage",
     "parts.manage",
+    "jobs.manage",
   ],
   manager: [
     "org.read",
@@ -101,7 +104,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   ],
   staff: ["org.read", "branches.read", "requests.respond"],
   driver: ["org.read", "branches.read", "requests.create"],
-  recruiter: ["org.read"],
+  recruiter: ["org.read", "jobs.manage"],
 };
 
 export function roleAllowedFor(kind: OrganizationKind, role: Role): boolean {

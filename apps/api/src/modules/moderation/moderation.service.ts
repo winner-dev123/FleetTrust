@@ -11,6 +11,7 @@ import {
   enqueueOutboxEvent,
   eq,
   type Executor,
+  jobs,
   moderationActions,
   queryRows,
   recordAuditEvent,
@@ -67,6 +68,7 @@ const OUTBOX: Record<ReportTargetType, string> = {
   group: "GroupModerated",
   user: "UserModerated",
   message: "MessageModerated",
+  job: "JobModerated",
 };
 
 interface Target {
@@ -241,6 +243,20 @@ export class ModerationService {
           articleId: null,
         };
       }
+      case "job": {
+        const query = executor.select().from(jobs).where(eq(jobs.id, id));
+        const [row] = lock ? await query.for("update") : await query;
+        // Drafts are private to the employer, even for moderators.
+        if (!row || row.status === "draft") throw notFound();
+        if (options.publicOnly === true && row.status !== "published") throw notFound();
+        return {
+          authorUserId: row.createdBy,
+          status: row.status,
+          title: row.title,
+          text: row.description,
+          articleId: null,
+        };
+      }
       case "user": {
         const [row] = await executor.select().from(users).where(eq(users.id, id));
         if (!row) throw notFound();
@@ -279,6 +295,15 @@ export class ModerationService {
         .set({ status: "hidden" })
         .where(and(eq(articleComments.id, id), eq(articleComments.status, "visible")))
         .returning({ id: articleComments.id });
+    } else if (type === "job") {
+      moved = await executor
+        .update(jobs)
+        .set({
+          status: "pending_moderation",
+          moderationNote: "Reported: a moderator will review it.",
+        })
+        .where(and(eq(jobs.id, id), eq(jobs.status, "published")))
+        .returning({ id: jobs.id });
     } else if (type === "message") {
       moved = await executor
         .update(messages)
@@ -348,6 +373,15 @@ export class ModerationService {
                  o.open_reports, o.reasons, o.first_report
           FROM messages m
           JOIN open o ON o.target_type = 'message' AND o.target_id = m.id
+          UNION ALL
+          SELECT 'job', j.id, j.status, j.title, j.created_by,
+                 coalesce(o.open_reports, 0), o.reasons,
+                 CASE WHEN j.status = 'pending_moderation'
+                      THEN least(j.updated_at, coalesce(o.first_report, j.updated_at))
+                      ELSE o.first_report END
+          FROM jobs j
+          LEFT JOIN open o ON o.target_type = 'job' AND o.target_id = j.id
+          WHERE j.status <> 'draft' AND (j.status = 'pending_moderation' OR o.target_id IS NOT NULL)
           ORDER BY waiting_since ASC
           LIMIT 100`,
     );
@@ -439,6 +473,45 @@ export class ModerationService {
       });
     });
     return this.case("article", id);
+  }
+
+  /**
+   * Job listings (ADR-0029): the same moves as articles. Approving publishes it (an unverified
+   * employer's listing goes live only this way); rejecting sends it back with a note.
+   */
+  async decideJob(
+    moderator: User,
+    id: string,
+    decision: ArticleDecision,
+    reason: string | null,
+  ): Promise<ModerationCase> {
+    await this.db.transaction(async (tx) => {
+      const target = await this.target(tx, "job", id, { lock: true });
+      if (target.authorUserId === moderator.id) throw moderationError(409, "own_content");
+      const [row] = await tx.select().from(jobs).where(eq(jobs.id, id));
+      if (!row) throw notFound();
+      const move = ARTICLE_MOVES[decision];
+      if (!(move.from as readonly string[]).includes(row.status)) {
+        throw moderationError(409, "invalid_transition");
+      }
+      const upheld = UPHOLDS.has(decision);
+      await tx
+        .update(jobs)
+        .set({
+          status: move.to,
+          moderationNote: upheld ? reason : null,
+          ...(move.to === "published" ? { publishedAt: row.publishedAt ?? this.clock.now() } : {}),
+        })
+        .where(eq(jobs.id, row.id));
+      const resolved = await this.resolveReports(tx, moderator, "job", row.id, upheld);
+      await this.record(tx, moderator, "job", row.id, decision, reason, {
+        from: row.status,
+        to: move.to,
+        reports: resolved,
+        authorUserId: row.createdBy,
+      });
+    });
+    return this.case("job", id);
   }
 
   /** Hide or restore a comment or a group. */

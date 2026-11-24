@@ -65,6 +65,8 @@ describe("migrations on a fresh database", () => {
       "0032_crm_constraints",
       "0033_parts_and_referrals",
       "0034_parts_and_referrals_constraints",
+      "0035_fleet_and_jobs",
+      "0036_fleet_and_jobs_triggers",
     ]);
   });
 
@@ -111,11 +113,16 @@ describe("migrations on a fresh database", () => {
       "document_access_grants",
       "emergency_guidance",
       "emergency_incidents",
+      "fleet_expenses",
+      "fleet_incidents",
+      "fleet_preferred_providers",
       "friend_requests",
       "friendships",
       "incident_deliveries",
       "incident_recipients",
       "invitations",
+      "job_applications",
+      "jobs",
       "maintenance_schedules",
       "memberships",
       "message_attachments",
