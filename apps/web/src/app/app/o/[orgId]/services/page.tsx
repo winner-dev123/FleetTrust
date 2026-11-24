@@ -171,7 +171,7 @@ export default function ServicesPage(props: PageProps<"/app/o/[orgId]/services">
             <p>Add at least one service so customers know what you offer.</p>
           </EmptyState>
         ) : (
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Your services">
             <table className="table">
               <caption className="visually-hidden">Your services</caption>
               <thead>

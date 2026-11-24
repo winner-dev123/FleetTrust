@@ -131,7 +131,12 @@ export default async function ProviderPage(props: PageProps<"/providers/[slug]">
         {profile.catalog.offerings.length === 0 ? (
           <p className="muted">No services listed yet.</p>
         ) : (
-          <div className="table-wrap">
+          <div
+            className="table-wrap"
+            tabIndex={0}
+            role="region"
+            aria-label="Services and indicative prices"
+          >
             <table className="table">
               <caption className="visually-hidden">Services and indicative prices</caption>
               <thead>

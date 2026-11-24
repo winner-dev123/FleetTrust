@@ -80,7 +80,7 @@ export default function MembersPage(props: PageProps<"/app/o/[orgId]/members">) 
               <ErrorNotice error={data.error} onRetry={data.reload} />
             ) : null}
             {data.status === "ready" ? (
-              <div className="table-wrap">
+              <div className="table-wrap" tabIndex={0} role="region" aria-label="Members">
                 <table className="table">
                   <caption className="visually-hidden">Members</caption>
                   <thead>

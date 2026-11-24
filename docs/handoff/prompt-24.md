@@ -45,10 +45,18 @@
 
 | Check                           | Result                                                                                                                                                                                                                                |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Local, whole repo: `pnpm check` | **Pass**: format, module guard (742 files), 39/39 turbo tasks. Tests: web **63** (was 18), ui **35** (was 22), types **79** (+3), api 326, sdk 30, db 96 + 6 PG-only skipped locally, local-infra 44, repo-guards 25, env 5, mobile 5 |
+| Local, whole repo: `pnpm check` | **Pass**: format, module guard (742 files), 39/39 turbo tasks. Tests: web **64** (was 18), ui **35** (was 22), types **79** (+3), api 326, sdk 30, db 96 + 6 PG-only skipped locally, local-infra 44, repo-guards 25, env 5, mobile 5 |
 | Browser tests (local, Chrome)   | **18 passed**: on each of desktop and 320 px phone, 6 journeys and 3 accessibility runs (public, dark theme, signed in). Run with `PLAYWRIGHT_CHANNEL=chrome`                                                                         |
 | Production build                | 42 routes                                                                                                                                                                                                                             |
 | Schema drift                    | "No schema changes"                                                                                                                                                                                                                   |
+
+## CI finding (fixed)
+
+The first CI run of the browser tests failed one check on the 320 px phone: on CI's fonts the members table was wider than the screen, so its box scrolled sideways, but keyboard users couldn't reach it (axe `scrollable-region-focusable`, WCAG 2.1.1). Locally the table fitted, so the check passed.
+
+- **Fix:** every table box is now focusable and named (`tabIndex={0}`, `role="region"`, `aria-label`).
+- **New guard:** a source check fails if any table box lacks these attributes, whatever the fonts or screen width.
+- **Verification:** removing the fix from one table makes the guard fail.
 
 ## Not built here (gaps on the web)
 

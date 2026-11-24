@@ -72,7 +72,7 @@ export default function VehiclePage(props: PageProps<"/app/vehicles/[id]">) {
         {schedules.length === 0 ? (
           <EmptyState title="No reminders set" />
         ) : (
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Maintenance schedule">
             <table className="table">
               <caption className="visually-hidden">Maintenance schedule</caption>
               <thead>

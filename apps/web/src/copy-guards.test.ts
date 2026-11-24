@@ -40,6 +40,23 @@ describe("product copy guards", () => {
     }
   });
 
+  it("scrollable table boxes are keyboard-reachable and named (WCAG 2.1.1, axe scrollable-region-focusable)", () => {
+    // Whether a table overflows depends on fonts and screen width, so the browser checks can
+    // miss it on one machine; every table box must be focusable regardless.
+    const boxes = files.flatMap((file) =>
+      [...file.text.matchAll(/<div\s+className="table-wrap"([^>]*)>/g)].map((match) => ({
+        path: file.path,
+        attributes: match[1] ?? "",
+      })),
+    );
+    expect(boxes.length).toBeGreaterThanOrEqual(6);
+    for (const box of boxes) {
+      expect(box.attributes, box.path).toMatch(
+        /tabIndex=\{0\}\s+role="region"\s+aria-label="[^"]+"/,
+      );
+    }
+  });
+
   it("no screen shows star ratings or review scores (ADR-0011)", () => {
     const forbidden = /★|☆|\b(?:star rating|rate this provider|leave a review|average rating)\b/i;
     for (const file of files) {

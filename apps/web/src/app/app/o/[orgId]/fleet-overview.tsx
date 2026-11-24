@@ -69,7 +69,12 @@ export function FleetOverview({ membership }: { membership: MyOrganization }) {
 
           {dashboard.data.maintenance.items.length > 0 ? (
             <Card title="Maintenance needing attention">
-              <div className="table-wrap">
+              <div
+                className="table-wrap"
+                tabIndex={0}
+                role="region"
+                aria-label="Maintenance needing attention"
+              >
                 <table className="table">
                   <caption className="visually-hidden">Maintenance needing attention</caption>
                   <thead>

@@ -63,7 +63,12 @@ export default function AdminPage() {
       </div>
 
       <Card title="Reports received, last 14 days">
-        <div className="table-wrap">
+        <div
+          className="table-wrap"
+          tabIndex={0}
+          role="region"
+          aria-label="Reports received per day"
+        >
           <table className="table">
             <caption className="visually-hidden">Reports received per day</caption>
             <thead>
