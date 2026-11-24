@@ -67,6 +67,8 @@ describe("migrations on a fresh database", () => {
       "0034_parts_and_referrals_constraints",
       "0035_fleet_and_jobs",
       "0036_fleet_and_jobs_triggers",
+      "0037_trust_and_safety",
+      "0038_trust_and_safety_triggers",
     ]);
   });
 
@@ -124,11 +126,13 @@ describe("migrations on a fresh database", () => {
       "job_applications",
       "jobs",
       "maintenance_schedules",
+      "member_sanctions",
       "memberships",
       "message_attachments",
       "messages",
       "messaging_preferences",
       "moderation_actions",
+      "moderation_appeals",
       "notifications",
       "organizations",
       "outbox_events",
@@ -140,6 +144,7 @@ describe("migrations on a fresh database", () => {
       "plan_versions",
       "plans",
       "platform_staff",
+      "power_user_status",
       "provider_emergency_settings",
       "provider_media",
       "provider_offering_branches",

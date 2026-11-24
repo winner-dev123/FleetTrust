@@ -7,6 +7,7 @@ export {
   type VerifiedIdentity,
 } from "./auth-verifier.js";
 export {
+  AllowSuspended,
   type AuthContext,
   type AuthenticatedRequest,
   CheckRevoked,

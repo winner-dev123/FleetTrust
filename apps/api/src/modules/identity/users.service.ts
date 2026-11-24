@@ -1,4 +1,12 @@
-import { type Database, eq, recordAuditEvent, type User, users } from "@fleettrust/db";
+import {
+  and,
+  type Database,
+  eq,
+  memberSanctions,
+  recordAuditEvent,
+  type User,
+  users,
+} from "@fleettrust/db";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
@@ -21,6 +29,36 @@ export class UsersService {
   private get db(): Database {
     if (this.database === null) throw new DatabaseUnavailableError();
     return this.database.db;
+  }
+
+  /**
+   * A suspended account whose moderation suspensions have all ended (lapsed or lifted) becomes
+   * active again (ADR-0030). An account suspended any other way (no suspension record) stays
+   * suspended. Returns the user as it is now.
+   */
+  async reactivateIfSuspensionEnded(user: User): Promise<User> {
+    const now = new Date();
+    const suspensions = await this.db
+      .select({ endsAt: memberSanctions.endsAt, liftedAt: memberSanctions.liftedAt })
+      .from(memberSanctions)
+      .where(and(eq(memberSanctions.userId, user.id), eq(memberSanctions.kind, "suspension")));
+    const stillActive = suspensions.some(
+      (s) => s.liftedAt === null && (s.endsAt === null || s.endsAt > now),
+    );
+    if (suspensions.length === 0 || stillActive) return user;
+    const [row] = await this.db
+      .update(users)
+      .set({ status: "active" })
+      .where(and(eq(users.id, user.id), eq(users.status, "suspended")))
+      .returning();
+    if (!row) return user;
+    await recordAuditEvent(this.db, {
+      actorType: "system",
+      action: "user.suspension_ended",
+      targetType: "user",
+      targetId: user.id,
+    });
+    return row;
   }
 
   /**

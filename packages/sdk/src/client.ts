@@ -1,4 +1,24 @@
 import {
+  type MemberHistoryDto,
+  memberHistorySchema,
+  type ModerationAppealDto,
+  moderationAppealDecisionSchema,
+  moderationAppealQuerySchema,
+  moderationAppealRequestSchema,
+  type ModerationAppealRequest,
+  moderationAppealSchema,
+  type MyPowerUserDto,
+  myPowerUserSchema,
+  type SanctionDto,
+  sanctionRequestSchema,
+  type SanctionRequest,
+  sanctionSchema,
+  type TrustDashboardDto,
+  trustDashboardSchema,
+  type TrustErrorReason,
+  trustErrorReasonSchema,
+  type UserStatusDto,
+  userStatusSchema,
   type ApplicationDto,
   applicationSchema,
   applicationStatusRequestSchema,
@@ -382,6 +402,7 @@ export type ApiErrorReason =
   | ReferralErrorReason
   | FleetErrorReason
   | JobErrorReason
+  | TrustErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -1057,6 +1078,34 @@ export interface ApiClient {
   applyForJob(jobId: string, application: ApplyRequest): Promise<ApplicationDto>;
   myApplications(): Promise<ApplicationDto[]>;
   withdrawApplication(applicationId: string): Promise<ApplicationDto>;
+
+  // --- Power User, sanctions and appeals (Prompt 23). Never bought, never review-based. ---
+  /** Your status, each rule and whether you meet it. */
+  myPowerUser(): Promise<MyPowerUserDto>;
+  /** Granted only if every rule passes (409 `not_eligible` otherwise). */
+  claimPowerUser(): Promise<MyPowerUserDto>;
+  /** Public label (no sign-in). */
+  userStatus(userId: string): Promise<UserStatusDto>;
+  /** Works while suspended. */
+  mySanctions(): Promise<SanctionDto[]>;
+  myAppeals(): Promise<ModerationAppealDto[]>;
+  /** Appeal a sanction, a Power User revocation or a decision about your content (works while suspended). */
+  fileAppeal(appeal: ModerationAppealRequest): Promise<ModerationAppealDto>;
+  /** Trust and safety moderators. */
+  sanctionMember(userId: string, sanction: SanctionRequest): Promise<SanctionDto>;
+  liftSanction(sanctionId: string, reason: string): Promise<SanctionDto>;
+  revokePowerUser(userId: string, reason: string): Promise<MemberHistoryDto>;
+  memberHistory(userId: string): Promise<MemberHistoryDto>;
+  moderationAppeals(
+    query?: z.input<typeof moderationAppealQuerySchema>,
+  ): Promise<ModerationAppealDto[]>;
+  /** Decided by a different moderator than the one who made the decision. */
+  decideAppeal(
+    appealId: string,
+    decision: z.input<typeof moderationAppealDecisionSchema>,
+  ): Promise<ModerationAppealDto>;
+  /** Moderators and verification reviewers. */
+  trustDashboard(): Promise<TrustDashboardDto>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -1178,6 +1227,7 @@ const errorBodySchema = z
         referralErrorReasonSchema,
         fleetErrorReasonSchema,
         jobErrorReasonSchema,
+        trustErrorReasonSchema,
         z.literal("quota_exceeded"),
       ])
       .optional(),
@@ -3378,6 +3428,102 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         method: "POST",
         path: `/v1/me/job-applications/${encodeURIComponent(applicationId)}/withdraw`,
         schema: applicationSchema,
+        authenticated: true,
+      }),
+    myPowerUser: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/power-user",
+        schema: myPowerUserSchema,
+        authenticated: true,
+      }),
+    claimPowerUser: () =>
+      send({
+        method: "POST",
+        path: "/v1/me/power-user",
+        schema: myPowerUserSchema,
+        authenticated: true,
+      }),
+    userStatus: (userId) =>
+      send({
+        method: "GET",
+        path: `/v1/users/${encodeURIComponent(userId)}/status`,
+        schema: userStatusSchema,
+        authenticated: false,
+      }),
+    mySanctions: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/sanctions",
+        schema: z.array(sanctionSchema),
+        authenticated: true,
+      }),
+    myAppeals: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/appeals",
+        schema: z.array(moderationAppealSchema),
+        authenticated: true,
+      }),
+    fileAppeal: async (appeal) =>
+      send({
+        method: "POST",
+        path: "/v1/me/appeals",
+        schema: moderationAppealSchema,
+        body: moderationAppealRequestSchema.parse(appeal),
+        authenticated: true,
+      }),
+    sanctionMember: async (userId, sanction) =>
+      send({
+        method: "POST",
+        path: `/v1/moderation/users/${encodeURIComponent(userId)}/sanctions`,
+        schema: sanctionSchema,
+        body: sanctionRequestSchema.parse(sanction),
+        authenticated: true,
+      }),
+    liftSanction: (sanctionId, reason) =>
+      send({
+        method: "POST",
+        path: `/v1/moderation/sanctions/${encodeURIComponent(sanctionId)}/lift`,
+        schema: sanctionSchema,
+        body: { reason },
+        authenticated: true,
+      }),
+    revokePowerUser: (userId, reason) =>
+      send({
+        method: "POST",
+        path: `/v1/moderation/power-users/${encodeURIComponent(userId)}/revoke`,
+        schema: memberHistorySchema,
+        body: { reason },
+        authenticated: true,
+      }),
+    memberHistory: (userId) =>
+      send({
+        method: "GET",
+        path: `/v1/moderation/users/${encodeURIComponent(userId)}/history`,
+        schema: memberHistorySchema,
+        authenticated: true,
+      }),
+    moderationAppeals: (query) =>
+      send({
+        method: "GET",
+        path: `/v1/moderation/appeals${queryString(moderationAppealQuerySchema, query)}`,
+        schema: z.array(moderationAppealSchema),
+        authenticated: true,
+      }),
+    decideAppeal: async (appealId, decision) =>
+      send({
+        method: "POST",
+        path: `/v1/moderation/appeals/${encodeURIComponent(appealId)}/decide`,
+        schema: moderationAppealSchema,
+        body: moderationAppealDecisionSchema.parse(decision),
+        authenticated: true,
+      }),
+    trustDashboard: () =>
+      send({
+        method: "GET",
+        path: "/v1/trust-safety/dashboard",
+        schema: trustDashboardSchema,
         authenticated: true,
       }),
     provider: (slug, options) =>

@@ -217,6 +217,9 @@ export const NOTIFICATION_KINDS = [
   "referral_decided",
   "job_application",
   "job_application_update",
+  "account_sanctioned",
+  "power_user",
+  "appeal_decided",
 ] as const;
 
 export const notificationSchema = z.object({

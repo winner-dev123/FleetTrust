@@ -61,6 +61,12 @@ const PAST: Record<Action, string> = {
   restore: "restored",
   dismiss_reports: "reports_dismissed",
   auto_flag: "auto_flagged",
+  warn: "warned",
+  suspend: "suspended",
+  lift_suspension: "suspension_lifted",
+  revoke_power_user: "power_user_revoked",
+  appeal_upheld: "appeal_upheld",
+  appeal_overturned: "appeal_overturned",
 };
 const OUTBOX: Record<ReportTargetType, string> = {
   article: "ArticleModerated",
@@ -98,6 +104,11 @@ export class ModerationService {
   private get db(): Database {
     if (this.database === null) throw new Error("DATABASE_URL is not configured");
     return this.database.db;
+  }
+
+  /** Runs work in one transaction (for sibling controllers that combine services). */
+  async withTransaction<T>(work: (tx: Executor) => Promise<T>): Promise<T> {
+    return this.db.transaction(work);
   }
 
   // -------------------------------------------------------------------------------------------
@@ -559,6 +570,60 @@ export class ModerationService {
   }
 
   /**
+   * An appeal against a reject or hide decision was overturned (ADR-0030): the content is shown
+   * again, if it is still hidden or rejected. Returns whether anything changed.
+   */
+  async restoreAfterAppeal(
+    executor: Executor,
+    moderator: User,
+    type: ReportTargetType,
+    id: string,
+  ): Promise<boolean> {
+    const now = this.clock.now();
+    let changed: { id: string }[] = [];
+    if (type === "article") {
+      const [row] = await executor.select().from(articles).where(eq(articles.id, id));
+      if (row?.deletedAt === null && (row.status === "hidden" || row.status === "rejected")) {
+        changed = await executor
+          .update(articles)
+          .set({ status: "published", moderationNote: null, publishedAt: row.publishedAt ?? now })
+          .where(eq(articles.id, id))
+          .returning({ id: articles.id });
+      }
+    } else if (type === "job") {
+      const [row] = await executor.select().from(jobs).where(eq(jobs.id, id));
+      if (row && (row.status === "hidden" || row.status === "rejected")) {
+        changed = await executor
+          .update(jobs)
+          .set({ status: "published", moderationNote: null, publishedAt: row.publishedAt ?? now })
+          .where(eq(jobs.id, id))
+          .returning({ id: jobs.id });
+      }
+    } else if (type === "article_comment") {
+      changed = await executor
+        .update(articleComments)
+        .set({ status: "visible" })
+        .where(and(eq(articleComments.id, id), eq(articleComments.status, "hidden")))
+        .returning({ id: articleComments.id });
+    } else if (type === "message") {
+      changed = await executor
+        .update(messages)
+        .set({ status: "visible" })
+        .where(and(eq(messages.id, id), eq(messages.status, "hidden")))
+        .returning({ id: messages.id });
+    } else if (type === "group") {
+      changed = await executor
+        .update(communityGroups)
+        .set({ status: "active" })
+        .where(and(eq(communityGroups.id, id), eq(communityGroups.status, "hidden")))
+        .returning({ id: communityGroups.id });
+    }
+    if (changed.length === 0) return false;
+    await this.record(executor, moderator, type, id, "appeal_overturned", null, { restored: true });
+    return true;
+  }
+
+  /**
    * A moderator opens a case. Message cases show private conversation content, so every view is
    * audited (SRS §2.3: no message content without an audited case).
    */
@@ -595,7 +660,7 @@ export class ModerationService {
     return this.case(type, id);
   }
 
-  private async resolveReports(
+  async resolveReports(
     executor: Executor,
     moderator: User,
     type: ReportTargetType,
@@ -620,7 +685,7 @@ export class ModerationService {
     return rows.length;
   }
 
-  private async record(
+  async record(
     executor: Executor,
     moderator: User | null,
     type: ReportTargetType,
