@@ -21,6 +21,9 @@ import {
   notifications,
   organizations,
   type OutboxEvent,
+  partInquiries,
+  providerProfiles,
+  providerReferrals,
   serviceRequestRecipients,
   serviceRequests,
   sql,
@@ -263,9 +266,114 @@ export class NotificationsService {
       case "AppointmentCancelled":
       case "AppointmentAssigned":
         return this.appointmentChanged(tx, event);
+      case "ServiceRequestReferralProposed":
+      case "ServiceRequestReferralConsented":
+      case "ServiceRequestReferralDeclined":
+        return this.referralChanged(tx, event);
+      case "PartInquiryCreated":
+      case "PartInquiryAnswered":
+        return this.partInquiryChanged(tx, event);
       default:
         return [];
     }
+  }
+
+  /** Display name of a provider: its published trading name, or the organization name. */
+  private async providerName(tx: Executor, organizationId: string): Promise<string> {
+    const [row] = await tx
+      .select({ name: organizations.name, snapshot: providerProfiles.publishedSnapshot })
+      .from(organizations)
+      .leftJoin(providerProfiles, eq(providerProfiles.organizationId, organizations.id))
+      .where(eq(organizations.id, organizationId));
+    return (
+      (row?.snapshot as { tradingName?: string } | null)?.tradingName ?? row?.name ?? "A provider"
+    );
+  }
+
+  /**
+   * Referrals (ADR-0028): the customer hears about a suggestion (nothing is shared yet); the
+   * referring provider hears whether the customer agreed. The receiver is told through the
+   * normal "new service request" notification once the customer consents.
+   */
+  private async referralChanged(tx: Executor, event: OutboxEvent): Promise<Effect[]> {
+    const referralId = str(event.payload["referralId"]);
+    if (referralId === null) return [];
+    const [referral] = await tx
+      .select()
+      .from(providerReferrals)
+      .where(eq(providerReferrals.id, referralId));
+    if (!referral) return [];
+    const from = await this.providerName(tx, referral.fromOrganizationId);
+    const to = await this.providerName(tx, referral.toOrganizationId);
+    const data = { requestId: referral.requestId, referralId };
+    if (event.eventType === "ServiceRequestReferralProposed") {
+      const users = await this.requesterUsers(tx, referral.requestId);
+      return this.notify(tx, event, users, "requests", {
+        kind: "referral_proposed",
+        title: "A provider suggests another provider",
+        body: `${from} suggests ${to} for your request. Nothing is shared with them unless you agree.`,
+        data,
+      });
+    }
+    const consented = event.eventType === "ServiceRequestReferralConsented";
+    const users = await this.providerUsers(tx, referral.requestId, referral.fromOrganizationId);
+    return this.notify(tx, event, users, "requests", {
+      kind: "referral_decided",
+      title: consented ? "Referral accepted" : "Referral declined",
+      body: consented
+        ? `The customer agreed to send their request to ${to}.`
+        : `The customer declined your suggestion of ${to}.`,
+      data,
+    });
+  }
+
+  /**
+   * Parts availability inquiries (ADR-0028): the provider's members who answer inquiries at the
+   * part's branch hear about a new question; the asker hears about the answer.
+   */
+  private async partInquiryChanged(tx: Executor, event: OutboxEvent): Promise<Effect[]> {
+    const [inquiry] = await tx
+      .select()
+      .from(partInquiries)
+      .where(eq(partInquiries.id, event.aggregateId));
+    if (!inquiry) return [];
+    const data = { inquiryId: inquiry.id, partId: inquiry.partId ?? "" };
+    if (event.eventType === "PartInquiryCreated") {
+      const rows = await tx
+        .select({
+          userId: memberships.userId,
+          role: memberships.role,
+          branchId: memberships.branchId,
+        })
+        .from(memberships)
+        .where(eq(memberships.organizationId, inquiry.organizationId));
+      const users = rows
+        .filter(
+          (m) =>
+            hasPermission(m.role as Role, "requests.respond") &&
+            (m.branchId === null || m.branchId === inquiry.branchId),
+        )
+        .map((m) => m.userId);
+      return this.notify(tx, event, users, "requests", {
+        kind: "part_inquiry",
+        title: "Parts availability question",
+        body: `A customer asked whether you have ${inquiry.partName} (quantity ${String(inquiry.quantity)}).`,
+        data,
+      });
+    }
+    const provider = await this.providerName(tx, inquiry.organizationId);
+    const answer =
+      inquiry.availability === "available"
+        ? "it's available"
+        : inquiry.availability === "can_order"
+          ? "they can order it"
+          : "it's not available";
+    return this.notify(tx, event, [inquiry.createdBy], "requests", {
+      kind: "part_inquiry_answered",
+      title: "Parts question answered",
+      body: `${provider} answered about ${inquiry.partName}: ${answer}.`,
+      data,
+    });
   }
 
   /**

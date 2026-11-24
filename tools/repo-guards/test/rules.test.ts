@@ -63,6 +63,9 @@ describe("API routes", () => {
     '@Post("rewards/daily-check-in")',
     '@Post("escrow/:id/release")',
     '@Post("invoices/pay")',
+    '@Post("parts/:partId/cart")',
+    '@Post("part-reservations")',
+    '@Get("referrals/:id/commission")',
   ])("flags %s", (decorator) => {
     expect(ts(`  ${decorator}`)).toHaveLength(1);
   });
@@ -76,6 +79,9 @@ describe("API routes", () => {
           '@Post("verification-cases/:id/review")',
           '@Get("plans")',
           '@Post("admin/plan-assignments")',
+          '@Post(":inquiryId/answer")',
+          '@Controller("v1/orgs/:orgId/received-part-inquiries")',
+          '@Put(":partId/stock")',
         ].join("\n"),
       ),
     ).toEqual([]);

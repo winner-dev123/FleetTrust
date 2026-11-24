@@ -1,4 +1,35 @@
 import {
+  answerPartInquirySchema,
+  type AnswerPartInquiry,
+  createPartInquirySchema,
+  type CreatePartInquiry,
+  createPartRequestSchema,
+  type CreatePartRequest,
+  createReferralSchema,
+  type CreateReferral,
+  type PartDto,
+  type PartInquiryDto,
+  partInquiryQuerySchema,
+  partInquirySchema,
+  partListQuerySchema,
+  partRequestSchema,
+  type PartRequest,
+  partSchema,
+  partSearchQuerySchema,
+  type PartSearchResult,
+  partSearchResultSchema,
+  type PartsErrorReason,
+  partsErrorReasonSchema,
+  type PublicPart,
+  publicPartSchema,
+  type ReferralConsent,
+  referralConsentSchema,
+  type ReferralDto,
+  type ReferralErrorReason,
+  referralErrorReasonSchema,
+  referralListQuerySchema,
+  referralSchema,
+  stockRequestSchema,
   analyticsQuerySchema,
   type AppointmentDto,
   appointmentQuerySchema,
@@ -309,6 +340,8 @@ export type ApiErrorReason =
   | EmergencyErrorReason
   | VehicleErrorReason
   | CrmErrorReason
+  | PartsErrorReason
+  | ReferralErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -858,6 +891,69 @@ export interface ApiClient {
   myAppointments(): Promise<CustomerAppointmentDto[]>;
   /** Public: "Usually responds within …" for a published provider. */
   providerResponseStatus(slug: string): Promise<ResponseStatusDto>;
+
+  // --- Parts (Prompt 21): listings and availability inquiries. No checkout. ---
+  /** A provider's listings (branch-scoped members: their branch and organization-wide stock). */
+  parts(orgId: string, query?: z.input<typeof partListQuerySchema>): Promise<PartDto[]>;
+  part(orgId: string, partId: string): Promise<PartDto>;
+  /** `parts.manage`. Sets the initial stock and its confirmation time. */
+  createPart(orgId: string, part: CreatePartRequest): Promise<PartDto>;
+  replacePart(orgId: string, partId: string, part: PartRequest): Promise<PartDto>;
+  deletePart(orgId: string, partId: string): Promise<void>;
+  /** Records a stock check (also "still in stock"); counter staff at the stock's branch may call it. */
+  confirmPartStock(
+    orgId: string,
+    partId: string,
+    stock: z.input<typeof stockRequestSchema>,
+  ): Promise<PartDto>;
+  receivedPartInquiries(
+    orgId: string,
+    query?: z.input<typeof partInquiryQuerySchema>,
+  ): Promise<PartInquiryDto[]>;
+  /** Answer, or correct an answer. Also confirms the listing's stock. */
+  answerPartInquiry(
+    orgId: string,
+    inquiryId: string,
+    answer: AnswerPartInquiry,
+  ): Promise<PartInquiryDto>;
+  /** Public search. `signedIn` gives exact distances and allows `vehicleId`. */
+  searchParts(
+    query?: z.input<typeof partSearchQuerySchema>,
+    options?: { signedIn?: boolean },
+  ): Promise<PartSearchResult>;
+  publicPart(partId: string): Promise<PublicPart>;
+  /** Ask whether a part is available, for yourself or (`orgId`) for your fleet. */
+  askAboutPart(inquiry: CreatePartInquiry, options?: { orgId?: string }): Promise<PartInquiryDto>;
+  myPartInquiries(
+    query?: z.input<typeof partInquiryQuerySchema>,
+    options?: { orgId?: string },
+  ): Promise<PartInquiryDto[]>;
+  closePartInquiry(inquiryId: string, options?: { orgId?: string }): Promise<PartInquiryDto>;
+
+  // --- Referrals (Prompt 21): consent first, relationship disclosed, audited. ---
+  /** Suggest another provider for an inquiry you received. It sees nothing until the customer consents. */
+  referProvider(orgId: string, recipientId: string, referral: CreateReferral): Promise<ReferralDto>;
+  /** Sent referrals, or received ones (only those the customer consented to). */
+  providerReferrals(
+    orgId: string,
+    query?: z.input<typeof referralListQuerySchema>,
+  ): Promise<ReferralDto[]>;
+  providerReferral(orgId: string, referralId: string): Promise<ReferralDto>;
+  withdrawReferral(orgId: string, referralId: string): Promise<ReferralDto>;
+  /** Referrals on your request (`orgId`: a fleet's request). */
+  requestReferrals(requestId: string, options?: { orgId?: string }): Promise<ReferralDto[]>;
+  /** Explicit consent: `consent: true` is required. */
+  consentToReferral(
+    requestId: string,
+    referralId: string,
+    consent: ReferralConsent,
+    options?: { orgId?: string },
+  ): Promise<ReferralDto>;
+  declineReferral(
+    requestId: string,
+    referralId: string,
+    options?: { orgId?: string },
+  ): Promise<ReferralDto>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -897,6 +993,12 @@ const articlePath = (articleId: string, ...rest: string[]) =>
   ["/v1/me/articles", articleId, ...rest]
     .map((part, i) => (i === 0 ? part : encodeURIComponent(part)))
     .join("/");
+
+/** A requester's path: personal (`/v1/me/…`) or a fleet's (`/v1/orgs/:orgId/…`). */
+const requesterPath = (orgId: string | undefined, ...rest: string[]) =>
+  orgId === undefined
+    ? ["/v1/me", ...rest.map(encodeURIComponent)].join("/")
+    : orgPath(orgId, ...rest);
 
 const crmPath = (orgId: string, ...rest: string[]) =>
   ["/v1/orgs", orgId, "crm", ...rest]
@@ -968,6 +1070,8 @@ const errorBodySchema = z
         emergencyErrorReasonSchema,
         vehicleErrorReasonSchema,
         crmErrorReasonSchema,
+        partsErrorReasonSchema,
+        referralErrorReasonSchema,
         z.literal("quota_exceeded"),
       ])
       .optional(),
@@ -2809,6 +2913,167 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         path: `/v1/providers/${encodeURIComponent(slug)}/response-status`,
         schema: responseStatusSchema,
         authenticated: false,
+      }),
+    parts: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${orgPath(orgId, "parts")}${queryString(partListQuerySchema, query)}`,
+        schema: z.array(partSchema),
+        authenticated: true,
+      }),
+    part: (orgId, partId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "parts", partId),
+        schema: partSchema,
+        authenticated: true,
+      }),
+    createPart: async (orgId, part) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "parts"),
+        schema: partSchema,
+        body: createPartRequestSchema.parse(part),
+        authenticated: true,
+      }),
+    replacePart: async (orgId, partId, part) =>
+      send({
+        method: "PUT",
+        path: orgPath(orgId, "parts", partId),
+        schema: partSchema,
+        body: partRequestSchema.parse(part),
+        authenticated: true,
+      }),
+    deletePart: (orgId, partId) =>
+      send({
+        method: "DELETE",
+        path: orgPath(orgId, "parts", partId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    confirmPartStock: async (orgId, partId, stock) =>
+      send({
+        method: "PUT",
+        path: orgPath(orgId, "parts", partId, "stock"),
+        schema: partSchema,
+        body: stockRequestSchema.parse(stock),
+        authenticated: true,
+      }),
+    receivedPartInquiries: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${orgPath(orgId, "received-part-inquiries")}${queryString(partInquiryQuerySchema, query)}`,
+        schema: z.array(partInquirySchema),
+        authenticated: true,
+      }),
+    answerPartInquiry: async (orgId, inquiryId, answer) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "received-part-inquiries", inquiryId, "answer"),
+        schema: partInquirySchema,
+        body: answerPartInquirySchema.parse(answer),
+        authenticated: true,
+      }),
+    searchParts: (query, options) =>
+      send({
+        method: "GET",
+        path: `/v1/parts${options?.signedIn ? "/full" : ""}${queryString(partSearchQuerySchema, query)}`,
+        schema: partSearchResultSchema,
+        authenticated: options?.signedIn === true,
+      }),
+    publicPart: (partId) =>
+      send({
+        method: "GET",
+        path: `/v1/parts/${encodeURIComponent(partId)}`,
+        schema: publicPartSchema,
+        authenticated: false,
+      }),
+    askAboutPart: async (inquiry, options) =>
+      send({
+        method: "POST",
+        path: requesterPath(options?.orgId, "part-inquiries"),
+        schema: partInquirySchema,
+        body: createPartInquirySchema.parse(inquiry),
+        authenticated: true,
+      }),
+    myPartInquiries: (query, options) =>
+      send({
+        method: "GET",
+        path: `${requesterPath(options?.orgId, "part-inquiries")}${queryString(partInquiryQuerySchema, query)}`,
+        schema: z.array(partInquirySchema),
+        authenticated: true,
+      }),
+    closePartInquiry: (inquiryId, options) =>
+      send({
+        method: "POST",
+        path: requesterPath(options?.orgId, "part-inquiries", inquiryId, "close"),
+        schema: partInquirySchema,
+        authenticated: true,
+      }),
+    referProvider: async (orgId, recipientId, referral) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "inquiries", recipientId, "referrals"),
+        schema: referralSchema,
+        body: createReferralSchema.parse(referral),
+        authenticated: true,
+      }),
+    providerReferrals: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${orgPath(orgId, "referrals")}${queryString(referralListQuerySchema, query)}`,
+        schema: z.array(referralSchema),
+        authenticated: true,
+      }),
+    providerReferral: (orgId, referralId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "referrals", referralId),
+        schema: referralSchema,
+        authenticated: true,
+      }),
+    withdrawReferral: (orgId, referralId) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "referrals", referralId, "withdraw"),
+        schema: referralSchema,
+        authenticated: true,
+      }),
+    requestReferrals: (requestId, options) =>
+      send({
+        method: "GET",
+        path: requesterPath(options?.orgId, "service-requests", requestId, "referrals"),
+        schema: z.array(referralSchema),
+        authenticated: true,
+      }),
+    consentToReferral: async (requestId, referralId, consent, options) =>
+      send({
+        method: "POST",
+        path: requesterPath(
+          options?.orgId,
+          "service-requests",
+          requestId,
+          "referrals",
+          referralId,
+          "consent",
+        ),
+        schema: referralSchema,
+        body: referralConsentSchema.parse(consent),
+        authenticated: true,
+      }),
+    declineReferral: (requestId, referralId, options) =>
+      send({
+        method: "POST",
+        path: requesterPath(
+          options?.orgId,
+          "service-requests",
+          requestId,
+          "referrals",
+          referralId,
+          "decline",
+        ),
+        schema: referralSchema,
+        authenticated: true,
       }),
     provider: (slug, options) =>
       send({

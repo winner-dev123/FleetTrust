@@ -63,6 +63,8 @@ describe("migrations on a fresh database", () => {
       "0030_vehicles_triggers",
       "0031_crm",
       "0032_crm_constraints",
+      "0033_parts_and_referrals",
+      "0034_parts_and_referrals_constraints",
     ]);
   });
 
@@ -123,6 +125,9 @@ describe("migrations on a fresh database", () => {
       "notifications",
       "organizations",
       "outbox_events",
+      "part_compatibility",
+      "part_inquiries",
+      "parts",
       "plan_assignments",
       "plan_version_limits",
       "plan_versions",
@@ -133,6 +138,7 @@ describe("migrations on a fresh database", () => {
       "provider_offering_branches",
       "provider_offerings",
       "provider_profiles",
+      "provider_referrals",
       "provider_search_entries",
       "push_devices",
       "quota_consumptions",

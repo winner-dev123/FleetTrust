@@ -8,6 +8,7 @@ import { EntitlementsModule } from "./modules/entitlements/index.js";
 import { IdentityModule } from "./modules/identity/index.js";
 import { ListsModule } from "./modules/lists/index.js";
 import { CrmModule } from "./modules/crm/index.js";
+import { PartsModule } from "./modules/parts/index.js";
 import { OrganizationsModule } from "./modules/organizations/index.js";
 import { ProvidersModule } from "./modules/providers/index.js";
 import { RequestsModule } from "./modules/requests/index.js";
@@ -91,6 +92,7 @@ export class AppModule {
         EmergencyModule,
         VehiclesModule,
         CrmModule,
+        PartsModule,
         HealthModule,
       ],
     };

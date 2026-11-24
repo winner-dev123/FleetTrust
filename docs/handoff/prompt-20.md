@@ -1,7 +1,7 @@
 # Handoff — Prompt 20: Provider CRM and appointments
 
 - Date: 2026-11-24
-- Status: **awaiting owner approval** · branch `feat/prompt-20-crm`
+- Status: **approved** · merged as PR #22 → `3778406` (CI 5/5 green on `6b48275`)
 - Prompt 19 approved and merged (PR #21 → `5b5f9cc`).
 
 ## Assumptions

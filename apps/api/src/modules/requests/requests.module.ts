@@ -5,6 +5,13 @@ import { OrganizationsModule } from "../organizations/index.js";
 import { VehiclesModule } from "../vehicles/index.js";
 import { AttachmentsService } from "./attachments.service.js";
 import {
+  FleetReferralsController,
+  InquiryReferralsController,
+  MyReferralsController,
+  ProviderReferralsController,
+} from "./referrals.controller.js";
+import { ReferralsService } from "./referrals.service.js";
+import {
   FleetRequestsController,
   InquiriesController,
   MyRequestsController,
@@ -12,7 +19,10 @@ import {
 } from "./requests.controller.js";
 import { RequestsService } from "./requests.service.js";
 
-/** Service requests and informational quotes (SRS J2, ADR-0021). No payment endpoints. */
+/**
+ * Service requests and informational quotes (SRS J2, ADR-0021), and provider-to-provider
+ * referrals with customer consent (SRS F-142, ADR-0028). No payment endpoints.
+ */
 @Module({
   imports: [OrganizationsModule, EntitlementsModule, VehiclesModule],
   controllers: [
@@ -20,7 +30,11 @@ import { RequestsService } from "./requests.service.js";
     FleetRequestsController,
     InquiriesController,
     RequestAttachmentsController,
+    InquiryReferralsController,
+    ProviderReferralsController,
+    MyReferralsController,
+    FleetReferralsController,
   ],
-  providers: [RequestsService, AttachmentsService],
+  providers: [RequestsService, AttachmentsService, ReferralsService],
 })
 export class RequestsModule {}

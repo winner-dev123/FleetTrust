@@ -57,6 +57,7 @@ import type { TenantAccess } from "../organizations/index.js";
 import { HistoryService, VehiclesService } from "../vehicles/index.js";
 import { assertPriceAllowed, priceColumns, priceOf } from "../providers/index.js";
 import { AttachmentsService } from "./attachments.service.js";
+import { referralOfRecipient } from "./referral-visibility.js";
 import { membershipOf, notFound, type Requester, requestError } from "./shared.js";
 
 type CreateInput = z.output<typeof createServiceRequestSchema>;
@@ -116,7 +117,8 @@ export class RequestsService {
     );
   }
 
-  private async requestFor(
+  /** The request in the requester's scope; 404 otherwise. Also used by ReferralsService. */
+  async requestFor(
     executor: Executor,
     requester: Requester,
     requestId: string,
@@ -131,8 +133,8 @@ export class RequestsService {
     return row;
   }
 
-  /** The provider's recipient row, respecting branch scope; 404 otherwise. */
-  private async recipientFor(
+  /** The provider's recipient row, respecting branch scope; 404 otherwise. Also used by ReferralsService. */
+  async recipientFor(
     executor: Executor,
     access: TenantAccess,
     recipientId: string,
@@ -154,7 +156,7 @@ export class RequestsService {
     return row;
   }
 
-  private async lockRequest(executor: Executor, requestId: string): Promise<ServiceRequest> {
+  async lockRequest(executor: Executor, requestId: string): Promise<ServiceRequest> {
     const [row] = await executor
       .select()
       .from(serviceRequests)
@@ -164,11 +166,11 @@ export class RequestsService {
     return row;
   }
 
-  private isExpired(request: ServiceRequest, now: Date): boolean {
+  isExpired(request: ServiceRequest, now: Date): boolean {
     return request.status === "open" && request.expiresAt <= now;
   }
 
-  private assertOpen(request: ServiceRequest, now: Date): void {
+  assertOpen(request: ServiceRequest, now: Date): void {
     if (request.status !== "open" || this.isExpired(request, now)) {
       throw requestError(409, "invalid_transition");
     }
@@ -176,7 +178,8 @@ export class RequestsService {
 
   // --- Events ----------------------------------------------------------------------------------
 
-  private async event(
+  /** Appends a request event and its outbox event. Also used by ReferralsService. */
+  async event(
     executor: Executor,
     input: {
       requestId: string;
@@ -187,6 +190,8 @@ export class RequestsService {
       note?: string | null;
       attachmentIds?: string[];
       metadata?: Record<string, unknown>;
+      /** Extra outbox payload (IDs for notifications). */
+      payload?: Record<string, unknown>;
     },
   ): Promise<void> {
     await executor.insert(serviceRequestEvents).values({
@@ -207,7 +212,7 @@ export class RequestsService {
         .split("_")
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join("")}`,
-      payload: { organizationId: input.organizationId ?? null },
+      payload: { ...input.payload, organizationId: input.organizationId ?? null },
     });
   }
 
@@ -1056,6 +1061,11 @@ export class RequestsService {
           attachment.organizationId !== recipient.organizationId
         )
           continue;
+        // A referred provider sees the requester's photos only if the customer agreed (ADR-0028).
+        if (attachment.organizationId === null) {
+          const referral = await referralOfRecipient(this.db, recipient.id);
+          if (referral && !referral.photosShared) continue;
+        }
         const member = await membershipOf(
           this.db,
           actor,
@@ -1240,10 +1250,19 @@ export class RequestsService {
       .orderBy(asc(serviceQuotes.createdAt));
     // Exact location, address note and registration only once this provider is accepted.
     const chosen = recipient.status === "accepted";
-    const { events, attachments } = await this.eventsAndAttachments(
-      request.id,
-      recipient.organizationId,
+    const visible = await this.eventsAndAttachments(request.id, recipient.organizationId);
+    // A referred provider sees the requester's photos only if the customer agreed (ADR-0028).
+    const referredBy = await referralOfRecipient(this.db, recipient.id);
+    const hidden = new Set(
+      referredBy && !referredBy.photosShared
+        ? visible.attachments.filter((a) => a.uploadedBySide === "requester").map((a) => a.id)
+        : [],
     );
+    const attachments = visible.attachments.filter((a) => !hidden.has(a.id));
+    const events = visible.events.map((e) => ({
+      ...e,
+      attachmentIds: e.attachmentIds.filter((id) => !hidden.has(id)),
+    }));
     return {
       ...this.core(request, now),
       vehicle: this.vehicle(request, chosen),
@@ -1263,6 +1282,7 @@ export class RequestsService {
       quotes: quotes.map((q) => this.quoteDto(q, now)),
       attachments,
       events,
+      referredBy,
     };
   }
 }

@@ -211,6 +211,10 @@ export const NOTIFICATION_KINDS = [
   "appointment_booked",
   "appointment_changed",
   "appointment_assigned",
+  "part_inquiry",
+  "part_inquiry_answered",
+  "referral_proposed",
+  "referral_decided",
 ] as const;
 
 export const notificationSchema = z.object({

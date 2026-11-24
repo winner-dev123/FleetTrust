@@ -51,6 +51,8 @@ export const PERMISSIONS = [
   "vehicles.manage",
   /** Providers: assign inquiries, manage staff availability, book appointments and see analytics (Prompt 20; branch-scoped: that branch). */
   "crm.manage",
+  /** Providers: list parts and indicative prices (Prompt 21; branch-scoped: that branch's stock). Staff with requests.respond confirm stock and answer availability inquiries. */
+  "parts.manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -80,6 +82,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "groups.host",
     "vehicles.manage",
     "crm.manage",
+    "parts.manage",
   ],
   manager: [
     "org.read",
@@ -94,6 +97,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "groups.host",
     "vehicles.manage",
     "crm.manage",
+    "parts.manage",
   ],
   staff: ["org.read", "branches.read", "requests.respond"],
   driver: ["org.read", "branches.read", "requests.create"],

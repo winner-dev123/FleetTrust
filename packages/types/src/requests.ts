@@ -242,6 +242,21 @@ export const inquirySchema = z.object({
   locationNote: z.string().nullable(),
   distanceKm: z.number().nullable(),
   quotes: z.array(quoteSchema),
+  /** Set when this inquiry came from another provider's referral the customer consented to (Prompt 21). */
+  referredBy: z
+    .object({
+      referralId: z.uuid(),
+      organizationId: z.uuid(),
+      name: z.string(),
+      slug: z.string().nullable(),
+      message: z.string(),
+      relationship: z.string(),
+      relationshipLabel: z.string(),
+      relationshipDetails: z.string().nullable(),
+      /** Whether the customer shared their photos with you. */
+      photosShared: z.boolean(),
+    })
+    .nullable(),
 });
 export type InquiryDto = z.infer<typeof inquirySchema>;
 
