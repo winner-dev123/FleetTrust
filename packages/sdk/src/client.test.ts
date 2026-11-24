@@ -626,6 +626,58 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
+  it("parts and referrals: paths, visitor search, error reasons, explicit consent", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 409, error: "conflict", reason: "already_referred" }, 409),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    const error = await client
+      .referProvider(orgId, orgId, {
+        toProvider: "gearbox-pros",
+        message: "They rebuild gearboxes.",
+        relationship: "none",
+      })
+      .catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("already_referred");
+    expect(fetch.mock.calls[0]?.[0]).toBe(
+      `https://x.test/v1/orgs/${orgId}/inquiries/${orgId}/referrals`,
+    );
+    // Visitor search: no token, query rendered as given.
+    await client
+      .searchParts({ vehicleType: "heavy_truck", make: "Volvo", inStockOnly: "true" })
+      .catch(() => undefined);
+    expect(fetch.mock.calls[1]?.[0]).toBe(
+      "https://x.test/v1/parts?vehicleType=heavy_truck&make=Volvo&inStockOnly=true",
+    );
+    expect(new Headers(fetch.mock.calls[1]?.[1]?.headers).get("Authorization")).toBeNull();
+    // Personal and fleet routes.
+    await client.askAboutPart({ partId: orgId }).catch(() => undefined);
+    expect(fetch.mock.calls[2]?.[0]).toBe("https://x.test/v1/me/part-inquiries");
+    await client
+      .consentToReferral(orgId, orgId, { consent: true, sharePhotos: true }, { orgId })
+      .catch(() => undefined);
+    expect(fetch.mock.calls[3]?.[0]).toBe(
+      `https://x.test/v1/orgs/${orgId}/service-requests/${orgId}/referrals/${orgId}/consent`,
+    );
+    // Checked locally, before any request: consent is never implied, and a relationship
+    // other than "none" must be described.
+    await expect(
+      client.consentToReferral(orgId, orgId, { consent: false } as unknown as { consent: true }),
+    ).rejects.toThrow();
+    await expect(
+      client.referProvider(orgId, orgId, {
+        toProvider: "gearbox-pros",
+        message: "They rebuild gearboxes.",
+        relationship: "referral_fee",
+      }),
+    ).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

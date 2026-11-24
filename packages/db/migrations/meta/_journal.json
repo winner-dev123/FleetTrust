@@ -232,6 +232,20 @@
       "when": 1795489014179,
       "tag": "0032_crm_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795517968112,
+      "tag": "0033_parts_and_referrals",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795517969227,
+      "tag": "0034_parts_and_referrals_constraints",
+      "breakpoints": true
     }
   ]
 }

@@ -26,6 +26,12 @@ const EXCLUDED_STEMS = [
   "reward",
   "streak",
   "checkout",
+  // Parts are inquiry-only (SRS §8, ADR-0028): no cart, basket or reservation; referral fees are
+  // disclosed, never processed (AB-17).
+  "cart",
+  "basket",
+  "reservation",
+  "commission",
   "wallet",
   "ledger",
   "stripe",

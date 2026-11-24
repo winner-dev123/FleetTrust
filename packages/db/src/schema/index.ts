@@ -17,3 +17,4 @@ export * from "./community.js";
 export * from "./emergency.js";
 export * from "./messaging.js";
 export * from "./crm.js";
+export * from "./parts.js";
