@@ -9,9 +9,10 @@
     "dev": "next dev --port 3000",
     "start": "next start --port 3000",
     "typecheck": "next typegen && tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "next typegen && eslint .",
     "test": "vitest run",
-    "clean": "node -e \"fs.rmSync('.next',{recursive:true,force:true})\""
+    "clean": "node -e \"fs.rmSync('.next',{recursive:true,force:true})\"",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@firebase/app": "0.16.6",
@@ -26,11 +27,17 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@fleettrust/config": "workspace:*",
+    "@playwright/test": "^1.65.1",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "19.3.0",
+    "axe-core": "^4.14.1",
     "eslint": "catalog:",
+    "jsdom": "26.1.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

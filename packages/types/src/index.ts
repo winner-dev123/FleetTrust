@@ -13,6 +13,7 @@ export * from "./crm.js";
 export * from "./emergency.js";
 export * from "./fleet.js";
 export * from "./jobs.js";
+export * from "./labels.js";
 export * from "./opening-hours.js";
 export * from "./parts.js";
 export * from "./providers.js";

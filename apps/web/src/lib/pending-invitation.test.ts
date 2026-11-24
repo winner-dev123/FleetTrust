@@ -40,11 +40,11 @@ describe("pending invitation", () => {
   });
 
   it("survives sign-in and steers the redirect", () => {
-    expect(afterSignInPath()).toBe("/account");
+    expect(afterSignInPath()).toBe("/app");
     savePendingInvitation(token);
     expect(pendingInvitation()).toBe(token);
     expect(afterSignInPath()).toBe("/invitations/accept");
     clearPendingInvitation();
-    expect(afterSignInPath()).toBe("/account");
+    expect(afterSignInPath()).toBe("/app");
   });
 });

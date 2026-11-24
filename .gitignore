@@ -57,3 +57,6 @@ next-env.d.ts
 
 # TypeScript incremental build caches
 *.tsbuildinfo
+
+# Playwright (web end-to-end tests)
+test-results/

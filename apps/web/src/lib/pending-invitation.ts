@@ -5,6 +5,8 @@
  * link round trip, which can open a new tab) and is cleared once used. A leaked token alone is
  * useless: accepting also needs the invited, verified email.
  */
+import { takeReturnPath } from "./return-path";
+
 const KEY = "fleettrust.pendingInvitation";
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
@@ -38,7 +40,15 @@ export function clearPendingInvitation(): void {
   }
 }
 
-/** Where to go after signing in: back to a pending invitation, else the account page. */
+/**
+ * Where to go after signing in: a pending invitation first, then the page that asked the person
+ * to sign in (same-site paths only), else the dashboard.
+ */
 export function afterSignInPath(): string {
-  return pendingInvitation() === null ? "/account" : "/invitations/accept";
+  if (pendingInvitation() !== null) return "/invitations/accept";
+  try {
+    return takeReturnPath(localStorage) ?? "/app";
+  } catch {
+    return "/app";
+  }
 }
