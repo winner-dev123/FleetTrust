@@ -215,6 +215,8 @@ export const NOTIFICATION_KINDS = [
   "part_inquiry_answered",
   "referral_proposed",
   "referral_decided",
+  "job_application",
+  "job_application_update",
 ] as const;
 
 export const notificationSchema = z.object({

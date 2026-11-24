@@ -29,6 +29,7 @@ We record significant decisions as short ADRs ([Nygard format](https://cognitect
 | [0026](0026-vehicles-history-and-vault.md)           | Vehicles: per-vehicle access, source-attributed history (never verified), reminders, encrypted vault                                | Accepted                                                                                        |
 | [0027](0027-provider-crm-and-appointments.md)        | Provider CRM: derived pipeline, local-time appointments with a database double-booking guard, response status from history          | Accepted                                                                                        |
 | [0028](0028-parts-and-referrals.md)                  | Parts: live time-stamped listings, stale stock labelled, inquiry-only availability; referrals need customer consent and are audited | Accepted                                                                                        |
+| [0029](0029-fleet-operations-and-job-board.md)       | Fleet dashboards from tenant-scoped records, spending never a verified payment, jobs gated by employer verification and moderation  | Accepted                                                                                        |
 
 ## Template
 

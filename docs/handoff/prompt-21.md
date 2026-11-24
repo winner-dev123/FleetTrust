@@ -1,7 +1,7 @@
 # Handoff — Prompt 21: Parts inventory and provider referrals
 
 - Date: 2026-11-24
-- Status: **awaiting owner approval** · branch `feat/prompt-21-parts`
+- Status: **approved** · merged as PR #23 → `6848643` (CI 5/5 green on `8aff8c7`)
 - Prompt 20 approved and merged (PR #22 → `3778406`).
 
 ## Assumptions

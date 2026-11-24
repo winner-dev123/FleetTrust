@@ -11,6 +11,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -87,6 +88,8 @@ export const vehicles = pgTable(
   },
   (t) => [
     index("vehicles_org_idx").on(t.organizationId, t.branchId),
+    // Target of composite FKs that keep fleet records on the same tenant's vehicles (Prompt 22).
+    unique("vehicles_id_organization_key").on(t.id, t.organizationId),
     index("vehicles_owner_idx").on(t.ownerUserId),
     uniqueIndex("vehicles_org_registration_key")
       .on(t.organizationId, t.registration)

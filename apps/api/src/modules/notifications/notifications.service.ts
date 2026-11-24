@@ -14,6 +14,8 @@ import {
   eq,
   type Executor,
   inArray,
+  jobApplications,
+  jobs,
   isNull,
   memberships,
   moderationActions,
@@ -194,7 +196,11 @@ export class NotificationsService {
       case "ArticleCommentModerated":
       case "GroupModerated":
       case "MessageModerated":
+      case "JobModerated":
         return this.moderated(tx, event);
+      case "JobApplicationReceived":
+      case "JobApplicationUpdated":
+        return this.jobApplicationChanged(tx, event);
       case "ServiceRequestSent":
       case "ServiceRequestQuoteAccepted": {
         const orgId = str(p["organizationId"]);
@@ -276,6 +282,49 @@ export class NotificationsService {
       default:
         return [];
     }
+  }
+
+  /**
+   * Job applications (ADR-0029): the employer's members with `jobs.manage` hear about a new
+   * application; the applicant hears when its status changes.
+   */
+  private async jobApplicationChanged(tx: Executor, event: OutboxEvent): Promise<Effect[]> {
+    const [row] = await tx
+      .select({ application: jobApplications, title: jobs.title, orgName: organizations.name })
+      .from(jobApplications)
+      .innerJoin(jobs, eq(jobs.id, jobApplications.jobId))
+      .innerJoin(organizations, eq(organizations.id, jobApplications.organizationId))
+      .where(eq(jobApplications.id, event.aggregateId));
+    if (!row) return [];
+    const { application } = row;
+    const data = { applicationId: application.id, jobId: application.jobId };
+    if (event.eventType === "JobApplicationReceived") {
+      const members = await tx
+        .select({ userId: memberships.userId, role: memberships.role })
+        .from(memberships)
+        .where(eq(memberships.organizationId, application.organizationId));
+      const recipients = members
+        .filter((m) => hasPermission(m.role as Role, "jobs.manage"))
+        .map((m) => m.userId);
+      return this.notify(tx, event, recipients, "requests", {
+        kind: "job_application",
+        title: "New job application",
+        body: `Someone applied for "${row.title}".`,
+        data,
+      });
+    }
+    const text: Record<string, string> = {
+      shortlisted: "shortlisted you",
+      rejected: "decided not to go ahead with your application",
+      hired: "marked you as hired",
+      submitted: "moved your application back to review",
+    };
+    return this.notify(tx, event, [application.applicantUserId], "requests", {
+      kind: "job_application_update",
+      title: "Application update",
+      body: `${row.orgName} ${text[application.status] ?? "updated your application"} for "${row.title}".`,
+      data,
+    });
   }
 
   /** Display name of a provider: its published trading name, or the organization name. */
@@ -545,6 +594,13 @@ export class NotificationsService {
         .where(eq(communityGroups.id, event.aggregateId));
       authorId ??= g?.by ?? null;
       what = g ? `Your group "${g.name}"` : "Your group";
+    } else if (event.aggregateType === "job") {
+      const [j] = await tx
+        .select({ by: jobs.createdBy, title: jobs.title })
+        .from(jobs)
+        .where(eq(jobs.id, event.aggregateId));
+      authorId ??= j?.by ?? null;
+      what = j ? `Your job listing "${j.title}"` : "Your job listing";
     } else if (event.aggregateType === "message") {
       if (action !== "hide" && action !== "auto_flag") return [];
       const raw = await this.messaging.raw(tx, event.aggregateId);

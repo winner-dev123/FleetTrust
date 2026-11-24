@@ -626,6 +626,45 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
+  it("fleet and jobs: paths, public board without a token, local validation", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 409, error: "conflict", reason: "already_applied" }, 409),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    const error = await client
+      .applyForJob(orgId, { message: "Ten years on long-haul routes.", phone: "+27 82 555 0101" })
+      .catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("already_applied");
+    expect(fetch.mock.calls[0]?.[0]).toBe(`https://x.test/v1/jobs/${orgId}/applications`);
+    await client.jobs({ role: "driver", verifiedOnly: "true" }).catch(() => undefined);
+    expect(fetch.mock.calls[1]?.[0]).toBe("https://x.test/v1/jobs?role=driver&verifiedOnly=true");
+    expect(new Headers(fetch.mock.calls[1]?.[1]?.headers).get("Authorization")).toBeNull();
+    await client.fleetDashboard(orgId, { days: 90 }).catch(() => undefined);
+    expect(fetch.mock.calls[2]?.[0]).toBe(
+      `https://x.test/v1/orgs/${orgId}/fleet/dashboard?days=90`,
+    );
+    await client.moderate("job", orgId, "approve").catch(() => undefined);
+    expect(fetch.mock.calls[3]?.[0]).toBe(`https://x.test/v1/moderation/jobs/${orgId}/approve`);
+    // Checked before any request: litres only on fuel, and an application needs a contact.
+    await expect(
+      client.addFleetExpense(orgId, {
+        category: "tolls",
+        amount: "120",
+        currency: "ZAR",
+        spentOn: "2027-01-10",
+        litres: "5",
+      }),
+    ).rejects.toThrow();
+    await expect(
+      client.applyForJob(orgId, { message: "Ten years on long-haul routes." }),
+    ).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
   it("parts and referrals: paths, visitor search, error reasons, explicit consent", async () => {
     const fetch = vi
       .fn<typeof globalThis.fetch>()

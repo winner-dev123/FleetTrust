@@ -246,6 +246,20 @@
       "when": 1795517969227,
       "tag": "0034_parts_and_referrals_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795530324197,
+      "tag": "0035_fleet_and_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795530325378,
+      "tag": "0036_fleet_and_jobs_triggers",
+      "breakpoints": true
     }
   ]
 }

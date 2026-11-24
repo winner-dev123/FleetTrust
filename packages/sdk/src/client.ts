@@ -1,4 +1,42 @@
 import {
+  type ApplicationDto,
+  applicationSchema,
+  applicationStatusRequestSchema,
+  applyRequestSchema,
+  type ApplyRequest,
+  createFleetIncidentSchema,
+  type CreateFleetIncident,
+  dashboardQuerySchema,
+  type ExpenseDto,
+  expenseQuerySchema,
+  expenseRequestSchema,
+  type ExpenseRequest,
+  expenseSchema,
+  type FleetDashboardDto,
+  fleetDashboardSchema,
+  type FleetErrorReason,
+  fleetErrorReasonSchema,
+  type FleetIncidentDto,
+  fleetIncidentQuerySchema,
+  fleetIncidentSchema,
+  type JobDto,
+  type JobErrorReason,
+  jobErrorReasonSchema,
+  jobListQuerySchema,
+  jobRequestSchema,
+  type JobRequest,
+  jobSchema,
+  preferredByCountSchema,
+  type PreferredProviderDto,
+  preferredProviderRequestSchema,
+  type PreferredProviderRequest,
+  preferredProviderSchema,
+  type PublicJob,
+  publicJobListSchema,
+  publicJobQuerySchema,
+  publicJobSchema,
+  updateFleetIncidentSchema,
+  updatePreferredProviderSchema,
   answerPartInquirySchema,
   type AnswerPartInquiry,
   createPartInquirySchema,
@@ -342,6 +380,8 @@ export type ApiErrorReason =
   | CrmErrorReason
   | PartsErrorReason
   | ReferralErrorReason
+  | FleetErrorReason
+  | JobErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -615,8 +655,8 @@ export interface ApiClient {
   moderationQueue(): Promise<ModerationQueueItem[]>;
   moderationCase(targetType: ReportTargetType, targetId: string): Promise<ModerationCase>;
   /**
-   * `reject` and `hide` need a reason (shown to the author). Articles: all decisions; comments
-   * and groups: hide, restore, dismiss-reports; members: dismiss-reports (sanctions: Prompt 23).
+   * `reject` and `hide` need a reason (shown to the author). Articles and jobs: all decisions;
+   * comments and groups: hide, restore, dismiss-reports; members: dismiss-reports (sanctions: Prompt 23).
    */
   moderate(
     targetType: ReportTargetType,
@@ -954,6 +994,69 @@ export interface ApiClient {
     referralId: string,
     options?: { orgId?: string },
   ): Promise<ReferralDto>;
+
+  // --- Fleet operations (Prompt 22). Spending is user-entered, never a verified payment. ---
+  /** Managers (`vehicles.manage`); branch-scoped managers see their branch. */
+  fleetDashboard(
+    orgId: string,
+    query?: z.input<typeof dashboardQuerySchema>,
+  ): Promise<FleetDashboardDto>;
+  fleetIncidents(
+    orgId: string,
+    query?: z.input<typeof fleetIncidentQuerySchema>,
+  ): Promise<FleetIncidentDto[]>;
+  /** Managers, or the driver assigned to the vehicle. */
+  reportFleetIncident(orgId: string, incident: CreateFleetIncident): Promise<FleetIncidentDto>;
+  updateFleetIncident(
+    orgId: string,
+    incidentId: string,
+    change: z.input<typeof updateFleetIncidentSchema>,
+  ): Promise<FleetIncidentDto>;
+  fleetExpenses(orgId: string, query?: z.input<typeof expenseQuerySchema>): Promise<ExpenseDto[]>;
+  addFleetExpense(orgId: string, expense: ExpenseRequest): Promise<ExpenseDto>;
+  replaceFleetExpense(
+    orgId: string,
+    expenseId: string,
+    expense: ExpenseRequest,
+  ): Promise<ExpenseDto>;
+  deleteFleetExpense(orgId: string, expenseId: string): Promise<void>;
+  preferredProviders(orgId: string): Promise<PreferredProviderDto[]>;
+  addPreferredProvider(
+    orgId: string,
+    entry: PreferredProviderRequest,
+  ): Promise<PreferredProviderDto[]>;
+  updatePreferredProvider(
+    orgId: string,
+    entryId: string,
+    change: z.input<typeof updatePreferredProviderSchema>,
+  ): Promise<PreferredProviderDto[]>;
+  removePreferredProvider(orgId: string, entryId: string): Promise<void>;
+  /** A provider's own count of fleets that prefer it. */
+  preferredByCount(orgId: string): Promise<{ fleets: number }>;
+
+  // --- Jobs (Prompt 22) ---
+  employerJobs(orgId: string, query?: z.input<typeof jobListQuerySchema>): Promise<JobDto[]>;
+  employerJob(orgId: string, jobId: string): Promise<JobDto>;
+  createJob(orgId: string, job: JobRequest): Promise<JobDto>;
+  updateJob(orgId: string, jobId: string, job: JobRequest): Promise<JobDto>;
+  /** Live at once for verified employers without scam signs; otherwise `pending_moderation`. */
+  publishJob(orgId: string, jobId: string): Promise<JobDto>;
+  closeJob(orgId: string, jobId: string): Promise<JobDto>;
+  deleteJob(orgId: string, jobId: string): Promise<void>;
+  jobApplications(orgId: string, jobId: string): Promise<ApplicationDto[]>;
+  setApplicationStatus(
+    orgId: string,
+    applicationId: string,
+    status: z.input<typeof applicationStatusRequestSchema>["status"],
+  ): Promise<ApplicationDto>;
+  /** Public board (no sign-in). */
+  jobs(
+    query?: z.input<typeof publicJobQuerySchema>,
+  ): Promise<{ items: PublicJob[]; nextOffset: number | null }>;
+  job(jobId: string): Promise<PublicJob>;
+  applyForJob(jobId: string, application: ApplyRequest): Promise<ApplicationDto>;
+  myApplications(): Promise<ApplicationDto[]>;
+  withdrawApplication(applicationId: string): Promise<ApplicationDto>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -1039,6 +1142,7 @@ const MODERATION_SEGMENT: Record<ReportTargetType, string> = {
   group: "groups",
   user: "users",
   message: "messages",
+  job: "jobs",
 };
 
 const moderationPath = (targetType: ReportTargetType, targetId: string, ...rest: string[]) =>
@@ -1072,6 +1176,8 @@ const errorBodySchema = z
         crmErrorReasonSchema,
         partsErrorReasonSchema,
         referralErrorReasonSchema,
+        fleetErrorReasonSchema,
+        jobErrorReasonSchema,
         z.literal("quota_exceeded"),
       ])
       .optional(),
@@ -3073,6 +3179,205 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
           "decline",
         ),
         schema: referralSchema,
+        authenticated: true,
+      }),
+    fleetDashboard: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${orgPath(orgId, "fleet", "dashboard")}${queryString(dashboardQuerySchema, query)}`,
+        schema: fleetDashboardSchema,
+        authenticated: true,
+      }),
+    fleetIncidents: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${orgPath(orgId, "fleet", "incidents")}${queryString(fleetIncidentQuerySchema, query)}`,
+        schema: z.array(fleetIncidentSchema),
+        authenticated: true,
+      }),
+    reportFleetIncident: async (orgId, incident) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "fleet", "incidents"),
+        schema: fleetIncidentSchema,
+        body: createFleetIncidentSchema.parse(incident),
+        authenticated: true,
+      }),
+    updateFleetIncident: async (orgId, incidentId, change) =>
+      send({
+        method: "PATCH",
+        path: orgPath(orgId, "fleet", "incidents", incidentId),
+        schema: fleetIncidentSchema,
+        body: updateFleetIncidentSchema.parse(change),
+        authenticated: true,
+      }),
+    fleetExpenses: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${orgPath(orgId, "fleet", "expenses")}${queryString(expenseQuerySchema, query)}`,
+        schema: z.array(expenseSchema),
+        authenticated: true,
+      }),
+    addFleetExpense: async (orgId, expense) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "fleet", "expenses"),
+        schema: expenseSchema,
+        body: expenseRequestSchema.parse(expense),
+        authenticated: true,
+      }),
+    replaceFleetExpense: async (orgId, expenseId, expense) =>
+      send({
+        method: "PUT",
+        path: orgPath(orgId, "fleet", "expenses", expenseId),
+        schema: expenseSchema,
+        body: expenseRequestSchema.parse(expense),
+        authenticated: true,
+      }),
+    deleteFleetExpense: (orgId, expenseId) =>
+      send({
+        method: "DELETE",
+        path: orgPath(orgId, "fleet", "expenses", expenseId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    preferredProviders: (orgId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "fleet", "preferred-providers"),
+        schema: z.array(preferredProviderSchema),
+        authenticated: true,
+      }),
+    addPreferredProvider: async (orgId, entry) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "fleet", "preferred-providers"),
+        schema: z.array(preferredProviderSchema),
+        body: preferredProviderRequestSchema.parse(entry),
+        authenticated: true,
+      }),
+    updatePreferredProvider: async (orgId, entryId, change) =>
+      send({
+        method: "PATCH",
+        path: orgPath(orgId, "fleet", "preferred-providers", entryId),
+        schema: z.array(preferredProviderSchema),
+        body: updatePreferredProviderSchema.parse(change),
+        authenticated: true,
+      }),
+    removePreferredProvider: (orgId, entryId) =>
+      send({
+        method: "DELETE",
+        path: orgPath(orgId, "fleet", "preferred-providers", entryId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    preferredByCount: (orgId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "preferred-by"),
+        schema: preferredByCountSchema,
+        authenticated: true,
+      }),
+    employerJobs: (orgId, query) =>
+      send({
+        method: "GET",
+        path: `${orgPath(orgId, "jobs")}${queryString(jobListQuerySchema, query)}`,
+        schema: z.array(jobSchema),
+        authenticated: true,
+      }),
+    employerJob: (orgId, jobId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "jobs", jobId),
+        schema: jobSchema,
+        authenticated: true,
+      }),
+    createJob: async (orgId, job) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "jobs"),
+        schema: jobSchema,
+        body: jobRequestSchema.parse(job),
+        authenticated: true,
+      }),
+    updateJob: async (orgId, jobId, job) =>
+      send({
+        method: "PUT",
+        path: orgPath(orgId, "jobs", jobId),
+        schema: jobSchema,
+        body: jobRequestSchema.parse(job),
+        authenticated: true,
+      }),
+    publishJob: (orgId, jobId) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "jobs", jobId, "publish"),
+        schema: jobSchema,
+        authenticated: true,
+      }),
+    closeJob: (orgId, jobId) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "jobs", jobId, "close"),
+        schema: jobSchema,
+        authenticated: true,
+      }),
+    deleteJob: (orgId, jobId) =>
+      send({
+        method: "DELETE",
+        path: orgPath(orgId, "jobs", jobId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    jobApplications: (orgId, jobId) =>
+      send({
+        method: "GET",
+        path: orgPath(orgId, "jobs", jobId, "applications"),
+        schema: z.array(applicationSchema),
+        authenticated: true,
+      }),
+    setApplicationStatus: async (orgId, applicationId, status) =>
+      send({
+        method: "PATCH",
+        path: orgPath(orgId, "job-applications", applicationId),
+        schema: applicationSchema,
+        body: applicationStatusRequestSchema.parse({ status }),
+        authenticated: true,
+      }),
+    jobs: (query) =>
+      send({
+        method: "GET",
+        path: `/v1/jobs${queryString(publicJobQuerySchema, query)}`,
+        schema: publicJobListSchema,
+        authenticated: false,
+      }),
+    job: (jobId) =>
+      send({
+        method: "GET",
+        path: `/v1/jobs/${encodeURIComponent(jobId)}`,
+        schema: publicJobSchema,
+        authenticated: false,
+      }),
+    applyForJob: async (jobId, application) =>
+      send({
+        method: "POST",
+        path: `/v1/jobs/${encodeURIComponent(jobId)}/applications`,
+        schema: applicationSchema,
+        body: applyRequestSchema.parse(application),
+        authenticated: true,
+      }),
+    myApplications: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/job-applications",
+        schema: z.array(applicationSchema),
+        authenticated: true,
+      }),
+    withdrawApplication: (applicationId) =>
+      send({
+        method: "POST",
+        path: `/v1/me/job-applications/${encodeURIComponent(applicationId)}/withdraw`,
+        schema: applicationSchema,
         authenticated: true,
       }),
     provider: (slug, options) =>

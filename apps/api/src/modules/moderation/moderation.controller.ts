@@ -198,4 +198,41 @@ export class ModerationController {
   dismissUser(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
     return this.dismiss(u, "user", id, b);
   }
+
+  // --- Job listings (Prompt 22) ---
+
+  @Get("jobs/:id")
+  job(@Param("id", IdParam) id: string): Promise<ModerationCase> {
+    return this.moderation.case("job", id);
+  }
+
+  @Post("jobs/:id/approve")
+  @HttpCode(200)
+  approveJob(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
+    return this.moderation.decideJob(u, id, "approve", optional(b));
+  }
+
+  @Post("jobs/:id/reject")
+  @HttpCode(200)
+  rejectJob(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
+    return this.moderation.decideJob(u, id, "reject", required(b));
+  }
+
+  @Post("jobs/:id/hide")
+  @HttpCode(200)
+  hideJob(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
+    return this.moderation.decideJob(u, id, "hide", required(b));
+  }
+
+  @Post("jobs/:id/restore")
+  @HttpCode(200)
+  restoreJob(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
+    return this.moderation.decideJob(u, id, "restore", optional(b));
+  }
+
+  @Post("jobs/:id/dismiss-reports")
+  @HttpCode(200)
+  dismissJob(@CurrentUser() u: User, @Param("id", IdParam) id: string, @Body() b: unknown) {
+    return this.dismiss(u, "job", id, b);
+  }
 }

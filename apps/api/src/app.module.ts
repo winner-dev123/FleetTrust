@@ -9,6 +9,8 @@ import { IdentityModule } from "./modules/identity/index.js";
 import { ListsModule } from "./modules/lists/index.js";
 import { CrmModule } from "./modules/crm/index.js";
 import { PartsModule } from "./modules/parts/index.js";
+import { FleetModule } from "./modules/fleet/index.js";
+import { JobsModule } from "./modules/jobs/index.js";
 import { OrganizationsModule } from "./modules/organizations/index.js";
 import { ProvidersModule } from "./modules/providers/index.js";
 import { RequestsModule } from "./modules/requests/index.js";
@@ -93,6 +95,8 @@ export class AppModule {
         VehiclesModule,
         CrmModule,
         PartsModule,
+        FleetModule,
+        JobsModule,
         HealthModule,
       ],
     };

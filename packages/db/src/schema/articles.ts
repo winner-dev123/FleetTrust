@@ -52,6 +52,7 @@ export const REPORT_TARGET_VALUES = [
   "group",
   "user",
   "message",
+  "job",
 ] as const;
 export const REPORT_REASON_VALUES = [
   "spam",
