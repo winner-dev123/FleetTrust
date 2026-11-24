@@ -116,9 +116,19 @@ describe.skipIf(!url)("real PostgreSQL (DATABASE_URL_TEST)", () => {
         ),
       );
       expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
-      expect(results.every((r) => r.status === "fulfilled" || pgCode(r.reason) === "23P01")).toBe(
-        true,
+      // Losers are refused by the exclusion constraint (23P01). Without the API's per-staff lock,
+      // Postgres may instead abort one of two simultaneous inserts as a deadlock (40P01), a
+      // documented behaviour of exclusion constraints. Either way nothing overlapping is written.
+      expect(
+        results.every(
+          (r) => r.status === "fulfilled" || ["23P01", "40P01"].includes(pgCode(r.reason) ?? ""),
+        ),
+      ).toBe(true);
+      const { rows } = await raw.query<{ n: number }>(
+        "SELECT count(*)::int AS n FROM appointments WHERE staff_user_id = $1 AND status = 'booked'",
+        [f.staffA],
       );
+      expect(rows[0]?.n).toBe(1);
     } finally {
       await pool.close();
     }

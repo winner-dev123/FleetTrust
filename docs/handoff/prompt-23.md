@@ -50,6 +50,16 @@ Two Prompt 09 checks don't refuse a missing note, because a length check on NULL
 
 The API always sends a note, so this only matters for direct database writes. Proposed fix: Prompt 27 (security hardening). The same mistake was caught in this prompt's own checks by the new database test and fixed before commit.
 
+## CI fix (Prompt 20 test)
+
+The first CI run of this branch failed one check, in the Compose Postgres job: the Prompt 20 test where 10 transactions book the same slot at once.
+
+- **What happened:** exactly one booking still succeeded. But one of the refused transactions got Postgres error `40P01` (deadlock) instead of `23P01` (exclusion violation).
+- **Why:** Postgres documents that simultaneous inserts into an exclusion-constrained index can abort one of them as a deadlock.
+- **The API is not affected:** it takes a per-staff lock before booking, so the two inserts never run at the same time.
+- **The fix:** the test now accepts either refusal code, still requires exactly one success, and also checks that only one booked row exists.
+- **Verification:** the test can't run on this machine (no Docker; it needs real Postgres), so CI checks it.
+
 ## Migration notes
 
 - **`0037`:**
