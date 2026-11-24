@@ -1,7 +1,8 @@
 /**
  * Design tokens shared by the Next.js web app and the React Native app.
  * Values are plain data so they work on both platforms. The full design
- * system (components, theming) is built in Prompt 24.
+ * system builds on these: the web components live in apps/web (ADR-0031) and the mobile
+ * components in apps/mobile.
  */
 
 export interface ColorTokens {
@@ -9,7 +10,12 @@ export interface ColorTokens {
   surface: string;
   text: string;
   textMuted: string;
+  /** Decorative dividers and card outlines (not required to meet 3:1). */
   border: string;
+  /** Boundaries users must see to operate a control, e.g. text inputs: 3:1 or more (WCAG 1.4.11). */
+  borderStrong: string;
+  /** Keyboard focus indicator: 3:1 or more against background and surface (WCAG 2.4.11 / 2.4.13). */
+  focus: string;
   primary: string;
   onPrimary: string;
   /** Emergency actions only. Never used for marketing or upsell UI. */
@@ -30,6 +36,8 @@ export const colors: Readonly<Record<ColorScheme, ColorTokens>> = {
     text: "#14202b",
     textMuted: "#4a5866",
     border: "#c9d2db",
+    borderStrong: "#6b7a89",
+    focus: "#0b5cad",
     primary: "#0b5cad",
     onPrimary: "#ffffff",
     danger: "#b3261e",
@@ -43,6 +51,8 @@ export const colors: Readonly<Record<ColorScheme, ColorTokens>> = {
     text: "#e8edf2",
     textMuted: "#a7b4c1",
     border: "#33424f",
+    borderStrong: "#8796a5",
+    focus: "#7cb8f5",
     primary: "#7cb8f5",
     onPrimary: "#08223d",
     danger: "#ffb4ab",
@@ -62,3 +72,21 @@ export const typography = {
   lineHeight: { sm: 20, md: 24, lg: 28, xl: 36 },
   fontWeight: { regular: "400", medium: "500", bold: "700" },
 } as const;
+
+/** Responsive breakpoints (min-width, CSS pixels). Layouts are mobile-first. */
+export const breakpoints = { sm: 480, md: 768, lg: 1024, xl: 1280 } as const;
+
+/** Content widths, in CSS pixels. */
+export const layout = { readable: 720, content: 1120 } as const;
+
+/**
+ * Minimum size of anything you tap or click (WCAG 2.5.8 asks for 24; 44 follows platform
+ * guidelines and suits gloved hands at the roadside).
+ */
+export const touchTarget = 44;
+
+/** Keyboard focus ring. */
+export const focusRing = { width: 3, offset: 2 } as const;
+
+/** Durations in milliseconds. Animations are skipped when the user prefers reduced motion. */
+export const motion = { fast: 120, normal: 200 } as const;

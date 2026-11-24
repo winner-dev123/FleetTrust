@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Design tokens shared by web and mobile. Components arrive with Prompt 24.",
+  "description": "Design tokens shared by web and mobile (colours, spacing, type, layout, focus and touch sizes).",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -31,6 +31,7 @@ We record significant decisions as short ADRs ([Nygard format](https://cognitect
 | [0028](0028-parts-and-referrals.md)                  | Parts: live time-stamped listings, stale stock labelled, inquiry-only availability; referrals need customer consent and are audited      | Accepted                                                                                        |
 | [0029](0029-fleet-operations-and-job-board.md)       | Fleet dashboards from tenant-scoped records, spending never a verified payment, jobs gated by employer verification and moderation       | Accepted                                                                                        |
 | [0030](0030-power-user-sanctions-and-appeals.md)     | Power User earned from identity, age, activity and standing (never bought); member sanctions, appeals, shared trust and safety dashboard | Accepted                                                                                        |
+| [0031](0031-web-app-and-design-system.md)            | Web app on the shared SDK: token-based design system, built-in tile map, browser tests against a contract-checked mock API               | Accepted                                                                                        |
 
 ## Template
 

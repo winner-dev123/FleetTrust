@@ -1,16 +1,40 @@
-import { type ColorTokens, colors } from "@fleettrust/ui";
+import {
+  type ColorTokens,
+  colors,
+  focusRing,
+  layout,
+  radii,
+  spacing,
+  touchTarget,
+  typography,
+} from "@fleettrust/ui";
+
+const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
 function toCssVariables(palette: ColorTokens): string {
   return Object.entries(palette)
-    .map(
-      ([name, value]) =>
-        `--color-${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}: ${value};`,
-    )
+    .map(([name, value]) => `--color-${kebab(name)}: ${value};`)
     .join(" ");
 }
 
+function scale(prefix: string, values: Readonly<Record<string, number>>): string {
+  return Object.entries(values)
+    .map(([name, value]) => `--${prefix}-${name}: ${String(value)}px;`)
+    .join(" ");
+}
+
+/** Non-colour tokens as CSS custom properties (globals.css uses only these variables). */
+const sizes = [
+  scale("space", spacing),
+  scale("radius", radii),
+  scale("font", typography.fontSize),
+  scale("layout", layout),
+  `--touch: ${String(touchTarget)}px;`,
+  `--focus-width: ${String(focusRing.width)}px; --focus-offset: ${String(focusRing.offset)}px;`,
+].join(" ");
+
 /** CSS custom properties generated from the shared design tokens, light by default with a dark override. */
-export const themeCss = `:root { color-scheme: light dark; ${toCssVariables(colors.light)} }
+export const themeCss = `:root { color-scheme: light dark; ${sizes} ${toCssVariables(colors.light)} }
 @media (prefers-color-scheme: dark) { :root { ${toCssVariables(colors.dark)} } }
 html, body { margin: 0; background: var(--color-background); color: var(--color-text); }
 body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; }`;

@@ -1,7 +1,7 @@
 # Handoff — Prompt 23: Status, power users and moderation
 
 - Date: 2026-11-24
-- Status: **awaiting owner approval** · branch `feat/prompt-23-status`
+- Status: **approved** · merged as PR #25 → `fd20171` (CI 5/5 green on `dc46329`)
 - Prompt 22 approved and merged (PR #24 → `7bbfe0b`).
 
 ## Assumptions

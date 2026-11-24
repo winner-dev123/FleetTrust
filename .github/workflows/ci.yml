@@ -158,6 +158,30 @@ jobs:
         if: always()
         run: pnpm infra:destroy --yes || true
 
+  web-e2e:
+    name: Web end-to-end (journeys and accessibility, desktop and phone)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Build the shared packages the web app uses
+        run: pnpm turbo run build --filter "@fleettrust/web^..."
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @fleettrust/web exec playwright install --with-deps chromium
+      # Production build, Firebase Auth emulator sign-in, contract-checked mock API, axe WCAG 2.2
+      # A/AA checks and reflow at 320 px (apps/web/playwright.config.ts).
+      - name: Journeys and accessibility checks
+        run: pnpm --filter @fleettrust/web e2e
+
   container:
     name: API container image
     runs-on: ubuntu-latest
