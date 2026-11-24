@@ -1,7 +1,7 @@
 # Handoff — Prompt 19: Vehicle profiles and maintenance
 
 - Date: 2026-11-23
-- Status: **awaiting owner approval** · branch `feat/prompt-19-vehicles`
+- Status: **approved** · PR **#21** squash-merged as `5b5f9cc` (CI 5/5 green on `5e3620c`)
 - Prompt 18 approved and merged (PR #20 → `ab611fa`).
 
 ## Assumptions

@@ -7,6 +7,7 @@ import { consumeDailyQuota, dailyUsage } from "../src/quotas.js";
 import { buildSearchQuery, queryRows, searchProviders } from "../src/search.js";
 import { runSeed } from "../src/seed/index.js";
 import { uuidv7 } from "uuidv7";
+import { bookingFixture, pgCode } from "./support/appointment-fixtures.js";
 import { publishProvider } from "./support/search-fixtures.js";
 
 /**
@@ -97,6 +98,27 @@ describe.skipIf(!url)("real PostgreSQL (DATABASE_URL_TEST)", () => {
       );
       expect(retries.every((result) => result.allowed)).toBe(true);
       expect((await dailyUsage(pool.db, subject, day)).get("articles.daily")).toBe(1);
+    } finally {
+      await pool.close();
+    }
+  });
+
+  it("concurrent bookings of the same staff time: exactly one wins (ADR-0027)", async () => {
+    const pool = createDatabase({ url: url ?? "", maxConnections: 10 });
+    try {
+      const f = await bookingFixture(handle.db);
+      const results = await Promise.allSettled(
+        Array.from({ length: 10 }, (_, i) =>
+          pool.db.transaction(async (tx) => {
+            await tx.execute(sql`SELECT pg_sleep(0.01 * ${i % 3})`);
+            await f.bookWith(tx, f.staffA, "2027-06-01T09:00:00Z", "2027-06-01T10:00:00Z");
+          }),
+        ),
+      );
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(results.every((r) => r.status === "fulfilled" || pgCode(r.reason) === "23P01")).toBe(
+        true,
+      );
     } finally {
       await pool.close();
     }

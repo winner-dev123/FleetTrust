@@ -1,6 +1,8 @@
 import {
   and,
+  appointments,
   articleComments,
+  branches,
   articles,
   communityGroupMembers,
   communityGroups,
@@ -29,6 +31,7 @@ import {
 import {
   hasPermission,
   type InboxDto,
+  localStamp,
   type MessagingPreferences,
   type NotificationDto,
   NOTIFICATION_KINDS,
@@ -255,9 +258,87 @@ export class NotificationsService {
           data: { vehicleId, documentId: str(p["documentId"]) ?? "" },
         });
       }
+      case "AppointmentBooked":
+      case "AppointmentRescheduled":
+      case "AppointmentCancelled":
+      case "AppointmentAssigned":
+        return this.appointmentChanged(tx, event);
       default:
         return [];
     }
+  }
+
+  /**
+   * Appointment updates (ADR-0027): the customer who raised the linked request hears about
+   * bookings, new times and cancellations; the assigned staff member hears about new work
+   * (unless they made the change themselves).
+   */
+  private async appointmentChanged(tx: Executor, event: OutboxEvent): Promise<Effect[]> {
+    const p = event.payload;
+    const appointmentId = str(p["appointmentId"]);
+    if (appointmentId === null) return [];
+    const [row] = await tx
+      .select({
+        appointment: appointments,
+        branchName: branches.name,
+        branchTimeZone: branches.timeZone,
+        orgTimeZone: organizations.timezone,
+        providerName: organizations.name,
+      })
+      .from(appointments)
+      .innerJoin(branches, eq(branches.id, appointments.branchId))
+      .innerJoin(organizations, eq(organizations.id, appointments.organizationId))
+      .where(eq(appointments.id, appointmentId));
+    if (!row) return [];
+    const a = row.appointment;
+    const when = localStamp(a.startsAt, row.branchTimeZone ?? row.orgTimeZone).replace("T", " at ");
+    const effects: Effect[] = [];
+    const actor = str(p["actorUserId"]);
+
+    if (a.recipientId !== null && event.eventType !== "AppointmentAssigned") {
+      const [request] = await tx
+        .select({ createdBy: serviceRequests.createdBy, id: serviceRequests.id })
+        .from(serviceRequestRecipients)
+        .innerJoin(serviceRequests, eq(serviceRequests.id, serviceRequestRecipients.requestId))
+        .where(eq(serviceRequestRecipients.id, a.recipientId));
+      if (request) {
+        const data = { appointmentId: a.id, requestId: request.id };
+        const content =
+          event.eventType === "AppointmentBooked"
+            ? {
+                kind: "appointment_booked" as const,
+                title: "Appointment booked",
+                body: `${row.providerName} booked ${a.title} on ${when} (${row.branchName}).`,
+              }
+            : event.eventType === "AppointmentRescheduled"
+              ? {
+                  kind: "appointment_changed" as const,
+                  title: "Appointment moved",
+                  body: `${row.providerName} moved ${a.title} to ${when}.`,
+                }
+              : {
+                  kind: "appointment_changed" as const,
+                  title: "Appointment cancelled",
+                  body: `${row.providerName} cancelled ${a.title} on ${when}.`,
+                };
+        effects.push(
+          ...(await this.notify(tx, event, [request.createdBy], "requests", { ...content, data })),
+        );
+      }
+    }
+    const staffNews =
+      event.eventType === "AppointmentBooked" || event.eventType === "AppointmentAssigned";
+    if (staffNews && a.status === "booked" && a.staffUserId !== actor) {
+      effects.push(
+        ...(await this.notify(tx, event, [a.staffUserId], "requests", {
+          kind: "appointment_assigned",
+          title: "New appointment",
+          body: `${a.title} on ${when} (${row.branchName}).`,
+          data: { appointmentId: a.id, organizationId: a.organizationId },
+        })),
+      );
+    }
+    return effects;
   }
 
   private async messageSent(tx: Executor, p: Record<string, unknown>): Promise<Effect[]> {

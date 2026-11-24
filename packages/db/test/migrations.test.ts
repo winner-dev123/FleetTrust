@@ -61,6 +61,8 @@ describe("migrations on a fresh database", () => {
       "0028_emergency_triggers",
       "0029_vehicles",
       "0030_vehicles_triggers",
+      "0031_crm",
+      "0032_crm_constraints",
     ]);
   });
 
@@ -86,6 +88,7 @@ describe("migrations on a fresh database", () => {
        ORDER BY table_name`,
     );
     expect(rows.map((row) => row.table_name)).toEqual([
+      "appointments",
       "article_bookmarks",
       "article_comments",
       "article_images",
@@ -99,6 +102,9 @@ describe("migrations on a fresh database", () => {
       "content_reports",
       "conversation_states",
       "conversations",
+      "crm_inquiry_notes",
+      "crm_inquiry_states",
+      "crm_tasks",
       "currencies",
       "document_access_grants",
       "emergency_guidance",
@@ -143,6 +149,8 @@ describe("migrations on a fresh database", () => {
       "service_request_recipients",
       "service_requests",
       "social_settings",
+      "staff_availability",
+      "staff_time_off",
       "trusted_contacts",
       "user_blocks",
       "users",

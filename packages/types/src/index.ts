@@ -9,6 +9,7 @@ export * from "./identity.js";
 export * from "./organizations.js";
 export * from "./catalog.js";
 export * from "./community.js";
+export * from "./crm.js";
 export * from "./emergency.js";
 export * from "./opening-hours.js";
 export * from "./providers.js";

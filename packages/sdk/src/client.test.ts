@@ -583,6 +583,49 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("crm: paths, query strings, booking conflict reason, local validation", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 409, error: "conflict", reason: "slot_unavailable" }, 409),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    const error = await client
+      .bookAppointment(orgId, {
+        branchId: orgId,
+        staffUserId: orgId,
+        start: { date: "2027-03-15", time: "09:00" },
+        durationMinutes: 60,
+        title: "Brake service",
+      })
+      .catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("slot_unavailable");
+    expect(fetch.mock.calls[0]?.[0]).toBe(`https://x.test/v1/orgs/${orgId}/crm/appointments`);
+    await client
+      .appointmentSlots(orgId, { branchId: orgId, date: "2027-03-14", durationMinutes: 60 })
+      .catch(() => undefined);
+    expect(fetch.mock.calls[1]?.[0]).toBe(
+      `https://x.test/v1/orgs/${orgId}/crm/slots?branchId=${orgId}&date=2027-03-14&durationMinutes=60`,
+    );
+    await client.crmPipeline(orgId, { assignee: "me", stage: "new" }).catch(() => undefined);
+    expect(fetch.mock.calls[2]?.[0]).toBe(
+      `https://x.test/v1/orgs/${orgId}/crm/pipeline?assignee=me&stage=new`,
+    );
+    // Durations must be multiples of 15 minutes; checked before any request.
+    await expect(
+      client.bookAppointment(orgId, {
+        branchId: orgId,
+        staffUserId: orgId,
+        start: { date: "2027-03-15", time: "09:00" },
+        durationMinutes: 50,
+        title: "Brake service",
+      }),
+    ).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

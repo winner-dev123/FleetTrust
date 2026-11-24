@@ -248,3 +248,53 @@ export function openingStatus(
     exception: today?.label ?? null,
   };
 }
+
+/** Local wall-clock `YYYY-MM-DDTHH:MM` of an instant in `timeZone`. */
+export function localStamp(at: Date, timeZone: string): string {
+  const clock = localClock(at, timeZone);
+  return stamp(clock.date, clock.minute);
+}
+
+/** `date` + `minute` (may exceed a day) read as UTC: the wall clock as a number. */
+function wallMs(date: string, minute: number): number {
+  return Date.parse(`${date}T00:00:00Z`) + minute * 60_000;
+}
+
+/** The UTC offset (ms) of `timeZone` at instant `at`, from the formatted wall clock. */
+function offsetAt(at: number, timeZone: string): number {
+  const clock = localClock(new Date(at), timeZone);
+  return wallMs(clock.date, clock.minute) - Math.floor(at / 60_000) * 60_000;
+}
+
+/**
+ * The instant a local wall-clock time happens in `timeZone` (DST-aware). Returns null when the
+ * time doesn't exist (skipped by a spring-forward change). A time that happens twice (autumn
+ * change) resolves to the earlier instant. `minute` may run past midnight (overnight hours).
+ */
+export function zonedTimeToUtc(date: string, minute: number, timeZone: string): Date | null {
+  const target = wallMs(date, minute);
+  // Offsets either side of the target cover any single DST change.
+  const candidates = [
+    offsetAt(target - 43_200_000, timeZone),
+    offsetAt(target + 43_200_000, timeZone),
+  ]
+    .map((offset) => target - offset)
+    .filter((instant) => {
+      const clock = localClock(new Date(instant), timeZone);
+      return wallMs(clock.date, clock.minute) === target;
+    })
+    .sort((a, b) => a - b);
+  const first = candidates[0];
+  return first === undefined ? null : new Date(first);
+}
+
+/**
+ * Like `zonedTimeToUtc`, but a skipped local time maps to the instant just after the change
+ * (used for range boundaries such as opening hours, which must never vanish).
+ */
+export function zonedBoundaryToUtc(date: string, minute: number, timeZone: string): Date {
+  const exact = zonedTimeToUtc(date, minute, timeZone);
+  if (exact) return exact;
+  const target = wallMs(date, minute);
+  return new Date(target - offsetAt(target - 43_200_000, timeZone));
+}
