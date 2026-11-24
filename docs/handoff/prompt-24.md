@@ -50,13 +50,15 @@
 | Production build                | 42 routes                                                                                                                                                                                                                             |
 | Schema drift                    | "No schema changes"                                                                                                                                                                                                                   |
 
-## CI finding (fixed)
+## CI findings (fixed)
 
 The first CI run of the browser tests failed one check on the 320 px phone: on CI's fonts the members table was wider than the screen, so its box scrolled sideways, but keyboard users couldn't reach it (axe `scrollable-region-focusable`, WCAG 2.1.1). Locally the table fitted, so the check passed.
 
 - **Fix:** every table box is now focusable and named (`tabIndex={0}`, `role="region"`, `aria-label`).
 - **New guard:** a source check fails if any table box lacks these attributes, whatever the fonts or screen width.
 - **Verification:** removing the fix from one table makes the guard fail.
+
+**Lint order.** ESLint needs the `PageProps` route types that `next typegen` writes. In CI, `web:lint` ran before `web:typecheck` had generated them; locally they were left over from earlier builds. The web `lint` script now runs `next typegen` first. Verified from a clean `.next`: plain ESLint reports the 7 errors, and the script passes.
 
 ## Not built here (gaps on the web)
 

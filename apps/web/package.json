@@ -9,7 +9,7 @@
     "dev": "next dev --port 3000",
     "start": "next start --port 3000",
     "typecheck": "next typegen && tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "next typegen && eslint .",
     "test": "vitest run",
     "clean": "node -e \"fs.rmSync('.next',{recursive:true,force:true})\"",
     "e2e": "playwright test"
