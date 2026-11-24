@@ -81,6 +81,8 @@ export const createServiceRequestSchema = z
     target: requestTargetSchema,
     /** Fleet requests: the fleet branch it belongs to (branch-scoped visibility). */
     fleetBranchId: z.uuid().nullable().default(null),
+    /** A vehicle you can access (Prompt 19). Its details replace the snapshot; the provider can add a service record. */
+    vehicleId: z.uuid().nullable().default(null),
   })
   .strict();
 export type CreateServiceRequest = z.input<typeof createServiceRequestSchema>;
@@ -213,6 +215,7 @@ export const serviceRequestSchema = z.object({
   }),
   location: z.object({ lng: z.number(), lat: z.number() }),
   locationNote: z.string().nullable(),
+  vehicleId: z.uuid().nullable(),
   recipients: z.array(recipientSchema),
   acceptedQuoteId: z.uuid().nullable(),
   /** Set once a quote is accepted: what was agreed, for information only. */
@@ -243,6 +246,7 @@ export const inquirySchema = z.object({
 export type InquiryDto = z.infer<typeof inquirySchema>;
 
 export const requestErrorReasonSchema = z.enum([
+  "no_vehicle_linked",
   "no_matching_providers",
   "provider_not_matching",
   "invalid_transition",

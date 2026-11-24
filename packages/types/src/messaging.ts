@@ -206,6 +206,8 @@ export const NOTIFICATION_KINDS = [
   "quote_received",
   "quote_accepted",
   "provider_cancelled",
+  "maintenance_due",
+  "document_expiring",
 ] as const;
 
 export const notificationSchema = z.object({

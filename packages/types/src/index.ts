@@ -16,4 +16,5 @@ export * from "./public-provider.js";
 export * from "./requests.js";
 export * from "./routes.js";
 export * from "./search.js";
+export * from "./vehicles.js";
 export * from "./verification.js";

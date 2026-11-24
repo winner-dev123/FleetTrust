@@ -16,6 +16,7 @@ import { CommunityModule } from "./modules/community/index.js";
 import { MessagingModule } from "./modules/messaging/index.js";
 import { NotificationsModule } from "./modules/notifications/index.js";
 import { EmergencyModule } from "./modules/emergency/index.js";
+import { VehiclesModule } from "./modules/vehicles/index.js";
 import { SearchModule } from "./modules/search/index.js";
 import { VerificationModule } from "./modules/verification/index.js";
 import { type AppLogger, createLogger } from "./observability/logger.js";
@@ -87,6 +88,7 @@ export class AppModule {
         MessagingModule,
         NotificationsModule,
         EmergencyModule,
+        VehiclesModule,
         HealthModule,
       ],
     };

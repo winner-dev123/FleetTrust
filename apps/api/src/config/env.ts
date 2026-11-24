@@ -133,6 +133,13 @@ export const apiEnvSchema = z
     EMERGENCY_SOFT_LIMIT_PER_HOUR: z.coerce.number().int().min(1).max(100).default(3),
     /** Worker role: how often emergency deliveries, escalations and expiry are processed. */
     EMERGENCY_TICK_MS: z.coerce.number().int().min(200).max(30_000).default(1_000),
+    /** Worker role: how often maintenance and document-expiry reminders are queued. */
+    VEHICLE_REMINDER_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(86_400_000)
+      .default(3_600_000),
     ROUTING_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(86_400).default(3_600),
   })
   .superRefine((env, ctx) => {

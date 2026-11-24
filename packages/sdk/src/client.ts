@@ -1,4 +1,31 @@
 import {
+  completeScheduleSchema,
+  type CreatedDocumentShare,
+  createdDocumentShareSchema,
+  createDocumentShareSchema,
+  createServiceRecordSchema,
+  createVehicleDocumentSchema,
+  type CreateVehicle,
+  createVehicleSchema,
+  type DocumentShareDto,
+  documentShareSchema,
+  type MaintenanceScheduleDto,
+  maintenanceScheduleSchema,
+  providerServiceRecordSchema,
+  type ScheduleInput,
+  scheduleSchema,
+  type ServiceHistory,
+  serviceHistorySchema,
+  type ServiceRecordDto,
+  serviceRecordSchema,
+  updateVehicleDocumentSchema,
+  updateVehicleSchema,
+  type VehicleDocumentDto,
+  vehicleDocumentSchema,
+  type VehicleDto,
+  type VehicleErrorReason,
+  vehicleErrorReasonSchema,
+  vehicleSchema,
   type CreateIncident,
   createIncidentSchema,
   emergencyAssistSettingsSchema,
@@ -243,6 +270,7 @@ export type ApiErrorReason =
   | CommunityErrorReason
   | MessagingErrorReason
   | EmergencyErrorReason
+  | VehicleErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -659,6 +687,74 @@ export interface ApiClient {
     recipientId: string,
     message?: string | null,
   ): Promise<ProviderAlertDto>;
+  /** Your personal vehicles and the fleet vehicles assigned to you. */
+  myVehicles(): Promise<VehicleDto[]>;
+  createVehicle(vehicle: CreateVehicle): Promise<VehicleDto>;
+  fleetVehicles(orgId: string, options?: { archived?: boolean }): Promise<VehicleDto[]>;
+  createFleetVehicle(orgId: string, vehicle: CreateVehicle): Promise<VehicleDto>;
+  vehicle(vehicleId: string): Promise<VehicleDto>;
+  updateVehicle(
+    vehicleId: string,
+    change: z.input<typeof updateVehicleSchema>,
+  ): Promise<VehicleDto>;
+  archiveVehicle(vehicleId: string): Promise<VehicleDto>;
+  /** Readings only go up. */
+  reportOdometer(vehicleId: string, odometerKm: number): Promise<VehicleDto>;
+  assignDriver(vehicleId: string, userId: string): Promise<VehicleDto>;
+  unassignDriver(vehicleId: string): Promise<VehicleDto>;
+  /** Service history with its notice: records carry their source and are never verified. */
+  serviceHistory(vehicleId: string): Promise<ServiceHistory>;
+  addServiceRecord(
+    vehicleId: string,
+    record: z.input<typeof createServiceRecordSchema>,
+  ): Promise<ServiceRecordDto>;
+  deleteServiceRecord(vehicleId: string, recordId: string): Promise<void>;
+  /** The accepted provider's record on a request with a linked vehicle. */
+  addProviderServiceRecord(
+    orgId: string,
+    recipientId: string,
+    record: z.input<typeof providerServiceRecordSchema>,
+  ): Promise<ServiceRecordDto>;
+  maintenanceSchedules(vehicleId: string): Promise<MaintenanceScheduleDto[]>;
+  addMaintenanceSchedule(
+    vehicleId: string,
+    schedule: ScheduleInput,
+  ): Promise<MaintenanceScheduleDto>;
+  updateMaintenanceSchedule(
+    vehicleId: string,
+    scheduleId: string,
+    schedule: ScheduleInput,
+  ): Promise<MaintenanceScheduleDto>;
+  removeMaintenanceSchedule(vehicleId: string, scheduleId: string): Promise<void>;
+  completeMaintenance(
+    vehicleId: string,
+    scheduleId: string,
+    done: z.input<typeof completeScheduleSchema>,
+  ): Promise<MaintenanceScheduleDto>;
+  vehicleDocuments(vehicleId: string): Promise<VehicleDocumentDto[]>;
+  /** Then PUT the file to `upload.url` and call completeVehicleDocument. */
+  createVehicleDocument(
+    vehicleId: string,
+    document: z.input<typeof createVehicleDocumentSchema>,
+  ): Promise<{
+    document: VehicleDocumentDto;
+    upload: { url: string; method: "PUT"; headers: Record<string, string>; expiresAt: string };
+  }>;
+  completeVehicleDocument(vehicleId: string, documentId: string): Promise<VehicleDocumentDto>;
+  updateVehicleDocument(
+    vehicleId: string,
+    documentId: string,
+    change: z.input<typeof updateVehicleDocumentSchema>,
+  ): Promise<VehicleDocumentDto>;
+  deleteVehicleDocument(vehicleId: string, documentId: string): Promise<void>;
+  /** The token is shown once; anyone with the link can open it within its limits. */
+  shareVehicleDocument(
+    vehicleId: string,
+    documentId: string,
+    share: z.input<typeof createDocumentShareSchema>,
+  ): Promise<CreatedDocumentShare>;
+  documentShares(vehicleId: string, documentId: string): Promise<DocumentShareDto[]>;
+  revokeDocumentShare(vehicleId: string, documentId: string, shareId: string): Promise<void>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -698,6 +794,9 @@ const articlePath = (articleId: string, ...rest: string[]) =>
   ["/v1/me/articles", articleId, ...rest]
     .map((part, i) => (i === 0 ? part : encodeURIComponent(part)))
     .join("/");
+
+const vehiclePath = (...parts: string[]) =>
+  ["/v1/vehicles", ...parts.map(encodeURIComponent)].join("/");
 
 const incidentPath = (incidentId: string, ...rest: string[]) =>
   ["/v1/emergency/incidents", incidentId, ...rest]
@@ -747,6 +846,7 @@ const errorBodySchema = z
         communityErrorReasonSchema,
         messagingErrorReasonSchema,
         emergencyErrorReasonSchema,
+        vehicleErrorReasonSchema,
         z.literal("quota_exceeded"),
       ])
       .optional(),
@@ -2207,6 +2307,216 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         path: orgPath(orgId, "emergency-alerts", recipientId, "offer"),
         schema: providerAlertSchema,
         body: { message },
+        authenticated: true,
+      }),
+    myVehicles: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/vehicles",
+        schema: z.array(vehicleSchema),
+        authenticated: true,
+      }),
+    createVehicle: async (vehicle) =>
+      send({
+        method: "POST",
+        path: "/v1/me/vehicles",
+        schema: vehicleSchema,
+        body: createVehicleSchema.parse(vehicle),
+        authenticated: true,
+      }),
+    fleetVehicles: (orgId, options) =>
+      send({
+        method: "GET",
+        path: `${orgPath(orgId, "vehicles")}${options?.archived === true ? "?archived=true" : ""}`,
+        schema: z.array(vehicleSchema),
+        authenticated: true,
+      }),
+    createFleetVehicle: async (orgId, vehicle) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "vehicles"),
+        schema: vehicleSchema,
+        body: createVehicleSchema.parse(vehicle),
+        authenticated: true,
+      }),
+    vehicle: (vehicleId) =>
+      send({
+        method: "GET",
+        path: vehiclePath(vehicleId),
+        schema: vehicleSchema,
+        authenticated: true,
+      }),
+    updateVehicle: async (vehicleId, change) =>
+      send({
+        method: "PATCH",
+        path: vehiclePath(vehicleId),
+        schema: vehicleSchema,
+        body: updateVehicleSchema.parse(change),
+        authenticated: true,
+      }),
+    archiveVehicle: (vehicleId) =>
+      send({
+        method: "POST",
+        path: vehiclePath(vehicleId, "archive"),
+        schema: vehicleSchema,
+        authenticated: true,
+      }),
+    reportOdometer: (vehicleId, odometerKm) =>
+      send({
+        method: "POST",
+        path: vehiclePath(vehicleId, "odometer"),
+        schema: vehicleSchema,
+        body: { odometerKm },
+        authenticated: true,
+      }),
+    assignDriver: async (vehicleId, userId) =>
+      send({
+        method: "PUT",
+        path: vehiclePath(vehicleId, "driver"),
+        schema: vehicleSchema,
+        body: { userId: z.uuid().parse(userId) },
+        authenticated: true,
+      }),
+    unassignDriver: (vehicleId) =>
+      send({
+        method: "DELETE",
+        path: vehiclePath(vehicleId, "driver"),
+        schema: vehicleSchema,
+        authenticated: true,
+      }),
+    serviceHistory: (vehicleId) =>
+      send({
+        method: "GET",
+        path: vehiclePath(vehicleId, "service-records"),
+        schema: serviceHistorySchema,
+        authenticated: true,
+      }),
+    addServiceRecord: async (vehicleId, record) =>
+      send({
+        method: "POST",
+        path: vehiclePath(vehicleId, "service-records"),
+        schema: serviceRecordSchema,
+        body: createServiceRecordSchema.parse(record),
+        authenticated: true,
+      }),
+    deleteServiceRecord: (vehicleId, recordId) =>
+      send({
+        method: "DELETE",
+        path: vehiclePath(vehicleId, "service-records", recordId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    addProviderServiceRecord: async (orgId, recipientId, record) =>
+      send({
+        method: "POST",
+        path: orgPath(orgId, "inquiries", recipientId, "service-record"),
+        schema: serviceRecordSchema,
+        body: providerServiceRecordSchema.parse(record),
+        authenticated: true,
+      }),
+    maintenanceSchedules: (vehicleId) =>
+      send({
+        method: "GET",
+        path: vehiclePath(vehicleId, "schedules"),
+        schema: z.array(maintenanceScheduleSchema),
+        authenticated: true,
+      }),
+    addMaintenanceSchedule: async (vehicleId, schedule) =>
+      send({
+        method: "POST",
+        path: vehiclePath(vehicleId, "schedules"),
+        schema: maintenanceScheduleSchema,
+        body: scheduleSchema.parse(schedule),
+        authenticated: true,
+      }),
+    updateMaintenanceSchedule: async (vehicleId, scheduleId, schedule) =>
+      send({
+        method: "PUT",
+        path: vehiclePath(vehicleId, "schedules", scheduleId),
+        schema: maintenanceScheduleSchema,
+        body: scheduleSchema.parse(schedule),
+        authenticated: true,
+      }),
+    removeMaintenanceSchedule: (vehicleId, scheduleId) =>
+      send({
+        method: "DELETE",
+        path: vehiclePath(vehicleId, "schedules", scheduleId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    completeMaintenance: async (vehicleId, scheduleId, done) =>
+      send({
+        method: "POST",
+        path: vehiclePath(vehicleId, "schedules", scheduleId, "complete"),
+        schema: maintenanceScheduleSchema,
+        body: completeScheduleSchema.parse(done),
+        authenticated: true,
+      }),
+    vehicleDocuments: (vehicleId) =>
+      send({
+        method: "GET",
+        path: vehiclePath(vehicleId, "documents"),
+        schema: z.array(vehicleDocumentSchema),
+        authenticated: true,
+      }),
+    createVehicleDocument: async (vehicleId, document) =>
+      send({
+        method: "POST",
+        path: vehiclePath(vehicleId, "documents"),
+        schema: z.object({
+          document: vehicleDocumentSchema,
+          upload: z.object({
+            url: z.string(),
+            method: z.literal("PUT"),
+            headers: z.record(z.string(), z.string()),
+            expiresAt: z.iso.datetime(),
+          }),
+        }),
+        body: createVehicleDocumentSchema.parse(document),
+        authenticated: true,
+      }),
+    completeVehicleDocument: (vehicleId, documentId) =>
+      send({
+        method: "POST",
+        path: vehiclePath(vehicleId, "documents", documentId, "complete"),
+        schema: vehicleDocumentSchema,
+        authenticated: true,
+      }),
+    updateVehicleDocument: async (vehicleId, documentId, change) =>
+      send({
+        method: "PATCH",
+        path: vehiclePath(vehicleId, "documents", documentId),
+        schema: vehicleDocumentSchema,
+        body: updateVehicleDocumentSchema.parse(change),
+        authenticated: true,
+      }),
+    deleteVehicleDocument: (vehicleId, documentId) =>
+      send({
+        method: "DELETE",
+        path: vehiclePath(vehicleId, "documents", documentId),
+        schema: undefined,
+        authenticated: true,
+      }),
+    shareVehicleDocument: async (vehicleId, documentId, share) =>
+      send({
+        method: "POST",
+        path: vehiclePath(vehicleId, "documents", documentId, "shares"),
+        schema: createdDocumentShareSchema,
+        body: createDocumentShareSchema.parse(share),
+        authenticated: true,
+      }),
+    documentShares: (vehicleId, documentId) =>
+      send({
+        method: "GET",
+        path: vehiclePath(vehicleId, "documents", documentId, "shares"),
+        schema: z.array(documentShareSchema),
+        authenticated: true,
+      }),
+    revokeDocumentShare: (vehicleId, documentId, shareId) =>
+      send({
+        method: "DELETE",
+        path: vehiclePath(vehicleId, "documents", documentId, "shares", shareId),
+        schema: undefined,
         authenticated: true,
       }),
     provider: (slug, options) =>

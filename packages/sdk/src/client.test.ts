@@ -556,6 +556,33 @@ describe("organizations", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("vehicles: paths, error reasons, and records can't carry a source or verified flag", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({ statusCode: 409, error: "conflict", reason: "odometer_decreased" }, 409),
+        ),
+      );
+    const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });
+    const error = await client.reportOdometer(orgId, 10).catch((e: unknown) => e);
+    expect((error as ApiError).reason).toBe("odometer_decreased");
+    expect(fetch.mock.calls[0]?.[0]).toBe(`https://x.test/v1/vehicles/${orgId}/odometer`);
+    await client.shareVehicleDocument(orgId, orgId, { label: "Broker" }).catch(() => undefined);
+    expect(fetch.mock.calls[1]?.[0]).toBe(
+      `https://x.test/v1/vehicles/${orgId}/documents/${orgId}/shares`,
+    );
+    await expect(
+      client.addServiceRecord(orgId, {
+        performedOn: "2026-11-01",
+        category: "service",
+        title: "Oil",
+        verified: true,
+      } as never),
+    ).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects malformed invitation tokens without calling the API", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const client = createApiClient({ baseUrl: "https://x.test", fetch, getIdToken: () => "t" });

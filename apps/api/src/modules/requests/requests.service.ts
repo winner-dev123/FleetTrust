@@ -54,6 +54,7 @@ import {
   subjectOfUser,
 } from "../entitlements/index.js";
 import type { TenantAccess } from "../organizations/index.js";
+import { HistoryService, VehiclesService } from "../vehicles/index.js";
 import { assertPriceAllowed, priceColumns, priceOf } from "../providers/index.js";
 import { AttachmentsService } from "./attachments.service.js";
 import { membershipOf, notFound, type Requester, requestError } from "./shared.js";
@@ -81,6 +82,8 @@ export class RequestsService {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly entitlements: EntitlementsService,
     private readonly attachments: AttachmentsService,
+    private readonly vehicles: VehiclesService,
+    private readonly history: HistoryService,
   ) {}
 
   private get db(): Database {
@@ -334,6 +337,25 @@ export class RequestsService {
       throw requestError(400, "not_a_fleet");
     }
 
+    // A linked vehicle replaces the snapshot with its own details (Prompt 19).
+    if (input.vehicleId !== null) {
+      const vehicle = await this.vehicles.forRequest(
+        requester.user,
+        input.vehicleId,
+        requester.kind === "organization" ? requester.access.tenant.organizationId : null,
+      );
+      input = {
+        ...input,
+        vehicle: {
+          vehicleType: vehicle.vehicleType as CreateInput["vehicle"]["vehicleType"],
+          make: vehicle.make,
+          model: vehicle.model,
+          year: vehicle.year,
+          registration: vehicle.registration,
+        },
+      };
+    }
+
     const actor = requester.user;
     const now = this.clock.now();
     let requestId: string;
@@ -383,6 +405,7 @@ export class RequestsService {
             vehicleModel: input.vehicle.model,
             vehicleYear: input.vehicle.year,
             vehicleRegistration: input.vehicle.registration,
+            vehicleId: input.vehicleId,
             location: input.location,
             locationNote: input.locationNote,
             description: input.description,
@@ -963,6 +986,33 @@ export class RequestsService {
   // --- Attachments -----------------------------------------------------------------------------
 
   /** Requester side, or a member of a recipient provider (branch scope applies), may download. */
+  /**
+   * The accepted provider adds a service record to the request's vehicle (source "provider").
+   * It is shown as entered by the provider; nothing marks it verified.
+   */
+  async providerServiceRecord(
+    access: TenantAccess,
+    actor: User,
+    recipientId: string,
+    input: Parameters<HistoryService["addProviderRecord"]>[4],
+  ) {
+    const recipient = await this.recipientFor(this.db, access, recipientId);
+    if (recipient.status !== "accepted") throw requestError(409, "invalid_transition");
+    const [request] = await this.db
+      .select()
+      .from(serviceRequests)
+      .where(eq(serviceRequests.id, recipient.requestId));
+    if (!request) throw notFound();
+    if (request.vehicleId === null) throw requestError(409, "no_vehicle_linked");
+    return this.history.addProviderRecord(
+      actor,
+      recipient.organizationId,
+      request.vehicleId,
+      request.id,
+      input,
+    );
+  }
+
   async attachment(actor: User, requestId: string, attachmentId: string) {
     const [row] = await this.db
       .select({ attachment: serviceRequestAttachments, request: serviceRequests })
@@ -1139,6 +1189,7 @@ export class RequestsService {
     return {
       ...this.core(request, now),
       vehicle: this.vehicle(request, true),
+      vehicleId: request.vehicleId,
       requester: {
         kind: request.requesterOrganizationId === null ? "user" : "organization",
         organizationId: request.requesterOrganizationId,

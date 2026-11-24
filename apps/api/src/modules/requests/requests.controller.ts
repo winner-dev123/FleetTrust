@@ -6,6 +6,7 @@ import {
   createServiceRequestSchema,
   declineSchema,
   evidenceSchema,
+  providerServiceRecordSchema,
   type InquiryDto,
   reasonSchema,
   type ServiceRequestDto,
@@ -292,6 +293,23 @@ export class InquiriesController {
     @Param("recipientId", IdParam) id: string,
   ): Promise<InquiryDto> {
     return this.requests.providerComplete(access, user, id);
+  }
+
+  /** The accepted provider adds a service record to the linked vehicle (Prompt 19). */
+  @Post(":recipientId/service-record")
+  @OrgPermission("requests.respond")
+  serviceRecord(
+    @CurrentTenant() access: TenantAccess,
+    @CurrentUser() user: User,
+    @Param("recipientId", IdParam) recipientId: string,
+    @Body() body: unknown,
+  ) {
+    return this.requests.providerServiceRecord(
+      access,
+      user,
+      recipientId,
+      parseBody(providerServiceRecordSchema, body),
+    );
   }
 
   @Post(":recipientId/evidence")

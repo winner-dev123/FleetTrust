@@ -24,6 +24,7 @@ import {
   sql,
   type User,
   users,
+  vehicles,
 } from "@fleettrust/db";
 import {
   hasPermission,
@@ -40,6 +41,7 @@ import { PUSH_SENDER, type PushMessage, type PushSender } from "../../platform/p
 import { REALTIME_BUS, type RealtimeBus } from "../../platform/realtime/index.js";
 import { SocialService } from "../community/index.js";
 import { MessagingService } from "../messaging/index.js";
+import { VehiclesService } from "../vehicles/index.js";
 
 type Kind = (typeof NOTIFICATION_KINDS)[number];
 type Category = "messages" | "requests" | "community";
@@ -71,6 +73,7 @@ export class NotificationsService {
     @Inject(REALTIME_BUS) private readonly bus: RealtimeBus,
     private readonly messaging: MessagingService,
     private readonly social: SocialService,
+    private readonly vehiclesService: VehiclesService,
   ) {}
 
   private get db(): Database {
@@ -222,6 +225,34 @@ export class NotificationsService {
             ? `${provider} cancelled. Your request is open again for other quotes.`
             : `${provider} sent you a quote.`,
           data: { requestId: event.aggregateId },
+        });
+      }
+      case "MaintenanceDue":
+      case "VehicleDocumentExpiring": {
+        const vehicleId = str(p["vehicleId"]);
+        if (vehicleId === null) return [];
+        const [vehicle] = await tx.select().from(vehicles).where(eq(vehicles.id, vehicleId));
+        if (vehicle?.status !== "active") return [];
+        const name =
+          vehicle.nickname ??
+          vehicle.registration ??
+          ([vehicle.make, vehicle.model].filter(Boolean).join(" ") || "your vehicle");
+        const audience = await this.vehiclesService.audience(tx, vehicle);
+        const title = str(p["title"]) ?? "Maintenance";
+        if (event.eventType === "MaintenanceDue") {
+          const overdue = p["status"] === "overdue";
+          return this.notify(tx, event, audience, "requests", {
+            kind: "maintenance_due",
+            title: overdue ? "Maintenance overdue" : "Maintenance due soon",
+            body: `${title} for ${name} is ${overdue ? "overdue" : "due soon"}.`,
+            data: { vehicleId, scheduleId: str(p["scheduleId"]) ?? "" },
+          });
+        }
+        return this.notify(tx, event, audience, "requests", {
+          kind: "document_expiring",
+          title: "Document expiring",
+          body: `${title} for ${name} expires on ${str(p["expiresOn"]) ?? "soon"}.`,
+          data: { vehicleId, documentId: str(p["documentId"]) ?? "" },
         });
       }
       default:
