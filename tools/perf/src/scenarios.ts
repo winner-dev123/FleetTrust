@@ -382,6 +382,21 @@ export async function messagingScenario(
     diagnosis.push(
       `REST after ${String(firstMissed - 1)}: ${String(page.status)} ${JSON.stringify(page.body.items?.map((m) => [m.seq, m.status]) ?? page.body).slice(0, 160)}`,
     );
+    // Does one more message push the missed one out (something holding the last message)?
+    const sentinel = (await api.expect(
+      "POST",
+      `/v1/conversations/${conversation.id}/messages`,
+      201,
+      {
+        token: owner.token,
+        body: { clientMessageId: randomUUID(), body: "Perf sentinel" },
+      },
+    )) as { id: string };
+    await sleep(2_000);
+    const missedId = [...sent].find(([, info]) => info.seq === firstMissed)?.[0] ?? "";
+    diagnosis.push(
+      `after one more message, seq ${String(firstMissed)} reached ${String(subscribers.filter((sub) => sub.arrivals.has(missedId)).length)} of ${String(subscribers.length)} sockets; ${String(subscribers.filter((sub) => sub.arrivals.has(sentinel.id)).length)} sockets saw the sentinel`,
+    );
     const again = await subscribe(wsUrl, witness.token, conversation.id, firstMissed - 1);
     diagnosis.push(
       `resubscribe after ${String(firstMissed - 1)} replayed ${String(again.arrivals.size)} messages`,

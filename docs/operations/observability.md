@@ -65,3 +65,4 @@ Try it locally: `OTEL_TRACES_EXPORTER=console pnpm --filter @fleettrust/api star
 - Cloud Run 5xx ratio > 2 % for 5 min; p95 latency above the SRS §7 targets.
 - Uptime check on `/health/ready` from two regions.
 - Emergency path (Prompt 18): dispatch failures > 0, with paging.
+- Load shedding (Prompt 28): 503 `overloaded` responses above 1 % for 5 min mean the pool or the database is saturated. Each one is logged as an `overloaded:` warning by `AllExceptionsFilter`, not as an error report. See [slo.md](slo.md) for the SLOs and what to change.
