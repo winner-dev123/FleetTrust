@@ -121,6 +121,19 @@ describe("database under pressure", () => {
   });
 });
 
+describe("rate limiter store (Redis when deployed)", () => {
+  it("fails open when the store is down, so an outage never takes the API down", async () => {
+    const hit = vi.spyOn(t.limiter, "hit").mockRejectedValue(new Error("ECONNREFUSED redis:6379"));
+    const searches = await Promise.all(
+      Array.from({ length: 3 }, () =>
+        request(t.server).get("/v1/search/providers?lat=-26.2&lng=28.04&radiusKm=25"),
+      ),
+    );
+    expect(searches.map((r) => r.status)).toEqual([200, 200, 200]);
+    expect(hit).toHaveBeenCalledTimes(3);
+  });
+});
+
 describe("outbox relay", () => {
   it("backs off after a failed event, keeps the error, and notifies exactly once on retry", async () => {
     const relay = t.app.get(OutboxRelay);

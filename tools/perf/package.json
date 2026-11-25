@@ -12,7 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "ws": "8.23.0"
   },
   "devDependencies": {
     "@fleettrust/config": "workspace:*",
@@ -20,6 +21,7 @@
     "@types/pg": "8.23.1",
     "eslint": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@types/ws": "8.18.1"
   }
 }

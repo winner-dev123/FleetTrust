@@ -1,4 +1,5 @@
 import { appendFileSync, writeFileSync } from "node:fs";
+import { cpus, totalmem } from "node:os";
 
 import pg from "pg";
 
@@ -89,6 +90,7 @@ const report = {
   started,
   finished: new Date().toISOString(),
   providers: { pilot: pilotProviders, stress: providers },
+  runner: { cpus: cpus().length, memoryGiB: Math.round(totalmem() / 2 ** 30) },
   verdicts,
   failedChecks,
 };
@@ -100,6 +102,8 @@ const rows = verdicts.map(
 );
 const markdown = [
   `### Load test (${String(pilotProviders)} then ${String(providers)} provider branches)`,
+  "",
+  `Runner: ${String(cpus().length)} vCPU, ${String(Math.round(totalmem() / 2 ** 30))} GiB, shared by PostgreSQL, the API, the worker, the Auth emulator and the load generator.`,
   "",
   "| Scenario | Samples | p50 ms | p95 ms | p99 ms | max ms | per s | error rate | target p95 / p99 ms | SLO |",
   "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type pg from "pg";
+import NodeWebSocket from "ws";
 
 import { type Api, randomIp, randomPoint, type Reply, type TestUser, testUsers } from "./http.ts";
 import { type LatencySummary, runLoad, summarize } from "./stats.ts";
@@ -211,8 +212,20 @@ export async function quotaScenario(
 // 3. Messaging fan-out: one group conversation, every member subscribed over WebSocket
 // ---------------------------------------------------------------------------------------------
 
+/** The parts of a WebSocket the harness uses (Node's built-in client and the ws package). */
+interface MiniSocket {
+  send(data: string): void;
+  close(): void;
+  addEventListener(type: "open" | "close" | "error", listener: () => void): void;
+  addEventListener(type: "message", listener: (event: { data: unknown }) => void): void;
+}
+
+/** Which client library a subscriber uses (browsers and React Native have their own). */
+type ClientKind = "builtin" | "ws";
+
 interface Subscriber {
-  socket: WebSocket;
+  socket: MiniSocket;
+  client: ClientKind;
   arrivals: Map<string, number>;
   /** Frames other than messages after subscribing (errors, unsubscribed...), for diagnosis. */
   other: string[];
@@ -224,11 +237,14 @@ async function subscribe(
   token: string,
   conversationId: string,
   after = 0,
+  client: ClientKind = "builtin",
 ): Promise<Subscriber> {
-  const socket = new WebSocket(wsUrl);
+  const socket = (client === "ws"
+    ? new NodeWebSocket(wsUrl)
+    : new WebSocket(wsUrl)) as unknown as MiniSocket;
   const arrivals = new Map<string, number>();
   const other: string[] = [];
-  const subscriber: Subscriber = { socket, arrivals, other, closed: false };
+  const subscriber: Subscriber = { socket, client, arrivals, other, closed: false };
   socket.addEventListener("close", () => {
     subscriber.closed = true;
   });
@@ -299,7 +315,12 @@ export async function messagingScenario(
   for (let i = 0; i < members.length; i += 10) {
     subscribers.push(
       ...(await Promise.all(
-        members.slice(i, i + 10).map((m) => subscribe(wsUrl, m.token, conversation.id)),
+        members
+          .slice(i, i + 10)
+          // Half on Node's built-in client, half on the ws package, to tell client quirks apart.
+          .map((m, j) =>
+            subscribe(wsUrl, m.token, conversation.id, 0, (i + j) % 2 === 0 ? "builtin" : "ws"),
+          ),
       )),
     );
   }
@@ -340,6 +361,7 @@ export async function messagingScenario(
   const delivery: number[] = [];
   let missing = 0;
   const missedBySeq = new Map<number, number>();
+  const missedByClient = new Map<ClientKind, number>();
   subscribers.forEach((subscriber, index) => {
     const self = members[index];
     for (const [id, info] of sent) {
@@ -348,10 +370,12 @@ export async function messagingScenario(
       if (arrived === undefined) {
         missing += 1;
         missedBySeq.set(info.seq, (missedBySeq.get(info.seq) ?? 0) + 1);
+        missedByClient.set(subscriber.client, (missedByClient.get(subscriber.client) ?? 0) + 1);
       } else delivery.push(arrived - info.at);
     }
   });
   const diagnosis = [
+    `missed by client: ${[...missedByClient].map(([k, n]) => `${k} ${String(n)}`).join(", ")}`,
     ...[...missedBySeq]
       .sort((a, b) => a[0] - b[0])
       .slice(0, 10)
