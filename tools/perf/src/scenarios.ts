@@ -11,6 +11,9 @@ const sleep = (ms: number) =>
     setTimeout(resolve, ms);
   });
 
+/** The realtime gateway's gap wait (apps/api GAP_WAIT_MS), for reading diagnostics. */
+const GAP_HINT_MS = 1_000;
+
 const reasonOf = (reply: Reply): string | undefined =>
   (reply.body as { reason?: string } | null)?.reason;
 
@@ -327,8 +330,11 @@ export async function messagingScenario(
 
   const sent = new Map<string, { at: number; sender: TestUser; seq: number }>();
   const senders = [owner, ...members.slice(0, options.senders - 1)];
+  const subscribedAt = performance.now();
+  let sendStart = 0;
   const sendResult = await runLoad(
     async (i) => {
+      if (sendStart === 0) sendStart = performance.now();
       const sender = senders[i % senders.length];
       if (!sender) return;
       const at = performance.now();
@@ -407,6 +413,7 @@ export async function messagingScenario(
       `REST after ${String(firstMissed - 1)}: ${String(page.status)} ${JSON.stringify(page.body.items?.map((m) => [m.seq, m.status]) ?? page.body).slice(0, 160)}`,
     );
     // Does one more message push the missed one out (something holding the last message)?
+    const sentinelAt = performance.now();
     const sentinel = (await api.expect(
       "POST",
       `/v1/conversations/${conversation.id}/messages`,
@@ -417,6 +424,16 @@ export async function messagingScenario(
       },
     )) as { id: string };
     await sleep(2_000);
+    const timing = subscribers
+      .map((sub) => ({
+        missed: sub.arrivals.get([...sent].find(([, info]) => info.seq === firstMissed)?.[0] ?? ""),
+        sentinel: sub.arrivals.get(sentinel.id),
+      }))
+      .filter((x) => x.missed !== undefined && x.sentinel !== undefined)
+      .map((x) => Math.round((x.missed ?? 0) - sentinelAt));
+    diagnosis.push(
+      `missed message arrived ${String(Math.min(...timing))}–${String(Math.max(...timing))} ms after the extra message was sent (about ${String(GAP_HINT_MS)} = gap fill); first send was ${String(Math.round(sendStart - subscribedAt))} ms after subscribing`,
+    );
     const missedId = [...sent].find(([, info]) => info.seq === firstMissed)?.[0] ?? "";
     diagnosis.push(
       `after one more message, seq ${String(firstMissed)} reached ${String(subscribers.filter((sub) => sub.arrivals.has(missedId)).length)} of ${String(subscribers.length)} sockets; ${String(subscribers.filter((sub) => sub.arrivals.has(sentinel.id)).length)} sockets saw the sentinel`,
