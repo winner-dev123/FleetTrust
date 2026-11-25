@@ -50,8 +50,11 @@ Constraints:
 
    Clients keep the simple "ignore seq ≤ last seen" rule.
 
+   The in-memory bus (local and single-instance) now delivers in a microtask instead of `setImmediate`.
+
 6. **Chaos tests in the API suite** (`test/chaos.e2e-spec.ts`). Each test breaks one dependency mid-flow and proves three things: the failure is visible, nothing is left half-done, and the retry succeeds. Dependencies covered:
    - pool exhaustion;
+   - the rate-limit store being down (fails open);
    - an outbox handler failure (backoff, error kept, notifies exactly once on retry);
    - a push provider outage for messages;
    - object storage, the key service, and the malware scanner during attachment completion.
@@ -71,9 +74,11 @@ Constraints:
 ## Consequences
 
 - Every pull request re-measures the main paths, so a regression in latency or correctness shows up in the job summary before merge.
-- The load test found two real defects, both fixed here:
+- The load test found four real defects, all fixed here with tests:
   - pool exhaustion answered with a reported 500, now a 503 the client retries;
-  - out-of-order realtime publishes were lost, now delivered in order.
+  - out-of-order realtime publishes were lost, now delivered in order;
+  - the in-memory realtime bus left the last message of a burst unsent until the next request woke the process (`setImmediate`), now a microtask;
+  - an "unlimited" (`null`) plan limit or override was enforced as 0, so every use was refused.
 - CI numbers are not production numbers. Production capacity (pool size, Cloud Run concurrency, Cloud SQL tier) must be confirmed with the same harness against staging.
 - The e2e job takes longer, because it runs five browser projects.
 

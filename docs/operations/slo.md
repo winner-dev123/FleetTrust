@@ -21,13 +21,53 @@ Targets come from [SRS §7](../product/SRS.md#7-non-functional-requirements). Th
 
 The runner is a standard GitHub-hosted Linux machine (the CPU count is printed in each report). PostgreSQL 17 + PostGIS, the API (api role), the worker, the Auth emulator and the load generator all share it, and the API pool is the default 5 connections. Production has separate Cloud Run instances and Cloud SQL, so these are conservative numbers, not production numbers.
 
-<!-- MEASUREMENTS -->
+**Reference run:** 2026-11-25, commit `4bc2c48` (PR #30). The runner has 4 vCPU and 16 GiB. Search is measured at 1,000 provider branches (pilot volume) and at 20,000 (stress). Latencies are milliseconds, measured at the client (they include HTTP and JSON).
+
+| Scenario                                           | Load                                               | Samples | p50   | p95    | p99    | Error rate | Target p95 / p99 | Result                          |
+| -------------------------------------------------- | -------------------------------------------------- | ------- | ----- | ------ | ------ | ---------- | ---------------- | ------------------------------- |
+| Provider search, pilot volume (≈174 ranked/search) | 16 concurrent visitors, 30 s, 25 km, random points | 2,960   | 160   | 195    | 233    | 0          | 400 / 1,000      | **Met**                         |
+| Provider search, 20× density (≈3,720 ranked)       | Same                                               | 856     | 560   | 693    | 762    | 0          | 400 / 1,000      | Missed p95                      |
+| Create a service request (match + quota)           | 8 in flight, 1,500 requests                        | 1,500   | 336   | 458    | 514    | 0          | 500 / 1,000      | **Met**                         |
+| Burst: 250 creates at once (quota race)            | 25 users × 10 at the same instant                  | 250     | 5,576 | 10,033 | 10,048 | 0          | 5,000 / 10,000   | Missed (stress case, see below) |
+| Send a message                                     | 10 senders, 100 messages, one group                | 100     | 38    | 55     | 66     | 0          | 500 / 1,000      | **Met**                         |
+| Message delivered to every member's socket         | 50 subscribers, 4,910 deliveries                   | 4,910   | 37    | 57     | 66     | 0          | 1,000 / 2,000    | **Met**                         |
+| Emergency alert → push sent                        | 40 alerts at once × 5 contacts                     | 200     | 278   | 387    | 392    | 0          | 10,000 / 15,000  | **Met**                         |
+
+**Correctness (gates CI), all passing:**
+
+- **Search:** every search returned providers.
+- **Quota burst:** no user exceeded the daily limit of 3, and every user got exactly 3. The responses were 75 × 201, 175 × 403 `quota_exceeded` and 98 × 503 `overloaded`, each overloaded request retried and answered.
+- **Messaging:** every subscribed member received every message.
+- **Emergency:** all 200 trusted contacts' pushes were sent.
+
+**Run-to-run variation.** Hosted runners vary. Earlier runs on this PR, with the same scenarios on slower runners, measured:
+
+| Scenario          | Slower runners, p95 |
+| ----------------- | ------------------- |
+| Pilot search      | up to 377 ms        |
+| 20× search        | up to 1,530 ms      |
+| Request creation  | up to 907 ms        |
+| Message delivery  | up to 93 ms         |
+| Emergency fan-out | up to 581 ms        |
+
+Correctness was the same in every run once the defects below were fixed. On the slowest runner, pilot search still met its target, but request creation did not. Request creation should be re-measured on staging before calling the write SLO met in production.
+
+**The burst case is a stress test, not normal traffic.** One instance with 5 connections receives 250 transactions at the same moment. About 100 are shed with 503 and retried after a second, so the p95 includes up to two retry waits. What it proves is correctness under the race, and that overload produces retryable answers instead of errors.
+
+**Not measured here:** availability (needs production traffic; Cloud Run and uptime checks in Prompt 29) and email fallback timing (covered by `emergency.e2e-spec.ts` with a controlled clock).
 
 ## What the load tests found (fixed in Prompt 28)
 
 1. **Pool exhaustion was a 500.** 250 simultaneous creates need more connections than the pool's 5, and the ones that waited more than 5 s failed as unexpected errors. Transient database pressure now answers **503 `overloaded` with `Retry-After: 1`** (ADR-0035). Clients retry with the same idempotency key, so quota is never consumed twice. In the burst test every user ends with exactly the daily limit.
-2. **Live messages could be lost under concurrent sends.** Messages commit in seq order but can be published out of order, and the realtime gateway dropped the late one. It now delivers strictly in seq order and fills gaps from the database after `GAP_WAIT_MS`.
-3. **Unlimited limits were enforced as zero.** An override or plan limit of "unlimited" (`null`) became 0 when enforced: every daily-quota use and capacity addition was refused, although the entitlements page showed "unlimited". It is fixed, and the entitlements test now proves unlimited enforcement.
+2. **Live messages could be lost under concurrent sends.** Messages commit in seq order but can be published out of order, and the realtime gateway dropped the late one as a "duplicate". It now delivers strictly in seq order and fills gaps from the database after `GAP_WAIT_MS`. The run before the fix lost two messages; the run after it lost one, the last message (finding 4).
+3. **The last message of a burst waited for the next request.** With the in-memory realtime bus (local and single-instance), the final message's delivery sat unsent in an otherwise idle API process until any other request arrived. The evidence:
+   - the message was stored and replayable;
+   - both WebSocket client libraries missed it;
+   - it went out 5 ms after an unrelated REST call.
+
+   The bus scheduled delivery with `setImmediate`; it now uses a microtask, and all 4,910 deliveries arrive. Deployed environments use the Redis bus (ADR-0024), which doesn't use that code path; the staging run in Prompt 29 should confirm delivery with Redis.
+
+4. **Unlimited limits were enforced as zero.** An override or plan limit of "unlimited" (`null`) became 0 when enforced: every daily-quota use and capacity addition was refused, although the entitlements page showed "unlimited". It is fixed, and the entitlements test now proves unlimited enforcement.
 
 ## Capacity notes and levers
 
