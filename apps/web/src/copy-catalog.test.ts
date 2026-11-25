@@ -110,8 +110,8 @@ const MIGRATED = [
   "src/app/app",
 ];
 const DOCUMENTS = ["src/app/(site)/legal/", "src/app/(site)/accessibility/"];
-/** Not migrated yet: the organisation pages and the admin console move in later slices. */
-const NOT_YET = ["src/app/app/o/", "src/app/app/admin/"];
+/** Not migrated yet: the admin console moves in the next slice. */
+const NOT_YET = ["src/app/app/admin/"];
 
 const files = MIGRATED.flatMap((path) => {
   const full = join(root, path);

@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import {
   CATEGORY_LABELS,
   PROVIDER_CATEGORIES,
@@ -17,6 +18,8 @@ import { Card, PageHeader } from "@/components/layout";
 import { errorMessage } from "@fleettrust/sdk";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.org.profile;
 
 type VehicleType = (typeof VEHICLE_TYPES)[number];
 
@@ -44,7 +47,7 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
       slug.trim() !== "" &&
       !/^[a-z0-9](?:[a-z0-9-]{1,58})[a-z0-9]$/.test(slug.trim().toLowerCase())
     ) {
-      setMessage({ ok: false, text: "Web address: 3–60 characters, a–z, 0–9 and hyphens." });
+      setMessage({ ok: false, text: t.slugInvalid });
       return;
     }
     setBusy(true);
@@ -63,7 +66,7 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
       });
       setMessage({
         ok: true,
-        text: "Saved as a draft. Publish from Profile setup when you're ready.",
+        text: t.saved,
       });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
@@ -74,11 +77,11 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
 
   return (
     <form className="stack stack--lg" onSubmit={(event) => void submit(event)} noValidate>
-      <Card title="Basics">
+      <Card title={t.basics}>
         <div className="stack">
           <TextField
-            label="Trading name"
-            hint="The name customers know you by"
+            label={t.tradingName}
+            hint={t.tradingNameHint}
             required
             maxLength={120}
             value={tradingName}
@@ -87,7 +90,7 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
             }}
           />
           <TextField
-            label="Registered (legal) name"
+            label={t.legalName}
             required
             maxLength={200}
             value={legalName}
@@ -96,8 +99,8 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
             }}
           />
           <TextField
-            label="Profile web address"
-            hint="fleettrust…/providers/your-name: a–z, 0–9 and hyphens"
+            label={t.slug}
+            hint={t.slugHint}
             required
             maxLength={60}
             value={slug}
@@ -106,7 +109,7 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
             }}
           />
           <TextArea
-            label="Description"
+            label={t.descriptionLabel}
             maxLength={2000}
             value={description}
             onChange={(event) => {
@@ -115,9 +118,9 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
           />
         </div>
       </Card>
-      <Card title="What you do">
+      <Card title={t.whatYouDo}>
         <fieldset className="field">
-          <legend className="field__label">Service categories</legend>
+          <legend className="field__label">{t.categories}</legend>
           <div className="grid" style={{ gap: 0 }}>
             {PROVIDER_CATEGORIES.map((category) => (
               <Checkbox
@@ -132,7 +135,7 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
           </div>
         </fieldset>
         <fieldset className="field" style={{ marginTop: 16 }}>
-          <legend className="field__label">Vehicles you work on</legend>
+          <legend className="field__label">{t.vehicleTypes}</legend>
           <div className="grid" style={{ gap: 0 }}>
             {VEHICLE_TYPES.map((type) => (
               <Checkbox
@@ -147,12 +150,12 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
           </div>
         </fieldset>
       </Card>
-      <Card title="Contact details">
-        <p className="small muted">Shown only to signed-in people.</p>
+      <Card title={t.contact}>
+        <p className="small muted">{t.contactNote}</p>
         <div className="grid">
           <TextField
-            label="Phone"
-            hint="International format, e.g. +27 21 555 0100"
+            label={t.phone}
+            hint={t.phoneHint}
             type="tel"
             autoComplete="tel"
             value={phone}
@@ -161,7 +164,7 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
             }}
           />
           <TextField
-            label="Email"
+            label={t.email}
             type="email"
             autoComplete="email"
             value={email}
@@ -170,8 +173,8 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
             }}
           />
           <TextField
-            label="Website"
-            hint="Starting with https://"
+            label={t.website}
+            hint={t.websiteHint}
             type="url"
             value={website}
             onChange={(event) => {
@@ -187,7 +190,7 @@ function ProfileForm({ orgId, profile }: { orgId: string; profile: ProviderProfi
       ) : null}
       <div>
         <Button type="submit" busy={busy}>
-          Save draft
+          {t.saveDraft}
         </Button>
       </div>
     </form>
@@ -200,10 +203,7 @@ export default function ProviderProfilePage(props: PageProps<"/app/o/[orgId]/pro
   const profile = useLoad(() => api.providerProfile(orgId), `profile-${orgId}`);
   return (
     <>
-      <PageHeader
-        title="Business profile"
-        description="Changes stay in a draft until you publish."
-      />
+      <PageHeader title={t.title} description={t.description} />
       {profile.status === "loading" ? <Loading /> : null}
       {profile.status === "error" ? (
         <ErrorNotice error={profile.error} onRetry={profile.reload} />

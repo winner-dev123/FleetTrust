@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { use } from "react";
 
 import { ErrorNotice, Loading } from "@/components/feedback";
@@ -10,6 +11,8 @@ import { useLoad } from "@/lib/use-load";
 
 import { WithMembership } from "../org";
 
+const t = copy.web.org.usage;
+
 export default function OrganizationUsagePage(props: PageProps<"/app/o/[orgId]/usage">) {
   const { orgId } = use(props.params);
   const { api } = useSession();
@@ -19,8 +22,8 @@ export default function OrganizationUsagePage(props: PageProps<"/app/o/[orgId]/u
       {(membership) => (
         <>
           <PageHeader
-            title={`Plan usage: ${membership.organization.name}`}
-            description="Limits shared by everyone in this organization."
+            title={fill(t.title, { name: membership.organization.name })}
+            description={t.description}
           />
           {usage.status === "loading" ? <Loading /> : null}
           {usage.status === "error" ? (

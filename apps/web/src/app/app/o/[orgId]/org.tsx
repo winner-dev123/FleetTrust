@@ -1,10 +1,13 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import type { MyOrganization } from "@fleettrust/types";
 import type { ReactNode } from "react";
 
 import { Notice } from "@/components/feedback";
 import { useMembership } from "@/lib/account";
+
+const t = copy.web.org.membership;
 
 /**
  * Renders `children` with the membership for `orgId`, or a not-found message: organizations you
@@ -20,8 +23,8 @@ export function WithMembership({
   const membership = useMembership(orgId);
   if (!membership) {
     return (
-      <Notice tone="caution" title="Organization not found">
-        <p>It doesn&apos;t exist, or you&apos;re not a member.</p>
+      <Notice tone="caution" title={t.notFoundTitle}>
+        <p>{t.notFoundBody}</p>
       </Notice>
     );
   }

@@ -1,4 +1,5 @@
 import { webApp } from "./web-app.js";
+import { webOrg } from "./web-org.js";
 
 /**
  * Website text (apps/web). Kept apart from the app's sections because wording differs between
@@ -510,4 +511,7 @@ export const web = {
 
   /** Signed-in pages (src/app/app). */
   app: webApp,
+
+  /** Organisation pages (src/app/app/o/[orgId]). */
+  org: webOrg,
 } as const;

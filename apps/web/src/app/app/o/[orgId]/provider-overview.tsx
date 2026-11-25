@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import type { MyOrganization } from "@fleettrust/types";
 import Link from "next/link";
 import { useState } from "react";
@@ -12,15 +13,17 @@ import { formatDate, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.org.provider;
+
 const STEP_LINKS: Record<string, { label: string; path: string }> = {
-  basics: { label: "Business name and description", path: "profile" },
-  categories: { label: "Service categories", path: "profile" },
-  vehicles: { label: "Vehicles you work on", path: "profile" },
-  contact: { label: "Contact details", path: "profile" },
-  branches: { label: "Branch location", path: "branches" },
-  catalog: { label: "Services and indicative prices", path: "services" },
-  hours: { label: "Opening hours", path: "branches" },
-  media: { label: "Logo and photos", path: "profile" },
+  basics: { label: t.stepBasics, path: "profile" },
+  categories: { label: t.stepCategories, path: "profile" },
+  vehicles: { label: t.stepVehicles, path: "profile" },
+  contact: { label: t.stepContact, path: "profile" },
+  branches: { label: t.stepBranches, path: "branches" },
+  catalog: { label: t.stepCatalog, path: "services" },
+  hours: { label: t.stepHours, path: "branches" },
+  media: { label: t.stepMedia, path: "profile" },
 };
 
 /** Provider onboarding: a checklist of what's needed to publish, then publishing itself. */
@@ -43,7 +46,7 @@ export function ProviderOverview({ membership }: { membership: MyOrganization })
     setMessage(null);
     try {
       await api.publishProviderProfile(orgId);
-      setMessage({ ok: true, text: "Your profile is published and appears in search." });
+      setMessage({ ok: true, text: t.published });
       data.reload();
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
@@ -54,10 +57,7 @@ export function ProviderOverview({ membership }: { membership: MyOrganization })
 
   return (
     <>
-      <PageHeader
-        title={membership.organization.name}
-        description="Service provider · set up your public profile"
-      />
+      <PageHeader title={membership.organization.name} description={t.description} />
       {message ? (
         <Notice tone={message.ok ? "success" : "danger"} live="polite">
           <p>{message.text}</p>
@@ -67,19 +67,19 @@ export function ProviderOverview({ membership }: { membership: MyOrganization })
       {data.status === "error" ? <ErrorNotice error={data.error} onRetry={data.reload} /> : null}
       {data.status === "ready" ? (
         <>
-          <Card title="Public profile">
+          <Card title={t.publicProfile}>
             <p>
               <Badge tone={data.data.profile.status === "published" ? "verified" : "neutral"}>
                 {titleCase(data.data.profile.status)}
               </Badge>
               {data.data.profile.publishedAt
-                ? ` · published ${formatDate(data.data.profile.publishedAt)}`
+                ? ` · ${fill(t.publishedOn, { date: formatDate(data.data.profile.publishedAt) })}`
                 : ""}
-              {data.data.profile.hasUnpublishedChanges ? " · you have unpublished changes" : ""}
+              {data.data.profile.hasUnpublishedChanges ? ` · ${t.unpublishedChanges}` : ""}
             </p>
             {data.data.profile.slug && data.data.profile.status === "published" ? (
               <p>
-                <Link href={`/providers/${data.data.profile.slug}`}>View your public profile</Link>
+                <Link href={`/providers/${data.data.profile.slug}`}>{t.viewPublic}</Link>
               </p>
             ) : null}
             {canManage ? (
@@ -89,16 +89,16 @@ export function ProviderOverview({ membership }: { membership: MyOrganization })
                   busy={busy}
                   disabled={!data.data.profile.canPublish}
                 >
-                  {data.data.profile.status === "published" ? "Publish changes" : "Publish profile"}
+                  {data.data.profile.status === "published" ? t.publishChanges : t.publishProfile}
                 </Button>
                 {!data.data.profile.canPublish ? (
-                  <span className="small muted">Finish the steps below first.</span>
+                  <span className="small muted">{t.finishFirst}</span>
                 ) : null}
               </div>
             ) : null}
           </Card>
 
-          <Card title="Setup checklist">
+          <Card title={t.checklist}>
             <ol className="steps">
               {data.data.profile.steps.map((step, index) => {
                 const link = STEP_LINKS[step.id];
@@ -109,9 +109,7 @@ export function ProviderOverview({ membership }: { membership: MyOrganization })
                     </span>
                     <span>
                       <strong>{link?.label ?? titleCase(step.id)}</strong>{" "}
-                      <span className="visually-hidden">
-                        {step.complete ? "(done)" : "(to do)"}
-                      </span>
+                      <span className="visually-hidden">{step.complete ? t.done : t.toDo}</span>
                       {step.issues.map((issue) => (
                         <span
                           key={`${issue.path}-${issue.message}`}
@@ -123,7 +121,7 @@ export function ProviderOverview({ membership }: { membership: MyOrganization })
                       ))}
                       {link && canManage && !step.complete ? (
                         <Link className="small" href={`/app/o/${orgId}/${link.path}`}>
-                          Fix this
+                          {t.fix}
                         </Link>
                       ) : null}
                     </span>
@@ -133,13 +131,10 @@ export function ProviderOverview({ membership }: { membership: MyOrganization })
             </ol>
           </Card>
 
-          <Card title="Verification">
-            <p>
-              Verification shows customers what FleetTrust checked, such as your business
-              registration. It&apos;s based on documents only: no plan can buy it.
-            </p>
+          <Card title={t.verification}>
+            <p>{t.verificationBody}</p>
             {data.data.cases.length === 0 ? (
-              <p className="muted">No verification applications yet.</p>
+              <p className="muted">{t.noVerification}</p>
             ) : (
               <ul className="list-plain">
                 {data.data.cases.map((verification) => (
@@ -156,7 +151,7 @@ export function ProviderOverview({ membership }: { membership: MyOrganization })
 
           <div className="cluster">
             <ButtonLink variant="secondary" href={`/app/o/${orgId}/usage`}>
-              Plan usage
+              {t.planUsage}
             </ButtonLink>
           </div>
         </>

@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { CATEGORY_LABELS } from "@fleettrust/types";
 import Link from "next/link";
 import { use } from "react";
@@ -10,6 +11,8 @@ import { formatDateTime, formatDistance, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.org.inquiries;
+
 /** Quote requests sent to this provider (branch-scoped staff see their branch only). */
 export default function InquiriesPage(props: PageProps<"/app/o/[orgId]/inquiries">) {
   const { orgId } = use(props.params);
@@ -18,18 +21,15 @@ export default function InquiriesPage(props: PageProps<"/app/o/[orgId]/inquiries
 
   return (
     <>
-      <PageHeader
-        title="Inquiries"
-        description="Quote requests from customers. Quotes are indicative; customers pay you directly."
-      />
+      <PageHeader title={t.title} description={t.description} />
       {inquiries.status === "loading" ? <Loading /> : null}
       {inquiries.status === "error" ? (
         <ErrorNotice error={inquiries.error} onRetry={inquiries.reload} />
       ) : null}
       {inquiries.status === "ready" ? (
         inquiries.data.length === 0 ? (
-          <EmptyState title="No inquiries yet">
-            <p>Publish your profile so customers can find you and ask for quotes.</p>
+          <EmptyState title={t.emptyTitle}>
+            <p>{t.emptyBody}</p>
           </EmptyState>
         ) : (
           <ul className="list-plain">
@@ -47,7 +47,12 @@ export default function InquiriesPage(props: PageProps<"/app/o/[orgId]/inquiries
                   </Badge>{" "}
                   {titleCase(inquiry.urgency)} · {formatDateTime(inquiry.createdAt)}
                   {inquiry.distanceKm !== null
-                    ? ` · ${inquiry.location.approximate ? "about " : ""}${formatDistance(inquiry.distanceKm * 1000)} away`
+                    ? ` · ${fill(
+                        inquiry.location.approximate ? t.distanceApproximate : t.distance,
+                        {
+                          distance: formatDistance(inquiry.distanceKm * 1000),
+                        },
+                      )}`
                     : ""}
                 </p>
               </li>
