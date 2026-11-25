@@ -30,8 +30,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 24  | Web product and design system              | approved (merged, PR #26)          | [prompt-24.md](prompt-24.md) |
 | 25  | React Native mobile product                | approved (merged, PR #27)          | [prompt-25.md](prompt-25.md) |
 | 26  | Administration and operations              | approved (merged, PR #28)          | [prompt-26.md](prompt-26.md) |
-| 27  | Security and privacy hardening             | awaiting approval                  | [prompt-27.md](prompt-27.md) |
-| 28  | Performance, reliability and end-to-end QA | todo                               |                              |
+| 27  | Security and privacy hardening             | approved (merged, PR #29)          | [prompt-27.md](prompt-27.md) |
+| 28  | Performance, reliability and end-to-end QA | awaiting approval                  | [prompt-28.md](prompt-28.md) |
 | 29  | Staging, production and launch             | todo                               |                              |
 | 30  | Future extensibility specification only    | todo                               |                              |
 

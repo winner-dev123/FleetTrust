@@ -1,0 +1,25 @@
+{
+  "name": "@fleettrust/perf",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Load tests (search, quotas, messaging fan-out, emergency fan-out) and the backup restore drill. Runs directly on Node 24 (type stripping), no build step. CI job: .github/workflows/performance.yml.",
+  "scripts": {
+    "load": "node src/run.ts",
+    "drill": "node src/restore-drill.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@fleettrust/config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/pg": "8.23.1",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
