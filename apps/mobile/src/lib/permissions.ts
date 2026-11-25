@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import type { LocationPermission, PushPermission } from "../platform/types";
 
 /**
@@ -13,26 +14,24 @@ export interface PermissionAdvice {
 export function locationAdvice(permission: LocationPermission): PermissionAdvice {
   switch (permission) {
     case "granted":
-      return { message: "", action: "use", actionLabel: "Use my location" };
+      return { message: "", action: "use", actionLabel: copy.location.useMyLocation };
     case "undetermined":
       return {
-        message:
-          "FleetTrust uses your location only while you use the app, to find help near you. You can type a place instead.",
+        message: copy.location.askFirst,
         action: "request",
-        actionLabel: "Use my location",
+        actionLabel: copy.location.useMyLocation,
       };
     case "denied":
       return {
-        message: "Location is off for FleetTrust. Type a place, or allow location and try again.",
+        message: copy.location.denied,
         action: "request",
-        actionLabel: "Try again",
+        actionLabel: copy.common.tryAgain,
       };
     case "blocked":
       return {
-        message:
-          "Location is turned off for FleetTrust in your phone's settings. Type a place, or turn it on in Settings.",
+        message: copy.location.blocked,
         action: "settings",
-        actionLabel: "Open Settings",
+        actionLabel: copy.location.openSettings,
       };
   }
 }
@@ -40,20 +39,18 @@ export function locationAdvice(permission: LocationPermission): PermissionAdvice
 export function pushAdvice(permission: PushPermission): PermissionAdvice {
   switch (permission) {
     case "granted":
-      return { message: "Notifications are on for this phone.", action: null, actionLabel: null };
+      return { message: copy.push.on, action: null, actionLabel: null };
     case "undetermined":
       return {
-        message:
-          "Get told about quotes, messages and alerts from people who trust you. You can change which ones in settings.",
+        message: copy.push.askFirst,
         action: "request",
-        actionLabel: "Turn on notifications",
+        actionLabel: copy.push.turnOn,
       };
     case "denied":
       return {
-        message:
-          "Notifications are off for FleetTrust. You'll still see everything in the app. To get alerts, turn them on in Settings.",
+        message: copy.push.off,
         action: "settings",
-        actionLabel: "Open Settings",
+        actionLabel: copy.push.openSettings,
       };
   }
 }

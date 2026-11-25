@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { useEffect, useState } from "react";
 
 import { pushAdvice } from "../lib/permissions";
@@ -44,16 +45,16 @@ export function PushPrompt({ reason, always = false }: { reason?: string; always
     if (!result) return;
     setPermission(result.permission);
     if (result.registration === "failed") {
-      setNote(
-        "Notifications are allowed, but this phone couldn't be registered yet. We'll try again next time you open the app.",
-      );
+      setNote(copy.push.registrationFailed);
     }
   }
 
   return (
-    <Notice title="Notifications">
+    <Notice title={copy.push.title}>
       <Body>
-        {reason && permission !== "granted" ? `${reason} ${advice.message}` : advice.message}
+        {reason && permission !== "granted"
+          ? fill(copy.push.withReason, { reason, advice: advice.message })
+          : advice.message}
       </Body>
       {note ? (
         <Body small tone="caution">

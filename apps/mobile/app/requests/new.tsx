@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage, isOffline } from "@fleettrust/sdk";
 import {
   CATEGORY_LABELS,
@@ -32,9 +33,9 @@ import { useOnline } from "../../src/state/network";
 import { useSession } from "../../src/state/session";
 
 const URGENCY_OPTIONS = [
-  { value: "routine", label: "Routine" },
-  { value: "soon", label: "In the next few days" },
-  { value: "urgent", label: "Urgent (today)" },
+  { value: "routine", label: copy.newRequest.urgencyRoutine },
+  { value: "soon", label: copy.newRequest.urgencySoon },
+  { value: "urgent", label: copy.newRequest.urgencyUrgent },
 ] as const;
 
 const CATEGORY_OPTIONS = PROVIDER_CATEGORIES.map((value) => ({
@@ -111,14 +112,14 @@ function RequestForm({ uid }: { uid: string }) {
   async function send(current: RequestDraft) {
     const found: Record<string, string> = {};
     if (current.description.trim().length < 10) {
-      found["description"] = "Describe the problem in at least 10 characters.";
+      found["description"] = copy.newRequest.descriptionTooShort;
     }
-    if (!current.location) found["location"] = "Choose where the vehicle is.";
+    if (!current.location) found["location"] = copy.newRequest.locationMissing;
     if (
       current.registration.trim() !== "" &&
       !/^[A-Za-z0-9 -]{2,15}$/.test(current.registration.trim())
     ) {
-      found["registration"] = "Use letters, digits, spaces and hyphens only.";
+      found["registration"] = copy.newRequest.registrationInvalid;
     }
     setErrors(found);
     if (Object.keys(found).length > 0 || !current.location) return;
@@ -144,11 +145,7 @@ function RequestForm({ uid }: { uid: string }) {
       await drafts.discard(uid, "request", REQUEST_DRAFT_ID);
       router.replace(`/requests/${created.id}`);
     } catch (error) {
-      setFailure(
-        isOffline(error)
-          ? "We couldn't reach FleetTrust. Your request is saved on this phone; send it again when you have signal."
-          : errorMessage(error),
-      );
+      setFailure(isOffline(error) ? copy.newRequest.offlineSaved : errorMessage(error));
       setBusy(false);
     }
   }
@@ -156,10 +153,12 @@ function RequestForm({ uid }: { uid: string }) {
   return (
     <>
       {restoredAt ? (
-        <Notice title="Draft restored" live>
-          <Body>Saved on this phone {formatDateTime(restoredAt)}.</Body>
+        <Notice title={copy.newRequest.draftRestoredTitle} live>
+          <Body>
+            {fill(copy.newRequest.draftRestoredBody, { time: formatDateTime(restoredAt) })}
+          </Body>
           <Button
-            label="Start over"
+            label={copy.newRequest.startOver}
             variant="ghost"
             onPress={() => {
               void drafts.discard(uid, "request", REQUEST_DRAFT_ID);
@@ -171,13 +170,13 @@ function RequestForm({ uid }: { uid: string }) {
       ) : null}
       {provider ? (
         <Notice>
-          <Body>This request goes to {provider.tradingName} only.</Body>
+          <Body>{fill(copy.newRequest.directTo, { provider: provider.tradingName })}</Body>
         </Notice>
       ) : (
-        <Body muted>Nearby providers who offer this service can send you quotes.</Body>
+        <Body muted>{copy.newRequest.matchNearby}</Body>
       )}
       <Choice
-        label="Service"
+        label={copy.newRequest.service}
         options={CATEGORY_OPTIONS}
         value={draft.category}
         onChange={(category) => {
@@ -185,8 +184,8 @@ function RequestForm({ uid }: { uid: string }) {
         }}
       />
       <TextField
-        label="What's the problem?"
-        hint="Symptoms, what you've tried, and when you need help."
+        label={copy.newRequest.problemLabel}
+        hint={copy.newRequest.problemHint}
         multiline
         maxLength={2000}
         value={draft.description}
@@ -196,7 +195,7 @@ function RequestForm({ uid }: { uid: string }) {
         error={errors["description"]}
       />
       <Choice
-        label="How soon?"
+        label={copy.newRequest.urgencyLabel}
         options={URGENCY_OPTIONS}
         value={draft.urgency}
         onChange={(urgency) => {
@@ -204,7 +203,7 @@ function RequestForm({ uid }: { uid: string }) {
         }}
       />
       <Choice
-        label="Vehicle type"
+        label={copy.newRequest.vehicleType}
         options={VEHICLE_OPTIONS}
         value={draft.vehicleType}
         onChange={(vehicleType) => {
@@ -212,7 +211,7 @@ function RequestForm({ uid }: { uid: string }) {
         }}
       />
       <TextField
-        label="Make"
+        label={copy.newRequest.make}
         optional
         maxLength={60}
         value={draft.make}
@@ -221,7 +220,7 @@ function RequestForm({ uid }: { uid: string }) {
         }}
       />
       <TextField
-        label="Model"
+        label={copy.newRequest.model}
         optional
         maxLength={60}
         value={draft.model}
@@ -230,7 +229,7 @@ function RequestForm({ uid }: { uid: string }) {
         }}
       />
       <TextField
-        label="Registration"
+        label={copy.newRequest.registration}
         optional
         maxLength={15}
         autoCapitalize="characters"
@@ -241,7 +240,7 @@ function RequestForm({ uid }: { uid: string }) {
         error={errors["registration"]}
       />
       <LocationPicker
-        label="Where is the vehicle?"
+        label={copy.newRequest.whereLabel}
         value={draft.location}
         onChange={(location) => {
           update({ location });
@@ -254,19 +253,19 @@ function RequestForm({ uid }: { uid: string }) {
         </Notice>
       ) : null}
       {!online ? (
-        <Notice tone="caution" title="You're offline">
-          <Body>Your request is saved on this phone. Send it when you have signal.</Body>
+        <Notice tone="caution" title={copy.newRequest.offlineTitle}>
+          <Body>{copy.newRequest.offlineBody}</Body>
         </Notice>
       ) : null}
       <Button
-        label="Send request"
+        label={copy.newRequest.send}
         busy={busy}
         disabled={!online}
-        hint={online ? undefined : "Needs a connection"}
+        hint={online ? undefined : copy.newRequest.needsConnection}
         onPress={() => void send(draft)}
       />
       <Body small muted>
-        Quotes are indicative. You agree the final price with the provider and pay them directly.
+        {copy.newRequest.indicativeNote}
       </Body>
     </>
   );
@@ -276,13 +275,10 @@ export default function NewRequestScreen() {
   const { status, user } = useSession();
   return (
     <Screen>
-      <Heading>Request a quote</Heading>
+      <Heading>{copy.newRequest.title}</Heading>
       {status === "loading" ? <Loading /> : null}
       {status === "signed-out" ? (
-        <SignInPrompt
-          title="Sign in to request quotes"
-          reason="Providers reply to your account, so you need to sign in first."
-        />
+        <SignInPrompt title={copy.newRequest.signInTitle} reason={copy.newRequest.signInReason} />
       ) : null}
       {status === "signed-in" && user ? <RequestForm uid={user.uid} /> : null}
     </Screen>

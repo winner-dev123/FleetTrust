@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage, isOffline } from "@fleettrust/sdk";
 import { formatDate, formatDateTime } from "@fleettrust/types";
 import { useLocalSearchParams } from "expo-router";
@@ -71,11 +72,7 @@ function CommentForm({
       await drafts.discard(uid, "comment", articleId);
       onPosted();
     } catch (failure) {
-      setError(
-        isOffline(failure)
-          ? "You're offline. Your comment is saved; post it when you're back."
-          : errorMessage(failure),
-      );
+      setError(isOffline(failure) ? copy.article.commentOfflineSaved : errorMessage(failure));
     } finally {
       setBusy(false);
     }
@@ -84,7 +81,7 @@ function CommentForm({
   return (
     <>
       <TextField
-        label="Add a comment"
+        label={copy.article.addComment}
         multiline
         maxLength={2000}
         value={body ?? ""}
@@ -92,14 +89,14 @@ function CommentForm({
         error={error}
       />
       <Button
-        label="Post comment"
+        label={copy.article.postComment}
         busy={busy}
         disabled={!online || (body ?? "").trim() === ""}
         onPress={() => void post()}
       />
       {!online ? (
         <Body small muted>
-          You&apos;re offline. Your comment is saved on this phone.
+          {copy.article.offlineSavedOnPhone}
         </Body>
       ) : null}
     </>
@@ -131,15 +128,22 @@ export default function ArticleScreen() {
             <Body small>{article.data.content.label}</Body>
           </Notice>
           <ArticleBody document={article.data.content.body} />
-          <Card title={`Comments (${String(article.data.comments.items.length)})`}>
+          <Card
+            title={fill(copy.article.commentsTitle, {
+              count: article.data.comments.items.length,
+            })}
+          >
             {article.data.comments.items.map((comment) => (
               <Body key={comment.id}>
-                {comment.author?.displayName ?? "Removed"} · {formatDateTime(comment.createdAt)}
+                {comment.author?.displayName ?? copy.article.removedAuthor} ·{" "}
+                {formatDateTime(comment.createdAt)}
                 {"\n"}
-                {comment.body ?? "Comment removed"}
+                {comment.body ?? copy.article.removedComment}
               </Body>
             ))}
-            {!article.data.content.commentsEnabled ? <Body muted>Comments are closed.</Body> : null}
+            {!article.data.content.commentsEnabled ? (
+              <Body muted>{copy.article.commentsClosed}</Body>
+            ) : null}
             {article.data.content.commentsEnabled && status === "signed-in" && user ? (
               <CommentForm
                 articleId={article.data.content.id}
@@ -148,10 +152,7 @@ export default function ArticleScreen() {
               />
             ) : null}
             {article.data.content.commentsEnabled && status === "signed-out" ? (
-              <SignInPrompt
-                title="Sign in to comment"
-                reason="Comments are posted under your display name."
-              />
+              <SignInPrompt title={copy.article.signInTitle} reason={copy.article.signInReason} />
             ) : null}
           </Card>
         </>

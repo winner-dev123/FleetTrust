@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import {
   CATEGORY_LABELS,
@@ -61,9 +62,12 @@ function RequestDetail({ id }: { id: string }) {
 
   return (
     <>
-      <Heading>{`${CATEGORY_LABELS[data.category]} request`}</Heading>
+      <Heading>{fill(copy.request.title, { category: CATEGORY_LABELS[data.category] })}</Heading>
       <Body small muted>
-        Sent {formatDateTime(data.createdAt)} · quotes accepted until {formatDate(data.expiresAt)}
+        {fill(copy.request.sent, {
+          sent: formatDateTime(data.createdAt),
+          until: formatDate(data.expiresAt),
+        })}
       </Body>
       <Badge tone={data.status === "open" ? "caution" : "neutral"} label={titleCase(data.status)} />
       {message ? (
@@ -71,23 +75,21 @@ function RequestDetail({ id }: { id: string }) {
           <Body>{message.text}</Body>
         </Notice>
       ) : null}
-      {data.status === "open" ? (
-        <PushPrompt reason="Get told when a provider sends a quote." />
-      ) : null}
-      <Card title="Details">
+      {data.status === "open" ? <PushPrompt reason={copy.request.pushReason} /> : null}
+      <Card title={copy.request.detailsTitle}>
         <Body>{data.description}</Body>
         <Body small muted>
           {vehicle} · {titleCase(data.urgency)}
         </Body>
       </Card>
       {data.agreement ? (
-        <Notice tone="success" title="Quote accepted">
-          <Body>Agreed price (for your records): {data.agreement.priceLabel}</Body>
+        <Notice tone="success" title={copy.request.acceptedTitle}>
+          <Body>{fill(copy.request.agreedPrice, { price: data.agreement.priceLabel })}</Body>
           <Body small>{data.agreement.disclaimer}</Body>
         </Notice>
       ) : null}
-      <Heading level={2}>Providers and quotes</Heading>
-      {data.recipients.length === 0 ? <Body muted>No providers matched yet.</Body> : null}
+      <Heading level={2}>{copy.request.providersTitle}</Heading>
+      {data.recipients.length === 0 ? <Body muted>{copy.request.noProviders}</Body> : null}
       {data.recipients.map((recipient) => (
         <Card key={recipient.id} title={recipient.providerName}>
           <Badge label={titleCase(recipient.status)} />
@@ -96,24 +98,35 @@ function RequestDetail({ id }: { id: string }) {
             .map((quote) => (
               <View key={quote.id} style={{ gap: 6 }}>
                 <Body>
-                  {quote.price.label} (indicative){quote.status === "accepted" ? " · Accepted" : ""}
+                  {fill(
+                    quote.status === "accepted"
+                      ? copy.request.quotePriceAccepted
+                      : copy.request.quotePrice,
+                    { price: quote.price.label },
+                  )}
                 </Body>
                 {quote.message ? <Body>{quote.message}</Body> : null}
                 <Body small muted>
-                  Valid until {formatDate(quote.validUntil)}
-                  {quote.availableFrom ? ` · can start ${formatDateTime(quote.availableFrom)}` : ""}
+                  {quote.availableFrom
+                    ? fill(copy.request.validUntilStart, {
+                        date: formatDate(quote.validUntil),
+                        start: formatDateTime(quote.availableFrom),
+                      })
+                    : fill(copy.request.validUntil, { date: formatDate(quote.validUntil) })}
                 </Body>
                 <Body small>{quote.scamWarning}</Body>
                 {data.status === "open" && quote.status === "active" ? (
                   <Button
-                    label="Accept this quote"
+                    label={copy.request.acceptQuote}
                     busy={busy === quote.id}
                     onPress={() =>
                       void act(quote.id, async () => {
                         request.setData(await api.acceptQuote(id, quote.id));
                         setMessage({
                           ok: true,
-                          text: `You accepted ${recipient.providerName}'s quote. Arrange payment directly with them.`,
+                          text: fill(copy.request.youAccepted, {
+                            provider: recipient.providerName,
+                          }),
                         });
                       })
                     }
@@ -123,7 +136,7 @@ function RequestDetail({ id }: { id: string }) {
             ))}
           {recipient.providerSlug ? (
             <Button
-              label="View profile"
+              label={copy.request.viewProfile}
               variant="ghost"
               onPress={() => {
                 router.push(`/providers/${recipient.providerSlug ?? ""}`);
@@ -131,7 +144,7 @@ function RequestDetail({ id }: { id: string }) {
             />
           ) : null}
           <Button
-            label={`Message ${recipient.providerName}`}
+            label={fill(copy.request.messageProvider, { provider: recipient.providerName })}
             variant="secondary"
             busy={busy === `chat-${recipient.id}`}
             onPress={() =>
@@ -144,39 +157,39 @@ function RequestDetail({ id }: { id: string }) {
         </Card>
       ))}
       {data.status === "accepted" ? (
-        <Card title="Job done?">
+        <Card title={copy.request.jobDoneTitle}>
           <Button
-            label="Mark as completed"
+            label={copy.request.markCompleted}
             busy={busy === "complete"}
             onPress={() =>
               void act("complete", async () => {
                 request.setData(await api.completeServiceRequest(id));
-                setMessage({ ok: true, text: "Marked as completed." });
+                setMessage({ ok: true, text: copy.request.markedCompleted });
               })
             }
           />
         </Card>
       ) : null}
       {data.status === "open" || data.status === "accepted" ? (
-        <Card title="Cancel this request">
+        <Card title={copy.request.cancelTitle}>
           <TextField
-            label="Reason"
+            label={copy.request.reason}
             maxLength={500}
             value={cancelReason}
             onChangeText={setCancelReason}
           />
           <Button
-            label="Cancel request"
+            label={copy.request.cancelRequest}
             variant="ghost"
             busy={busy === "cancel"}
             onPress={() => {
               if (cancelReason.trim().length < 3) {
-                setMessage({ ok: false, text: "Give a short reason (at least 3 characters)." });
+                setMessage({ ok: false, text: copy.request.reasonTooShort });
                 return;
               }
               void act("cancel", async () => {
                 request.setData(await api.cancelServiceRequest(id, cancelReason.trim()));
-                setMessage({ ok: true, text: "Request cancelled." });
+                setMessage({ ok: true, text: copy.request.cancelled });
               });
             }}
           />
@@ -193,10 +206,7 @@ export default function RequestScreen() {
     <Screen>
       {status === "loading" ? <Loading /> : null}
       {status === "signed-out" ? (
-        <SignInPrompt
-          title="Sign in to see this request"
-          reason="Requests are private to your account."
-        />
+        <SignInPrompt title={copy.request.signInTitle} reason={copy.request.signInReason} />
       ) : null}
       {status === "signed-in" && typeof id === "string" ? <RequestDetail id={id} /> : null}
     </Screen>

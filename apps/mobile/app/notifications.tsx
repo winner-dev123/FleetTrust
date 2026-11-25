@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { formatDateTime } from "@fleettrust/types";
 import { useRouter } from "expo-router";
 
@@ -16,10 +17,10 @@ function Inbox() {
   const { notifications } = inbox.data;
   return (
     <>
-      {notifications.length === 0 ? <EmptyState title="No notifications" /> : null}
+      {notifications.length === 0 ? <EmptyState title={copy.notificationsScreen.empty} /> : null}
       {notifications.some((n) => n.readAt === null) ? (
         <Button
-          label="Mark all as read"
+          label={copy.notificationsScreen.markAllRead}
           variant="ghost"
           onPress={() => {
             void api.markAllNotificationsRead().then(inbox.reload, () => undefined);
@@ -29,7 +30,11 @@ function Inbox() {
       {notifications.map((notification) => (
         <ListRow
           key={notification.id}
-          title={`${notification.readAt === null ? "New: " : ""}${notification.title}`}
+          title={
+            notification.readAt === null
+              ? fill(copy.notificationsScreen.unreadTitle, { title: notification.title })
+              : notification.title
+          }
           subtitle={formatDateTime(notification.createdAt)}
           detail={<Body small>{notification.body}</Body>}
           onPress={() => {
@@ -48,12 +53,12 @@ export default function NotificationsScreen() {
   const { status } = useSession();
   return (
     <Screen>
-      <Heading>Notifications</Heading>
+      <Heading>{copy.notificationsScreen.title}</Heading>
       {status === "loading" ? <Loading /> : null}
       {status === "signed-out" ? (
         <SignInPrompt
-          title="Sign in to see notifications"
-          reason="Notifications are private to your account."
+          title={copy.notificationsScreen.signInTitle}
+          reason={copy.notificationsScreen.signInReason}
         />
       ) : null}
       {status === "signed-in" ? <Inbox /> : null}

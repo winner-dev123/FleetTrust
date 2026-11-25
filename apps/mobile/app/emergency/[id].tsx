@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { formatDateTime, formatDistance, type IncidentDto, titleCase } from "@fleettrust/types";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -45,7 +46,7 @@ function Incident({ id }: { id: string }) {
       incident.setData(updated);
       setMessage({
         ok: true,
-        text: kind === "resolve" ? "Alert closed. Glad you're OK." : "Alert cancelled.",
+        text: kind === "resolve" ? copy.incident.closedResolved : copy.incident.cancelled,
       });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
@@ -59,7 +60,7 @@ function Incident({ id }: { id: string }) {
       if ((await platform.location.permission()) !== "granted") {
         setMessage({
           ok: false,
-          text: "Location isn't allowed for FleetTrust, so it can't be updated.",
+          text: copy.incident.locationNotAllowed,
         });
         return;
       }
@@ -71,32 +72,32 @@ function Incident({ id }: { id: string }) {
           accuracyM: position.accuracyM === null ? null : Math.round(position.accuracyM),
         }),
       );
-      setMessage({ ok: true, text: "Location updated." });
+      setMessage({ ok: true, text: copy.incident.locationUpdated });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
     }
   }
 
-  if (incident.status === "loading") return <Loading label="Loading your alert…" />;
+  if (incident.status === "loading") return <Loading label={copy.incident.loading} />;
   if (incident.status === "error") return <ErrorNotice error={incident.error} onRetry={reload} />;
   const data = incident.data;
   const acknowledged = data.contacts.filter((c) => c.acknowledgedAt !== null);
 
   return (
     <>
-      <Heading>{`${data.categoryLabel} alert`}</Heading>
+      <Heading>{fill(copy.incident.title, { category: data.categoryLabel })}</Heading>
       <Body small muted>
-        Raised {formatDateTime(data.createdAt)}
+        {fill(copy.incident.raised, { time: formatDateTime(data.createdAt) })}
       </Body>
       <Badge
         tone={data.status === "active" ? "danger" : "neutral"}
-        label={data.status === "active" ? "Active" : titleCase(data.status)}
+        label={data.status === "active" ? copy.incident.active : titleCase(data.status)}
       />
       <Notice tone="danger" title={data.guidance.label}>
         <Body>{data.guidance.text}</Body>
         {data.guidance.number ? (
           <Button
-            label={`Call ${data.guidance.number}`}
+            label={fill(copy.emergency.call, { number: data.guidance.number })}
             variant="danger"
             large
             onPress={() => void platform.device.openExternal(`tel:${data.guidance.number ?? ""}`)}
@@ -109,25 +110,33 @@ function Incident({ id }: { id: string }) {
           <Body>{message.text}</Body>
         </Notice>
       ) : null}
-      <Card title="Trusted contacts">
+      <Card title={copy.incident.contactsTitle}>
         <Body>
           {acknowledged.length === 0
-            ? "No contact has responded yet."
-            : `${String(acknowledged.length)} of ${String(data.contacts.length)} responded.`}
+            ? copy.incident.noResponseYet
+            : fill(copy.incident.responded, {
+                count: acknowledged.length,
+                total: data.contacts.length,
+              })}
         </Body>
         {data.contacts.map((contact) => (
           <Body key={contact.userId}>
-            {contact.displayName}:{" "}
             {contact.acknowledgedAt
-              ? `responded ${formatDateTime(contact.acknowledgedAt)}`
+              ? fill(copy.incident.contactResponded, {
+                  name: contact.displayName,
+                  time: formatDateTime(contact.acknowledgedAt),
+                })
               : contact.notifiedAt
-                ? `notified ${formatDateTime(contact.notifiedAt)}`
-                : "waiting to be notified"}
+                ? fill(copy.incident.contactNotified, {
+                    name: contact.displayName,
+                    time: formatDateTime(contact.notifiedAt),
+                  })
+                : fill(copy.incident.contactWaiting, { name: contact.displayName })}
           </Body>
         ))}
         {data.conversationId ? (
           <Button
-            label="Message your contacts"
+            label={copy.incident.messageContacts}
             variant="secondary"
             onPress={() => {
               router.push(`/messages/${data.conversationId ?? ""}`);
@@ -136,10 +145,9 @@ function Incident({ id }: { id: string }) {
         ) : null}
       </Card>
       {data.providerOffers.length > 0 ? (
-        <Card title="Offers from nearby providers">
+        <Card title={copy.incident.offersTitle}>
           <Body small muted>
-            Agree any price before work starts and pay the provider directly. Never pay upfront to
-            an account you can&apos;t verify.
+            {copy.incident.offersNote}
           </Body>
           {data.providerOffers.map((offer) => (
             <Body key={offer.organizationId}>
@@ -152,28 +160,23 @@ function Incident({ id }: { id: string }) {
         </Card>
       ) : null}
       {data.status === "active" ? (
-        <Card title="Close or update this alert">
+        <Card title={copy.incident.closeTitle}>
           {data.location ? (
             <Button
-              label="Update my location"
+              label={copy.incident.updateLocation}
               variant="secondary"
               onPress={() => void updateLocation()}
             />
           ) : null}
+          <Button label={copy.incident.resolve} busy={busy} onPress={() => void close("resolve")} />
           <Button
-            label="I'm OK now: close alert"
-            busy={busy}
-            onPress={() => void close("resolve")}
-          />
-          <Button
-            label="Cancel: sent by mistake"
+            label={copy.incident.cancel}
             variant="ghost"
             busy={busy}
             onPress={() => void close("cancel")}
           />
           <Body small muted>
-            Alerts close by themselves at {formatDateTime(data.expiresAt)}. Your location is erased
-            when the alert closes.
+            {fill(copy.incident.autoClose, { time: formatDateTime(data.expiresAt) })}
           </Body>
         </Card>
       ) : null}
@@ -188,10 +191,7 @@ export default function IncidentScreen() {
     <Screen>
       {status === "loading" ? <Loading /> : null}
       {status === "signed-out" ? (
-        <SignInPrompt
-          title="Sign in to see this alert"
-          reason="Alerts are visible to the person who raised them and their trusted contacts."
-        />
+        <SignInPrompt title={copy.incident.signInTitle} reason={copy.incident.signInReason} />
       ) : null}
       {status === "signed-in" && typeof id === "string" ? <Incident id={id} /> : null}
     </Screen>

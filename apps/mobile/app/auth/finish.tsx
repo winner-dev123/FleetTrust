@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
@@ -52,15 +53,13 @@ export default function FinishSignInScreen() {
 
   return (
     <Screen>
-      <Heading>Signing in</Heading>
-      {state === "working" ? <Loading label="Signing you in…" /> : null}
+      <Heading>{copy.signIn.finishing}</Heading>
+      {state === "working" ? <Loading label={copy.signIn.finishingLabel} /> : null}
       {state === "need-email" ? (
         <>
-          <Body>
-            This link was requested on another device. Confirm your email address to finish.
-          </Body>
+          <Body>{copy.signIn.otherDevice}</Body>
           <TextField
-            label="Email address"
+            label={copy.signIn.emailLabel}
             autoCapitalize="none"
             keyboardType="email-address"
             value={email}
@@ -68,10 +67,10 @@ export default function FinishSignInScreen() {
             error={error}
           />
           <Button
-            label="Finish signing in"
+            label={copy.signIn.finish}
             onPress={() => {
               if (!isEmail(email.trim())) {
-                setError("Enter the address the link was sent to.");
+                setError(copy.signIn.finishEmailInvalid);
                 return;
               }
               setState("working");
@@ -81,10 +80,10 @@ export default function FinishSignInScreen() {
         </>
       ) : null}
       {state === "invalid-link" || state === "failed" ? (
-        <Notice tone="danger" title="This link didn't work" live>
-          <Body>It may have expired or been used already. Ask for a new one.</Body>
+        <Notice tone="danger" title={copy.signIn.linkFailedTitle} live>
+          <Body>{copy.signIn.linkFailedBody}</Body>
           <Button
-            label="Get a new link"
+            label={copy.signIn.newLink}
             onPress={() => {
               router.replace("/sign-in");
             }}

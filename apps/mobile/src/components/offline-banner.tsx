@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import { Text, View } from "react-native";
 
 import { useOnline } from "../state/network";
@@ -23,7 +24,7 @@ export function OfflineBanner() {
       testID="offline-banner"
     >
       <Text style={{ color: theme.color.text, fontSize: theme.type.fontSize.sm }}>
-        You&apos;re offline. Drafts are saved and messages will send when you&apos;re back.
+        {copy.feedback.offlineBanner}
       </Text>
     </View>
   );

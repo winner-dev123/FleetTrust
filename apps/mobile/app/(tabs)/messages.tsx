@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { formatDateTime } from "@fleettrust/types";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
@@ -22,9 +23,7 @@ function Conversations({ uid }: { uid: string }) {
   if (list.status === "error") return <ErrorNotice error={list.error} onRetry={reload} />;
   if (list.data.length === 0) {
     return (
-      <EmptyState title="No conversations yet">
-        Conversations start from a service request, a friend or a group.
-      </EmptyState>
+      <EmptyState title={copy.messagesTab.emptyTitle}>{copy.messagesTab.emptyBody}</EmptyState>
     );
   }
   return (
@@ -34,11 +33,13 @@ function Conversations({ uid }: { uid: string }) {
           key={conversation.id}
           title={conversation.title}
           subtitle={[
-            conversation.unread > 0 ? `${String(conversation.unread)} unread` : null,
+            conversation.unread > 0
+              ? fill(copy.messagesTab.unread, { count: conversation.unread })
+              : null,
             conversation.lastMessageAt
               ? formatDateTime(conversation.lastMessageAt)
-              : "No messages yet",
-            conversation.muted ? "muted" : null,
+              : copy.messagesTab.noMessagesYet,
+            conversation.muted ? copy.messagesTab.muted : null,
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -55,16 +56,13 @@ export default function MessagesScreen() {
   const { status, user } = useSession();
   return (
     <Screen>
-      <Heading>Messages</Heading>
+      <Heading>{copy.messagesTab.title}</Heading>
       <Body small muted>
-        Never pay to an account you can&apos;t verify. Report anyone who asks.
+        {copy.messagesTab.safetyNote}
       </Body>
       {status === "loading" ? <Loading /> : null}
       {status === "signed-out" ? (
-        <SignInPrompt
-          title="Sign in to see your messages"
-          reason="Messages are private to your account."
-        />
+        <SignInPrompt title={copy.messagesTab.signInTitle} reason={copy.messagesTab.signInReason} />
       ) : null}
       {status === "signed-in" && user ? <Conversations uid={user.uid} /> : null}
     </Screen>

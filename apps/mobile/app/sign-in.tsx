@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 
@@ -24,9 +25,9 @@ export default function SignInScreen() {
   if (status === "signed-in") {
     return (
       <Screen>
-        <Heading>You&apos;re signed in</Heading>
+        <Heading>{copy.signIn.alreadySignedIn}</Heading>
         <Button
-          label="Continue"
+          label={copy.signIn.continue}
           onPress={() => {
             router.replace("/");
           }}
@@ -37,7 +38,7 @@ export default function SignInScreen() {
 
   async function send() {
     if (!isEmail(email.trim())) {
-      setError("Enter an email address like name@example.com.");
+      setError(copy.signIn.emailInvalid);
       return;
     }
     setBusy(true);
@@ -51,11 +52,7 @@ export default function SignInScreen() {
       });
       setSentTo(email.trim().toLowerCase());
     } catch {
-      setError(
-        online
-          ? "We couldn't send the link. Check the address and try again."
-          : "You're offline. Connect and try again.",
-      );
+      setError(online ? copy.signIn.sendFailed : copy.signIn.offline);
     } finally {
       setBusy(false);
     }
@@ -63,22 +60,16 @@ export default function SignInScreen() {
 
   return (
     <Screen>
-      <Heading>Sign in</Heading>
+      <Heading>{copy.signIn.title}</Heading>
       {sentTo ? (
-        <Notice tone="success" title="Check your email" live>
-          <Body>
-            We sent a sign-in link to {sentTo}. Open it on this phone to sign in. The link works
-            once and expires soon.
-          </Body>
+        <Notice tone="success" title={copy.signIn.sentTitle} live>
+          <Body>{fill(copy.signIn.sentBody, { email: sentTo })}</Body>
         </Notice>
       ) : (
         <>
-          <Body>
-            We&apos;ll email you a link. No password needed. New here? The same link creates your
-            account.
-          </Body>
+          <Body>{copy.signIn.intro}</Body>
           <TextField
-            label="Email address"
+            label={copy.signIn.emailLabel}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
@@ -90,13 +81,13 @@ export default function SignInScreen() {
             error={error}
           />
           <Button
-            label="Email me a link"
+            label={copy.signIn.sendLink}
             busy={busy}
             disabled={!online}
             onPress={() => void send()}
           />
           <Body small muted>
-            By continuing you confirm you are 18 or older.
+            {copy.signIn.ageConfirmation}
           </Body>
         </>
       )}

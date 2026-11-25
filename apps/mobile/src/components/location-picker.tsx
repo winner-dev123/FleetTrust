@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage, isOffline } from "@fleettrust/sdk";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
@@ -71,11 +72,11 @@ export function LocationPicker({
       onChange({
         lat: position.lat,
         lng: position.lng,
-        label: "Your current location",
+        label: copy.location.current,
         accuracyM: position.accuracyM === null ? null : Math.round(position.accuracyM),
       });
     } catch {
-      setError("We couldn't get your position. Check that location is on, or type a place.");
+      setError(copy.location.gpsFailed);
     } finally {
       setBusy(null);
     }
@@ -83,7 +84,7 @@ export function LocationPicker({
 
   async function findPlace() {
     if (place.trim().length < 2) {
-      setError("Type a town, suburb or landmark.");
+      setError(copy.location.placeTooShort);
       return;
     }
     setBusy("place");
@@ -98,14 +99,10 @@ export function LocationPicker({
           accuracyM: null,
         });
       } else {
-        setError(`We couldn't find "${place.trim()}".`);
+        setError(fill(copy.location.placeNotFound, { place: place.trim() }));
       }
     } catch (failure) {
-      setError(
-        isOffline(failure)
-          ? "You're offline, so places can't be looked up. Try your location instead."
-          : errorMessage(failure),
-      );
+      setError(isOffline(failure) ? copy.location.offline : errorMessage(failure));
     } finally {
       setBusy(null);
     }
@@ -114,17 +111,14 @@ export function LocationPicker({
   if (value) {
     return (
       <View style={{ gap: theme.spacing.sm }} accessibilityLabel={label}>
-        <Body>
-          {label}: {value.label}
-        </Body>
+        <Body>{fill(copy.location.chosen, { label, place: value.label })}</Body>
         {value.accuracyM !== null && value.accuracyM > APPROXIMATE_M ? (
           <Body small tone="caution">
-            This position is approximate (within about {String(Math.round(value.accuracyM / 1000))}{" "}
-            km). Allow precise location in Settings, or type a place for a closer match.
+            {fill(copy.location.approximate, { km: Math.round(value.accuracyM / 1000) })}
           </Body>
         ) : null}
         <Button
-          label="Change location"
+          label={copy.location.change}
           variant="ghost"
           onPress={() => {
             onChange(null);
@@ -154,11 +148,11 @@ export function LocationPicker({
           variant="secondary"
           busy={busy === "gps"}
           onPress={() => void shareDeviceLocation()}
-          hint={advice.action === "settings" ? "Opens the FleetTrust page in Settings" : undefined}
+          hint={advice.action === "settings" ? copy.location.opensSettings : undefined}
         />
       ) : null}
       <TextField
-        label="Or type a place"
+        label={copy.location.typePlace}
         value={place}
         onChangeText={setPlace}
         maxLength={100}
@@ -167,7 +161,7 @@ export function LocationPicker({
         error={error}
       />
       <Button
-        label="Find place"
+        label={copy.location.findPlace}
         variant="secondary"
         busy={busy === "place"}
         onPress={() => void findPlace()}

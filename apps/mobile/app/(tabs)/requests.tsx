@@ -1,3 +1,4 @@
+import { copy, fill, plural } from "@fleettrust/copy";
 import { CATEGORY_LABELS, formatDate, titleCase } from "@fleettrust/types";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -37,18 +38,16 @@ function RequestList({ uid }: { uid: string }) {
   return (
     <>
       <Button
-        label="Request a quote"
+        label={copy.requestsTab.requestQuote}
         onPress={() => {
           router.push("/requests/new");
         }}
       />
       {draftSavedAt ? (
-        <Notice title="Unsent request">
-          <Body>
-            You started a request on {formatDate(draftSavedAt)}. It&apos;s saved on this phone.
-          </Body>
+        <Notice title={copy.requestsTab.draftTitle}>
+          <Body>{fill(copy.requestsTab.draftBody, { date: formatDate(draftSavedAt) })}</Body>
           <Button
-            label="Continue draft"
+            label={copy.requestsTab.continueDraft}
             variant="secondary"
             onPress={() => {
               router.push("/requests/new");
@@ -59,9 +58,7 @@ function RequestList({ uid }: { uid: string }) {
       {requests.status === "loading" ? <Loading /> : null}
       {requests.status === "error" ? <ErrorNotice error={requests.error} onRetry={reload} /> : null}
       {requests.status === "ready" && requests.data.length === 0 ? (
-        <EmptyState title="No requests yet">
-          Describe what you need and nearby providers can send you quotes.
-        </EmptyState>
+        <EmptyState title={copy.requestsTab.emptyTitle}>{copy.requestsTab.emptyBody}</EmptyState>
       ) : null}
       {requests.status === "ready"
         ? requests.data.map((request) => {
@@ -71,8 +68,14 @@ function RequestList({ uid }: { uid: string }) {
             return (
               <ListRow
                 key={request.id}
-                title={`${CATEGORY_LABELS[request.category]}: ${request.description.slice(0, 60)}${request.description.length > 60 ? "…" : ""}`}
-                subtitle={`${String(quotes)} active ${quotes === 1 ? "quote" : "quotes"} · sent ${formatDate(request.createdAt)}`}
+                title={fill(copy.requestsTab.rowTitle, {
+                  category: CATEGORY_LABELS[request.category],
+                  description: `${request.description.slice(0, 60)}${request.description.length > 60 ? "…" : ""}`,
+                })}
+                subtitle={[
+                  plural(quotes, copy.requestsTab.activeQuotes),
+                  fill(copy.requestsTab.sentOn, { date: formatDate(request.createdAt) }),
+                ].join(" · ")}
                 detail={
                   <Badge
                     tone={request.status === "open" ? "caution" : "neutral"}
@@ -95,17 +98,11 @@ export default function RequestsScreen() {
   const { status, user } = useSession();
   return (
     <Screen>
-      <Heading>Service requests</Heading>
-      <Body muted>
-        Ask providers for quotes. Quotes are indicative; you agree the final price and pay the
-        provider directly.
-      </Body>
+      <Heading>{copy.requestsTab.title}</Heading>
+      <Body muted>{copy.requestsTab.intro}</Body>
       {status === "loading" ? <Loading /> : null}
       {status === "signed-out" ? (
-        <SignInPrompt
-          title="Sign in to request quotes"
-          reason="Your requests and quotes appear here after you sign in."
-        />
+        <SignInPrompt title={copy.requestsTab.signInTitle} reason={copy.requestsTab.signInReason} />
       ) : null}
       {status === "signed-in" && user ? <RequestList uid={user.uid} /> : null}
     </Screen>

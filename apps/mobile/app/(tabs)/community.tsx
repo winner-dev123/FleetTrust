@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import { formatDate, titleCase } from "@fleettrust/types";
 import { useRouter } from "expo-router";
 
@@ -14,7 +15,7 @@ export default function CommunityScreen() {
 
   return (
     <Screen>
-      <Heading>Community</Heading>
+      <Heading>{copy.communityTab.title}</Heading>
       {page.status === "loading" ? <Loading /> : null}
       {page.status === "error" ? <ErrorNotice error={page.error} onRetry={page.reload} /> : null}
       {page.status === "ready" ? (
@@ -22,7 +23,9 @@ export default function CommunityScreen() {
           <Body small muted>
             {page.data.label}
           </Body>
-          {page.data.items.length === 0 ? <EmptyState title="No articles yet" /> : null}
+          {page.data.items.length === 0 ? (
+            <EmptyState title={copy.communityTab.emptyTitle} />
+          ) : null}
           {page.data.items.map((article) => (
             <ListRow
               key={article.id}

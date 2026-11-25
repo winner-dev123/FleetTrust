@@ -1,3 +1,4 @@
+import { copy, fill, plural } from "@fleettrust/copy";
 import { errorMessage, isOffline } from "@fleettrust/sdk";
 import {
   DEFAULT_EMERGENCY_GUIDANCE,
@@ -39,11 +40,11 @@ const CATEGORY_OPTIONS = INCIDENT_CATEGORIES.map((value) => ({
 function Guidance({ number, text }: { number: string | null; text: string | null }) {
   const { platform } = useSession();
   return (
-    <Notice tone="danger" title="If anyone is in danger">
+    <Notice tone="danger" title={copy.emergency.dangerTitle}>
       <Body>{text ?? DEFAULT_EMERGENCY_GUIDANCE}</Body>
       {number ? (
         <Button
-          label={`Call ${number}`}
+          label={fill(copy.emergency.call, { number })}
           variant="danger"
           large
           onPress={() => void platform.device.openExternal(`tel:${number}`)}
@@ -76,13 +77,11 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
 
   function review() {
     if (shareLocation && !location) {
-      setError("Choose your location, or turn off “Share my location”.");
+      setError(copy.emergency.chooseLocation);
       return;
     }
     if (active.length === 0 && !nearby) {
-      setError(
-        "You have no active trusted contacts. Turn on “Also alert nearby providers”, or add a contact.",
-      );
+      setError(copy.emergency.noContactsError);
       return;
     }
     setError(null);
@@ -106,61 +105,58 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
       });
       router.replace(`/emergency/${incident.id}`);
     } catch (failure) {
-      setError(
-        isOffline(failure)
-          ? "The alert was not sent: we couldn't reach FleetTrust. If anyone is in danger, call your local emergency number now."
-          : errorMessage(failure),
-      );
+      setError(isOffline(failure) ? copy.emergency.notSentOffline : errorMessage(failure));
       setBusy(false);
     }
   }
 
   return (
     <View style={{ gap: 16 }}>
-      <Heading level={2}>Send an alert</Heading>
+      <Heading level={2}>{copy.emergency.sendAlertTitle}</Heading>
       {!online ? (
-        <Notice tone="danger" title="You're offline" live>
-          <Body>
-            Alerts need a connection and can&apos;t be sent right now. If anyone is in danger, call
-            your local emergency number.
-          </Body>
+        <Notice tone="danger" title={copy.emergency.offlineTitle} live>
+          <Body>{copy.emergency.offlineBody}</Body>
         </Notice>
       ) : null}
       <Choice
-        label="What's happening?"
+        label={copy.emergency.whatsHappening}
         options={CATEGORY_OPTIONS}
         value={category}
         onChange={setCategory}
       />
       <TextField
-        label="Short note"
+        label={copy.emergency.noteLabel}
         optional
-        hint="For example: flat tyre on the N1 northbound, near the bridge."
+        hint={copy.emergency.noteHint}
         maxLength={500}
         value={note}
         onChangeText={setNote}
       />
       <Toggle
-        label="Share my location with this alert"
-        hint="Only for this alert. It's erased when the alert closes."
+        label={copy.emergency.shareLocation}
+        hint={copy.emergency.shareLocationHint}
         value={shareLocation}
         onChange={setShareLocation}
       />
       {shareLocation ? (
-        <LocationPicker value={location} onChange={setLocation} label="Your location" />
+        <LocationPicker
+          value={location}
+          onChange={setLocation}
+          label={copy.emergency.yourLocation}
+        />
       ) : null}
       <Toggle
-        label="Also alert nearby providers who offer roadside assistance"
-        hint="They see the type of problem and an approximate area, not your name."
+        label={copy.emergency.alertNearby}
+        hint={copy.emergency.alertNearbyHint}
         value={nearby}
         onChange={setNearby}
       />
       <Body small>
         {active.length === 0
-          ? "You have no active trusted contacts yet."
-          : `Alerts go to ${String(active.length)} trusted ${active.length === 1 ? "contact" : "contacts"}: ${active
-              .map((c) => c.person.displayName)
-              .join(", ")}.`}
+          ? copy.emergency.noContactsYet
+          : plural(active.length, copy.emergency.alertsGoTo, {
+              names: active.map((c) => c.person.displayName).join(", "),
+            })}
       </Body>
       {error ? (
         <Notice tone="danger" live>
@@ -168,14 +164,20 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
         </Notice>
       ) : null}
       {confirming ? (
-        <Notice tone="danger" title="Send this alert now?" live>
+        <Notice tone="danger" title={copy.emergency.confirmTitle} live>
           <Body>
-            {INCIDENT_CATEGORY_LABELS[category]}
-            {shareLocation && location ? ` · location: ${location.label}` : " · no location"}
-            {nearby ? " · nearby providers too" : ""}
+            {[
+              INCIDENT_CATEGORY_LABELS[category],
+              shareLocation && location
+                ? fill(copy.emergency.summaryLocation, { place: location.label })
+                : copy.emergency.summaryNoLocation,
+              nearby ? copy.emergency.summaryNearby : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </Body>
           <Button
-            label={busy ? "Sending…" : "Yes, send alert"}
+            label={busy ? copy.emergency.sending : copy.emergency.confirmSend}
             variant="danger"
             large
             busy={busy}
@@ -183,7 +185,7 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
             onPress={() => void send()}
           />
           <Button
-            label="Go back"
+            label={copy.emergency.goBack}
             variant="ghost"
             onPress={() => {
               setConfirming(false);
@@ -191,7 +193,13 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
           />
         </Notice>
       ) : (
-        <Button label="Send alert" variant="danger" large disabled={!online} onPress={review} />
+        <Button
+          label={copy.emergency.sendAlert}
+          variant="danger"
+          large
+          disabled={!online}
+          onPress={review}
+        />
       )}
     </View>
   );
@@ -224,15 +232,15 @@ function SignedInEmergency() {
         <Guidance number={null} text={null} />
         <Notice
           tone="caution"
-          title={isOffline(data.error) ? "You're offline" : "Alerts are unavailable"}
+          title={
+            isOffline(data.error) ? copy.emergency.offlineTitle : copy.emergency.unavailableTitle
+          }
           live
         >
           <Body>
-            {isOffline(data.error)
-              ? "Alerts need a connection. Call your local emergency number if anyone is in danger."
-              : errorMessage(data.error)}
+            {isOffline(data.error) ? copy.emergency.needConnection : errorMessage(data.error)}
           </Body>
-          <Button label="Try again" variant="secondary" onPress={data.reload} />
+          <Button label={copy.common.tryAgain} variant="secondary" onPress={data.reload} />
         </Notice>
       </>
     );
@@ -243,12 +251,15 @@ function SignedInEmergency() {
       {data.data.incidents
         .filter((incident) => incident.status === "active")
         .map((incident) => (
-          <Notice key={incident.id} tone="danger" title="You have an active alert">
+          <Notice key={incident.id} tone="danger" title={copy.emergency.activeAlertTitle}>
             <Body>
-              {incident.categoryLabel} · raised {formatDateTime(incident.createdAt)}
+              {fill(copy.emergency.raisedAt, {
+                category: incident.categoryLabel,
+                time: formatDateTime(incident.createdAt),
+              })}
             </Body>
             <Button
-              label="Open alert"
+              label={copy.emergency.openAlert}
               variant="danger"
               onPress={() => {
                 router.push(`/emergency/${incident.id}`);
@@ -259,7 +270,7 @@ function SignedInEmergency() {
       <RaiseAlert contacts={data.data.contacts} />
       <View style={{ gap: theme.spacing.sm }}>
         <Button
-          label="Manage trusted contacts"
+          label={copy.emergency.manageContacts}
           variant="secondary"
           onPress={() => {
             router.push("/emergency/contacts");
@@ -278,19 +289,12 @@ export default function EmergencyScreen() {
   const { status } = useSession();
   return (
     <Screen>
-      <Heading>Emergency</Heading>
+      <Heading>{copy.emergency.title}</Heading>
       {status === "signed-in" ? <SignedInEmergency /> : <Guidance number={null} text={null} />}
       {status === "signed-out" ? (
         <>
-          <Body>
-            With a free account you can choose trusted contacts. One tap sends them an alert with
-            your situation and, if you choose, your location for that alert only. Emergency alerts
-            are never limited by your plan.
-          </Body>
-          <SignInPrompt
-            title="Sign in to send alerts"
-            reason="Alerts go to trusted contacts you choose after signing in."
-          />
+          <Body>{copy.emergency.signedOutIntro}</Body>
+          <SignInPrompt title={copy.emergency.signInTitle} reason={copy.emergency.signInReason} />
         </>
       ) : null}
     </Screen>

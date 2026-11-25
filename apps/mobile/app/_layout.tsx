@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
@@ -28,17 +29,20 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="providers/[slug]" options={{ title: "Provider" }} />
-            <Stack.Screen name="articles/[slug]" options={{ title: "Article" }} />
-            <Stack.Screen name="requests/new" options={{ title: "Request a quote" }} />
-            <Stack.Screen name="requests/[id]" options={{ title: "Request" }} />
-            <Stack.Screen name="messages/[id]" options={{ title: "Conversation" }} />
-            <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
-            <Stack.Screen name="emergency/index" options={{ title: "Emergency" }} />
-            <Stack.Screen name="emergency/[id]" options={{ title: "Your alert" }} />
-            <Stack.Screen name="emergency/contacts" options={{ title: "Trusted contacts" }} />
-            <Stack.Screen name="sign-in" options={{ title: "Sign in" }} />
-            <Stack.Screen name="auth/finish" options={{ title: "Signing in" }} />
+            <Stack.Screen name="providers/[slug]" options={{ title: copy.screens.provider }} />
+            <Stack.Screen name="articles/[slug]" options={{ title: copy.screens.article }} />
+            <Stack.Screen name="requests/new" options={{ title: copy.screens.requestQuote }} />
+            <Stack.Screen name="requests/[id]" options={{ title: copy.screens.request }} />
+            <Stack.Screen name="messages/[id]" options={{ title: copy.screens.conversation }} />
+            <Stack.Screen name="notifications" options={{ title: copy.screens.notifications }} />
+            <Stack.Screen name="emergency/index" options={{ title: copy.screens.emergency }} />
+            <Stack.Screen name="emergency/[id]" options={{ title: copy.screens.yourAlert }} />
+            <Stack.Screen
+              name="emergency/contacts"
+              options={{ title: copy.screens.trustedContacts }}
+            />
+            <Stack.Screen name="sign-in" options={{ title: copy.screens.signIn }} />
+            <Stack.Screen name="auth/finish" options={{ title: copy.screens.signingIn }} />
           </Stack>
           <PushListener />
           <ConsentGate />
