@@ -463,7 +463,8 @@ export type ApiErrorReason =
   | TrustErrorReason
   | AdminErrorReason
   | PrivacyErrorReason
-  | "quota_exceeded";
+  | "quota_exceeded"
+  | "overloaded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
 export class ApiError extends Error {

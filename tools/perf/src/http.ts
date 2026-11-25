@@ -3,6 +3,8 @@
 export interface Reply {
   status: number;
   body: unknown;
+  /** Seconds from a Retry-After header, when present. */
+  retryAfter: number | undefined;
 }
 
 export class Api {
@@ -35,7 +37,12 @@ export class Api {
     } catch {
       // Not JSON: keep the text for error messages.
     }
-    return { status: response.status, body };
+    const retryAfter = Number(response.headers.get("Retry-After") ?? Number.NaN);
+    return {
+      status: response.status,
+      body,
+      retryAfter: Number.isFinite(retryAfter) ? retryAfter : undefined,
+    };
   }
 
   /** Throws unless the status is one of `ok`. */

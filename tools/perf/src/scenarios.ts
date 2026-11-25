@@ -2,8 +2,16 @@ import { randomUUID } from "node:crypto";
 
 import type pg from "pg";
 
-import { type Api, randomIp, randomPoint, type TestUser, testUsers } from "./http.ts";
+import { type Api, randomIp, randomPoint, type Reply, type TestUser, testUsers } from "./http.ts";
 import { type LatencySummary, runLoad, summarize } from "./stats.ts";
+
+const sleep = (ms: number) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const reasonOf = (reply: Reply): string | undefined =>
+  (reply.body as { reason?: string } | null)?.reason;
 
 export interface ScenarioResult {
   key: string;
@@ -68,6 +76,8 @@ export async function quotaScenario(
   const users = await testUsers(api, emulator, "perf-quota", options.users);
   const latencies: number[] = [];
   let unexpected = 0;
+  let retries = 0;
+  const statuses = new Map<string, number>();
   const samples: string[] = [];
   const perUser: number[] = [];
   const started = performance.now();
@@ -76,21 +86,35 @@ export async function quotaScenario(
       const outcomes = await Promise.all(
         Array.from({ length: options.burst }, async () => {
           const { lng, lat } = randomPoint();
+          // Like a real client: retry 503 overloaded after Retry-After with the same
+          // clientRequestId, so a retry never consumes quota twice.
+          const clientRequestId = randomUUID();
           const t0 = performance.now();
-          const reply = await api.call("POST", "/v1/me/service-requests", {
-            token: user.token,
-            body: {
-              clientRequestId: randomUUID(),
-              category: "workshop",
-              vehicle: { vehicleType: "car", registration: "PF 12-34" },
-              location: { lng, lat },
-              description: "Brakes squeal when stopping at low speed.",
-              target: { mode: "match", radiusKm: 25 },
-            },
-          });
+          let reply: Reply = { status: 0, body: null, retryAfter: undefined };
+          for (let attempt = 1; attempt <= 6; attempt += 1) {
+            reply = await api.call("POST", "/v1/me/service-requests", {
+              token: user.token,
+              body: {
+                clientRequestId,
+                category: "workshop",
+                vehicle: { vehicleType: "car", registration: "PF 12-34" },
+                location: { lng, lat },
+                description: "Brakes squeal when stopping at low speed.",
+                target: { mode: "match", radiusKm: 25 },
+              },
+            });
+            const label = `${String(reply.status)} ${reasonOf(reply) ?? ""}`.trim();
+            statuses.set(label, (statuses.get(label) ?? 0) + 1);
+            if (reply.status !== 503 || reasonOf(reply) !== "overloaded") break;
+            retries += 1;
+            await sleep(((reply.retryAfter ?? 1) + Math.random()) * 1000);
+          }
           const ms = performance.now() - t0;
-          const reason = (reply.body as { reason?: string } | null)?.reason;
-          if (reply.status === 201 || (reply.status === 429 && reason === "quota_exceeded"))
+          // A quota refusal is a correct answer, not an error.
+          if (
+            reply.status === 201 ||
+            (reply.status === 403 && reasonOf(reply) === "quota_exceeded")
+          )
             latencies.push(ms);
           else {
             unexpected += 1;
@@ -122,7 +146,8 @@ export async function quotaScenario(
       ),
     ],
     notes: [
-      `${String(options.users)} users each sent ${String(options.burst)} requests at the same moment (daily limit ${String(options.dailyLimit)}); quota refusals (429) count as correct answers`,
+      `${String(options.users)} users each sent ${String(options.burst)} requests at the same moment (daily limit ${String(options.dailyLimit)}); quota refusals (403 quota_exceeded) count as correct answers; latency includes retries`,
+      `responses: ${[...statuses].map(([label, n]) => `${label} × ${String(n)}`).join(", ")}; ${String(retries)} retries after 503 overloaded`,
     ],
     samples,
   };
@@ -154,7 +179,7 @@ async function subscribe(
     socket.addEventListener("message", (event) => {
       const frame = JSON.parse(String(event.data)) as {
         type: string;
-        message?: { clientMessageId: string | null };
+        message?: { id: string };
       };
       if (frame.type === "ready")
         socket.send(JSON.stringify({ type: "subscribe", conversationId, after: 0 }));
@@ -162,8 +187,9 @@ async function subscribe(
         clearTimeout(timer);
         resolve();
       }
-      if (frame.type === "message" && frame.message?.clientMessageId) {
-        arrivals.set(frame.message.clientMessageId, performance.now());
+      // Other members never see clientMessageId (only the sender does), so match on the id.
+      if (frame.type === "message" && frame.message?.id && !arrivals.has(frame.message.id)) {
+        arrivals.set(frame.message.id, performance.now());
       }
     });
     socket.addEventListener("error", () => {
@@ -219,13 +245,17 @@ export async function messagingScenario(
     async (i) => {
       const sender = senders[i % senders.length];
       if (!sender) return;
-      const clientMessageId = randomUUID();
       const at = performance.now();
-      sent.set(clientMessageId, { at, sender });
-      await api.expect("POST", `/v1/conversations/${conversation.id}/messages`, 201, {
-        token: sender.token,
-        body: { clientMessageId, body: `Perf message ${String(i)}` },
-      });
+      const message = (await api.expect(
+        "POST",
+        `/v1/conversations/${conversation.id}/messages`,
+        201,
+        {
+          token: sender.token,
+          body: { clientMessageId: randomUUID(), body: `Perf message ${String(i)}` },
+        },
+      )) as { id: string };
+      sent.set(message.id, { at, sender });
     },
     { concurrency: options.senders, total: options.senders * options.messagesPerSender },
   );
