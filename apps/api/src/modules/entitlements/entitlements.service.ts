@@ -214,7 +214,9 @@ export class EntitlementsService {
     executor: Executor = this.db,
   ): Promise<number | null> {
     const resolved = await this.resolve(subject, executor);
-    return resolved.limits.get(key)?.limit ?? 0;
+    // null is "unlimited" and must survive; only a key that doesn't apply means 0.
+    const entry = resolved.limits.get(key);
+    return entry === undefined ? 0 : entry.limit;
   }
 
   /**

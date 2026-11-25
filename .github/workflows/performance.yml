@@ -1,0 +1,108 @@
+name: Performance
+
+# Load tests and the backup restore drill (Prompt 28, docs/operations/slo.md). Runs the built
+# API (api and worker roles) against PostgreSQL 17 + PostGIS and the Firebase Auth emulator.
+# Results appear in the job summary. Correctness checks fail the job; latency targets are
+# reported (this runner is far smaller than production and shares one machine).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  load-and-restore:
+    name: Load tests and restore drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        # Same image and digest as infra/local/compose.yaml.
+        image: postgis/postgis:17-3.6@sha256:1ac10b2551ba84ae05db8e7da477afcd0a3fede99bcb7705da2ee157390cb095
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
+          POSTGRES_DB: fleettrust_perf
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U ci -d fleettrust_perf"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://ci:ci-${{ github.run_id }}-${{ github.run_attempt }}@127.0.0.1:5432/fleettrust_perf
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+      FIREBASE_PROJECT_ID: demo-fleettrust
+      APP_ENV: local
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Build the API
+        run: pnpm turbo run build --filter "@fleettrust/api..."
+      - name: Migrate and seed reference data
+        run: |
+          pnpm --filter @fleettrust/db migrate
+          pnpm --filter @fleettrust/db seed
+      - name: Start the Firebase Auth emulator
+        run: |
+          pnpm exec firebase emulators:start --only auth --project demo-fleettrust > emulator.log 2>&1 &
+          for i in $(seq 1 90); do curl -s -o /dev/null http://127.0.0.1:9099/ && exit 0; sleep 2; done
+          cat emulator.log; exit 1
+      - name: Start the API (api and worker roles)
+        working-directory: apps/api
+        run: |
+          APP_ROLE=api PORT=8080 TRUST_PROXY_HOPS=1 nohup node dist/main.js > ../../api.log 2>&1 &
+          APP_ROLE=worker PORT=8081 EMERGENCY_TICK_MS=200 OUTBOX_RELAY_INTERVAL_MS=200 nohup node dist/main.js > ../../worker.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8080/health > /dev/null && curl -sf http://127.0.0.1:8081/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat ../../api.log ../../worker.log; exit 1
+      - name: Load tests (search, quotas, messaging fan-out, emergency fan-out)
+        id: load
+        env:
+          API_URL: http://127.0.0.1:8080
+          PERF_OUT: perf-results.json
+        run: node tools/perf/src/run.ts
+      # Quiesce writers first, so the copy is compared with a database that no longer changes
+      # (pg_dump itself is consistent either way: it reads one MVCC snapshot).
+      # The drill runs even when a load check failed, as long as the load step itself ran.
+      - name: Stop the API and worker
+        if: ${{ !cancelled() && steps.load.outcome != 'skipped' }}
+        run: |
+          pkill -f "node dist/main.js" || true
+          for i in $(seq 1 20); do pgrep -f "node dist/main.js" > /dev/null || exit 0; sleep 1; done
+          exit 1
+      - name: Restore drill (backup, restore into a new database, verify)
+        if: ${{ !cancelled() && steps.load.outcome != 'skipped' }}
+        env:
+          PG_EXEC: docker exec -i ${{ job.services.postgres.id }}
+          DRILL_OUT: restore-drill.json
+        run: node tools/perf/src/restore-drill.ts
+      - name: API warnings and errors
+        if: always()
+        run: grep -hv '"level":"info"' api.log worker.log | tail -n 80 || true
+      - name: Results (JSON)
+        if: always()
+        run: cat perf-results.json restore-drill.json 2>/dev/null || true
+      - name: Service logs
+        if: failure()
+        run: |
+          tail -n 200 api.log || true
+          tail -n 200 worker.log || true
+          tail -n 50 emulator.log || true

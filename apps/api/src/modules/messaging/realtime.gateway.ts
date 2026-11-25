@@ -36,15 +36,26 @@ const HEARTBEAT_MS = 30_000;
 const ACCESS_TTL_MS = 30_000;
 const MAX_SUBSCRIPTIONS = 100;
 const MAX_FRAMES_PER_10S = 200;
+/**
+ * How long a message that arrived ahead of a gap waits for the missing one before the gap is
+ * filled from the database. Concurrent sends commit in seq order but can publish out of order.
+ */
+export const GAP_WAIT_MS = 1_000;
 
 interface Subscription {
   access: ConversationAccess;
   checkedAt: number;
   blocked: Set<string>;
-  /** Highest seq delivered: live events at or below it are duplicates of the replay. */
+  /**
+   * Highest seq delivered. Messages go out strictly in seq order, so anything at or below it is
+   * a duplicate (of the replay, or a redelivery), and clients can rely on the same rule.
+   */
   lastSeq: number;
   /** Live events that arrive while the replay is running. */
   buffer: unknown[] | null;
+  /** Live messages that arrived ahead of a gap, by seq, held until the gap closes. */
+  pending: Map<number, RawMessage>;
+  gapTimer: NodeJS.Timeout | null;
   unsubscribe: () => Promise<void>;
 }
 
@@ -288,15 +299,23 @@ export class RealtimeGateway implements OnApplicationBootstrap, OnApplicationShu
         access.conversation.kind === "group" ? await this.messaging.blockedFor(user.id) : new Set(),
       lastSeq: after,
       buffer: [],
+      pending: new Map(),
+      gapTimer: null,
       unsubscribe: () => Promise.resolve(),
     };
     c.subscriptions.set(conversationId, sub);
     // Subscribe before replaying so nothing published in between is lost; duplicates are
     // dropped by seq.
-    sub.unsubscribe = await this.bus.subscribe(`conversation:${conversationId}`, (payload) => {
+    const unsubscribeBus = await this.bus.subscribe(`conversation:${conversationId}`, (payload) => {
       if (sub.buffer !== null) sub.buffer.push(payload);
       else void this.deliver(c, user, conversationId, sub, payload);
     });
+    sub.unsubscribe = async () => {
+      if (sub.gapTimer) clearTimeout(sub.gapTimer);
+      sub.gapTimer = null;
+      sub.pending.clear();
+      await unsubscribeBus();
+    };
     const replay = await this.messaging.replay(access, user, after);
     for (const raw of replay.items) {
       this.send(c, {
@@ -318,6 +337,89 @@ export class RealtimeGateway implements OnApplicationBootstrap, OnApplicationShu
       lastSeq: Math.max(sub.lastSeq, access.conversation.lastSeq),
     });
     for (const payload of buffered) await this.deliver(c, user, conversationId, sub, payload);
+  }
+
+  /** Sends one message (unless its sender is blocked) and advances the cursor. */
+  private emit(
+    c: Connection,
+    user: User,
+    conversationId: string,
+    sub: Subscription,
+    raw: RawMessage,
+  ): void {
+    sub.lastSeq = raw.seq;
+    if (sub.blocked.has(raw.senderUserId)) return;
+    this.send(c, {
+      type: "message",
+      conversationId,
+      message: toMessageDto(raw, user.id),
+      replay: false,
+    });
+  }
+
+  /** Delivers live messages in seq order; one that skips ahead waits for the gap to close. */
+  private acceptMessage(
+    c: Connection,
+    user: User,
+    conversationId: string,
+    sub: Subscription,
+    raw: RawMessage,
+  ): void {
+    if (raw.seq <= sub.lastSeq) return;
+    if (raw.seq > sub.lastSeq + 1) {
+      sub.pending.set(raw.seq, raw);
+      sub.gapTimer ??= setTimeout(() => {
+        sub.gapTimer = null;
+        void this.fillGap(c, user, conversationId, sub).catch((error: unknown) => {
+          this.logger.warn(`gap fill failed: ${(error as Error).message}`);
+        });
+      }, GAP_WAIT_MS);
+      return;
+    }
+    this.emit(c, user, conversationId, sub, raw);
+    this.flushPending(c, user, conversationId, sub);
+  }
+
+  private flushPending(c: Connection, user: User, conversationId: string, sub: Subscription): void {
+    for (
+      let next = sub.pending.get(sub.lastSeq + 1);
+      next;
+      next = sub.pending.get(sub.lastSeq + 1)
+    ) {
+      sub.pending.delete(next.seq);
+      this.emit(c, user, conversationId, sub, next);
+    }
+    for (const seq of sub.pending.keys()) if (seq <= sub.lastSeq) sub.pending.delete(seq);
+    if (sub.pending.size === 0 && sub.gapTimer) {
+      clearTimeout(sub.gapTimer);
+      sub.gapTimer = null;
+    }
+  }
+
+  /**
+   * The missing message didn't arrive in time (lost by the bus, or not visible to this user):
+   * read what was committed from the database, then deliver what was held, still in order.
+   */
+  private async fillGap(
+    c: Connection,
+    user: User,
+    conversationId: string,
+    sub: Subscription,
+  ): Promise<void> {
+    if (c.subscriptions.get(conversationId) !== sub || sub.pending.size === 0) return;
+    const replay = await this.messaging.replay(sub.access, user, sub.lastSeq);
+    if (c.subscriptions.get(conversationId) !== sub) return;
+    for (const raw of replay.items) {
+      if (raw.seq > sub.lastSeq) this.emit(c, user, conversationId, sub, raw);
+    }
+    if (replay.more) {
+      this.send(c, { type: "replay_truncated", conversationId, nextAfter: sub.lastSeq });
+    }
+    for (const seq of [...sub.pending.keys()].sort((a, b) => a - b)) {
+      const raw = sub.pending.get(seq);
+      sub.pending.delete(seq);
+      if (raw && seq > sub.lastSeq) this.emit(c, user, conversationId, sub, raw);
+    }
   }
 
   /** Re-checks access when stale, then forwards one live event to this socket. */
@@ -352,16 +454,7 @@ export class RealtimeGateway implements OnApplicationBootstrap, OnApplicationShu
           seq: number;
         };
     if (event.type === "message") {
-      const raw = event.message;
-      if (raw.seq <= sub.lastSeq) return;
-      sub.lastSeq = raw.seq;
-      if (sub.blocked.has(raw.senderUserId)) return;
-      this.send(c, {
-        type: "message",
-        conversationId,
-        message: toMessageDto(raw, user.id),
-        replay: false,
-      });
+      this.acceptMessage(c, user, conversationId, sub, event.message);
       return;
     }
     if (event.type === "refresh") {

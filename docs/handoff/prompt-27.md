@@ -1,7 +1,7 @@
 # Handoff — Prompt 27: Security and privacy hardening
 
 - Date: 2026-11-24
-- Status: **awaiting owner approval** · branch `feat/prompt-27-security`
+- Status: **approved** · merged as PR #29 → `ad7fc0d` (CI 6/6 green on `a212cba`)
 - Prompt 26 approved and merged (PR #28 → `c5338d6`).
 
 ## Assumptions

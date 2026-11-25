@@ -161,7 +161,7 @@ jobs:
   web-e2e:
     name: Web end-to-end (journeys and accessibility, desktop and phone)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -175,11 +175,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build the shared packages the web app uses
         run: pnpm turbo run build --filter "@fleettrust/web^..."
-      - name: Install Chromium for Playwright
-        run: pnpm --filter @fleettrust/web exec playwright install --with-deps chromium
+      - name: Install Chromium, Firefox and WebKit for Playwright
+        run: pnpm --filter @fleettrust/web exec playwright install --with-deps chromium firefox webkit
       # Production build, Firebase Auth emulator sign-in, contract-checked mock API, axe WCAG 2.2
-      # A/AA checks and reflow at 320 px (apps/web/playwright.config.ts).
+      # A/AA checks and reflow at 320 px (apps/web/playwright.config.ts). Browser matrix:
+      # Chromium desktop + 320 px phone, Firefox, WebKit desktop and iPhone (docs/qa/device-matrix.md).
       - name: Journeys and accessibility checks
+        env:
+          E2E_ALL_BROWSERS: "1"
         run: pnpm --filter @fleettrust/web e2e
 
   container:

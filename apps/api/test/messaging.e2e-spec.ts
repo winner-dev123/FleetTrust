@@ -14,11 +14,13 @@ import type {
   InquiryDto,
 } from "@fleettrust/types";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 
+import { GAP_WAIT_MS } from "../src/modules/messaging/index.js";
 import { OutboxRelay } from "../src/modules/notifications/index.js";
 import { PUSH_SENDER, type RecordingPushSender } from "../src/platform/push/index.js";
+import { REALTIME_BUS, type RealtimeBus } from "../src/platform/realtime/index.js";
 import { samplePng } from "./support/images.js";
 import { makePerson, type Person, publishProvider } from "./support/providers.js";
 import { createTestApp, type TestApp } from "./support/test-app.js";
@@ -343,6 +345,49 @@ describe("WebSocket delivery", () => {
     ).toMatchObject({ peerReadSeq: null, unread: 0 });
     await reconnected.close();
     await aSocket.close();
+  });
+
+  it("delivers in seq order when events arrive out of order, and fills a gap the bus lost", async () => {
+    const a = await person("w2-a");
+    const b = await person("w2-b");
+    await befriend(a, b);
+    const conv = await direct(a, b);
+    const bSocket = await Client.signedIn("w2-b");
+    await bSocket.subscribe(conv.id, 0);
+    const channel = `conversation:${conv.id}`;
+    const bus = t.app.get<RealtimeBus>(REALTIME_BUS);
+
+    // Hold the bus events of three sends (concurrent sends can publish in any order).
+    const held: unknown[] = [];
+    const publish = vi.spyOn(bus, "publish").mockImplementation((ch, payload) => {
+      if (ch === channel && (payload as { type: string }).type === "message") held.push(payload);
+      return Promise.resolve();
+    });
+    for (const body of ["one", "two", "three"]) await say(a, conv.id, body);
+    publish.mockRestore();
+    expect(held).toHaveLength(3);
+    const seqOf = (f: ServerFrame) => (f as { message: { seq: number } }).message.seq;
+
+    // "two" arrives before "one": both are delivered, in order.
+    await bus.publish(channel, held[1]);
+    await bus.publish(channel, held[0]);
+    const first = await bSocket.next((f) => f.type === "message");
+    const second = await bSocket.next((f) => f.type === "message");
+    expect([seqOf(first), seqOf(second)]).toEqual([1, 2]);
+
+    // "three" is never published (lost); "four" arrives live. After a short wait the gap is
+    // filled from the database, still in order, with no duplicates.
+    const started = Date.now();
+    await say(a, conv.id, "four");
+    const third = await bSocket.next((f) => f.type === "message");
+    const fourth = await bSocket.next((f) => f.type === "message");
+    expect([seqOf(third), seqOf(fourth)]).toEqual([3, 4]);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(GAP_WAIT_MS - 50);
+    await say(a, conv.id, "five");
+    expect(seqOf(await bSocket.next((f) => f.type === "message"))).toBe(5);
+    await quiet();
+    expect(bSocket.frames.filter((f) => f.type === "message")).toEqual([]);
+    await bSocket.close();
   });
 });
 
