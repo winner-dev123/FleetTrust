@@ -32,7 +32,7 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 26  | Administration and operations              | approved (merged, PR #28)          | [prompt-26.md](prompt-26.md) |
 | 27  | Security and privacy hardening             | approved (merged, PR #29)          | [prompt-27.md](prompt-27.md) |
 | 28  | Performance, reliability and end-to-end QA | approved (merged, PR #30)          | [prompt-28.md](prompt-28.md) |
-| 29  | Staging, production and launch             | in progress                        | [prompt-29.md](prompt-29.md) |
+| 29  | Staging, production and launch             | awaiting approval                  | [prompt-29.md](prompt-29.md) |
 | 30  | Future extensibility specification only    | todo                               |                              |
 
 ## Prompt 01 acceptance criteria
