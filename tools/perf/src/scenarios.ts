@@ -30,8 +30,18 @@ const check = (name: string, ok: boolean, detail: string) => ({ name, ok, detail
 
 export async function searchScenario(
   api: Api,
-  options: { concurrency: number; durationMs: number },
+  db: pg.Client,
+  options: { concurrency: number; durationMs: number; providers: number; stress?: boolean },
 ): Promise<ScenarioResult> {
+  // How many branches a 25 km search has to rank (the main cost: each is scored).
+  const { rows } = await db.query<{ avg: string }>(
+    `SELECT round(avg(n))::text AS avg FROM (
+       SELECT (SELECT count(*) FROM provider_search_entries e
+               WHERE ST_DWithin(e.location, ST_SetSRID(ST_MakePoint(p.lng, p.lat), 4326)::geography, 25000)) AS n
+       FROM (SELECT 27.6 + random() AS lng, -26.6 + random() * 0.8 AS lat
+             FROM generate_series(1, 20)) p) s`,
+  );
+  const candidates = rows[0]?.avg ?? "?";
   let empty = 0;
   const result = await runLoad(async () => {
     const { lng, lat } = randomPoint();
@@ -48,7 +58,7 @@ export async function searchScenario(
   }, options);
   const summary = summarize(result.latencies, result.errors, result.windowMs);
   return {
-    key: "search",
+    key: options.stress ? "searchStress" : "search",
     summary,
     checks: [
       check(
@@ -58,14 +68,69 @@ export async function searchScenario(
       ),
     ],
     notes: [
-      `${String(options.concurrency)} concurrent visitors for ${String(options.durationMs / 1000)} s, random points, 25 km radius, workshop filter`,
+      `${String(options.providers)} provider branches; ${String(options.concurrency)} concurrent visitors for ${String(options.durationMs / 1000)} s, random points, 25 km radius, workshop filter; about ${candidates} branches ranked per search`,
     ],
     samples: result.samples,
   };
 }
 
 // ---------------------------------------------------------------------------------------------
-// 2. Quota concurrency: many simultaneous requests may never exceed the daily limit
+// 2a. Service request creation at a steady rate (write latency)
+// ---------------------------------------------------------------------------------------------
+
+/** One service request near a random point, matched to nearby providers. */
+const createRequest = (api: Api, token: string, clientRequestId: string) => {
+  const { lng, lat } = randomPoint();
+  return api.call("POST", "/v1/me/service-requests", {
+    token,
+    body: {
+      clientRequestId,
+      category: "workshop",
+      vehicle: { vehicleType: "car", registration: "PF 12-34" },
+      location: { lng, lat },
+      description: "Brakes squeal when stopping at low speed.",
+      target: { mode: "match", radiusKm: 25 },
+    },
+  });
+};
+
+export async function requestCreateScenario(
+  api: Api,
+  db: pg.Client,
+  emulator: string,
+  options: { users: number; perUser: number; concurrency: number },
+): Promise<ScenarioResult> {
+  const users = await testUsers(api, emulator, "perf-steady", options.users);
+  // Lift the daily quota for these users (the per-user rate limit, 30 an hour, still applies,
+  // so each user sends fewer than that).
+  await db.query(
+    `INSERT INTO quota_overrides (subject_type, user_id, key, limit_value, reason, created_by)
+       SELECT 'user', u, 'service_requests.daily', NULL, 'load test', u FROM unnest($1::uuid[]) u`,
+    [users.map((u) => u.id)],
+  );
+  const result = await runLoad(
+    async (i) => {
+      const user = users[i % users.length];
+      if (!user) return;
+      const reply = await createRequest(api, user.token, randomUUID());
+      if (reply.status !== 201)
+        throw new Error(`${String(reply.status)} ${JSON.stringify(reply.body).slice(0, 200)}`);
+    },
+    { concurrency: options.concurrency, total: options.users * options.perUser },
+  );
+  return {
+    key: "requestCreate",
+    summary: summarize(result.latencies, result.errors, result.windowMs),
+    checks: [],
+    notes: [
+      `${String(options.concurrency)} requests in flight, ${String(options.users * options.perUser)} service requests from ${String(options.users)} users, each matched against nearby providers`,
+    ],
+    samples: result.samples,
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// 2b. Quota concurrency: many simultaneous requests may never exceed the daily limit
 // ---------------------------------------------------------------------------------------------
 
 export async function quotaScenario(
@@ -85,24 +150,13 @@ export async function quotaScenario(
     users.map(async (user) => {
       const outcomes = await Promise.all(
         Array.from({ length: options.burst }, async () => {
-          const { lng, lat } = randomPoint();
           // Like a real client: retry 503 overloaded after Retry-After with the same
           // clientRequestId, so a retry never consumes quota twice.
           const clientRequestId = randomUUID();
           const t0 = performance.now();
           let reply: Reply = { status: 0, body: null, retryAfter: undefined };
           for (let attempt = 1; attempt <= 6; attempt += 1) {
-            reply = await api.call("POST", "/v1/me/service-requests", {
-              token: user.token,
-              body: {
-                clientRequestId,
-                category: "workshop",
-                vehicle: { vehicleType: "car", registration: "PF 12-34" },
-                location: { lng, lat },
-                description: "Brakes squeal when stopping at low speed.",
-                target: { mode: "match", radiusKm: 25 },
-              },
-            });
+            reply = await createRequest(api, user.token, clientRequestId);
             const label = `${String(reply.status)} ${reasonOf(reply) ?? ""}`.trim();
             statuses.set(label, (statuses.get(label) ?? 0) + 1);
             if (reply.status !== 503 || reasonOf(reply) !== "overloaded") break;
@@ -131,7 +185,7 @@ export async function quotaScenario(
   const over = perUser.filter((n) => n > options.dailyLimit).length;
   const under = perUser.filter((n) => n < options.dailyLimit).length;
   return {
-    key: "requestCreate",
+    key: "requestBurst",
     summary,
     checks: [
       check(
@@ -261,7 +315,12 @@ export async function messagingScenario(
   );
 
   // Wait for deliveries to settle.
-  const expected = sent.size * (subscribers.length - 1);
+  // Every subscriber gets every message except its own.
+  const expected = subscribers.reduce(
+    (n, _s, index) =>
+      n + [...sent.values()].filter((info) => info.sender.id !== members[index]?.id).length,
+    0,
+  );
   const deadline = performance.now() + 15_000;
   const deliveries = () => subscribers.reduce((n, s) => n + s.arrivals.size, 0);
   while (deliveries() < expected && performance.now() < deadline) {

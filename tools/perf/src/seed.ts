@@ -2,17 +2,16 @@ import type pg from "pg";
 
 import type { Api, TestUser } from "./http.ts";
 
+export interface Template {
+  orgId: string;
+  branchId: string;
+}
+
 /**
- * Seeds `count` published provider branches. One provider is published through the real API
- * (so every derived row is correct), then cloned in SQL to random points around Johannesburg.
- * Rows are copied with jsonb_populate_record, so the copy stays right when columns change.
+ * Publishes one provider through the real API, so every derived row is correct. Clones of it
+ * (cloneProviders) fill the database to the volume a scenario needs.
  */
-export async function seedProviders(
-  api: Api,
-  db: pg.Client,
-  owner: TestUser,
-  count: number,
-): Promise<string> {
+export async function publishTemplate(api: Api, owner: TestUser): Promise<Template> {
   const token = owner.token;
   const org = (await api.expect("POST", "/v1/orgs", 201, {
     token,
@@ -55,16 +54,30 @@ export async function seedProviders(
     },
   });
   await api.expect("POST", `${base}/publish`, 200, { token });
+  return { orgId, branchId: branch.id };
+}
 
-  const clones = count - 1;
+/**
+ * Clones the template as providers number `from`..`to` at random points around Johannesburg
+ * (lng 27.6–28.6, lat -26.6 to -25.8). Rows are copied with jsonb_populate_record, so the
+ * copy stays right when columns change. Returns the total number of searchable branches.
+ */
+export async function cloneProviders(
+  db: pg.Client,
+  template: Template,
+  from: number,
+  to: number,
+): Promise<number> {
+  const orgId = template.orgId;
+  const branch = { id: template.branchId };
   await db.query("BEGIN");
   try {
     await db.query(
       `CREATE TEMP TABLE perf_clone ON COMMIT DROP AS
          SELECT g AS n, gen_random_uuid() AS org_id, gen_random_uuid() AS branch_id,
                 27.6 + random() AS lng, -26.6 + random() * 0.8 AS lat
-         FROM generate_series(1, $1::int) g`,
-      [clones],
+         FROM generate_series($1::int, $2::int) g`,
+      [from, to],
     );
     const point = (column: string) =>
       `'${column}', 'SRID=4326;POINT(' || c.lng || ' ' || c.lat || ')'`;
@@ -108,5 +121,5 @@ export async function seedProviders(
   const { rows } = await db.query<{ n: string }>(
     "SELECT count(*)::text AS n FROM provider_search_entries",
   );
-  return rows[0]?.n ?? "0";
+  return Number(rows[0]?.n ?? "0");
 }

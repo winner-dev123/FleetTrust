@@ -1,7 +1,7 @@
 import type { LatencySummary } from "./stats.ts";
 
 /**
- * Service level objectives (Prompt 28, docs/operations/slo.md). Latency targets are for
+ * Service level objectives (Prompt 28, docs/operations/slo.md; SRS §7). Latency targets are for
  * production; the CI runner is smaller and shares one machine between the database, the
  * API and the load generator, so a miss there is reported, not fatal. Correctness checks
  * (quotas never over-granted, every alert delivered) always fail the run.
@@ -14,12 +14,35 @@ export interface LatencyTarget {
 }
 
 export const TARGETS: Record<string, LatencyTarget> = {
-  search: { name: "Provider search near a point", p95Ms: 500, p99Ms: 1_000, maxErrorRate: 0.005 },
-  requestCreate: {
-    name: "Create a service request (quota check)",
-    p95Ms: 800,
-    p99Ms: 1_500,
+  // SRS §7: nearby search p95 ≤ 400 ms server-side.
+  search: {
+    name: "Provider search near a point (pilot volume)",
+    p95Ms: 400,
+    p99Ms: 1_000,
     maxErrorRate: 0.005,
+  },
+  // Stress: 20× the pilot's providers packed into one metro area. Reported against the same
+  // target to show the headroom; the SRS target applies at pilot volume.
+  searchStress: {
+    name: "Provider search, 20× pilot density",
+    p95Ms: 400,
+    p99Ms: 1_000,
+    maxErrorRate: 0.005,
+  },
+  // SRS §7: writes p95 ≤ 500 ms.
+  requestCreate: {
+    name: "Create a service request (match + quota)",
+    p95Ms: 500,
+    p99Ms: 1_000,
+    maxErrorRate: 0.005,
+  },
+  // A stress case, not normal traffic: every request of 25 users at the same instant.
+  // Correctness is what matters; overloaded requests are retried like a real client would.
+  requestBurst: {
+    name: "Burst: 250 creates at once (quota race)",
+    p95Ms: 5_000,
+    p99Ms: 10_000,
+    maxErrorRate: 0,
   },
   messageSend: { name: "Send a message (API)", p95Ms: 500, p99Ms: 1_000, maxErrorRate: 0.005 },
   messageDelivery: {
@@ -28,10 +51,11 @@ export const TARGETS: Record<string, LatencyTarget> = {
     p99Ms: 2_000,
     maxErrorRate: 0,
   },
+  // SRS §7: p95 ≤ 10 s from incident creation to the first push send attempt.
   emergencyFanout: {
     name: "Alert raised → push sent to every contact",
-    p95Ms: 5_000,
-    p99Ms: 10_000,
+    p95Ms: 10_000,
+    p99Ms: 15_000,
     maxErrorRate: 0,
   },
 };

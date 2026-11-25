@@ -7,10 +7,11 @@ import {
   emergencyScenario,
   messagingScenario,
   quotaScenario,
+  requestCreateScenario,
   type ScenarioResult,
   searchScenario,
 } from "./scenarios.ts";
-import { seedProviders } from "./seed.ts";
+import { cloneProviders, publishTemplate } from "./seed.ts";
 import { evaluate } from "./slo.ts";
 
 /**
@@ -29,6 +30,8 @@ const env = (name: string, fallback?: string): string => {
 const api = new Api(env("API_URL", "http://127.0.0.1:8080"));
 const emulator = env("FIREBASE_AUTH_EMULATOR_HOST", "127.0.0.1:9099");
 const db = new pg.Client({ connectionString: env("DATABASE_URL") });
+/** Pilot volume (SRS §7: 1k provider organisations), then a dense stress volume. */
+const pilotProviders = Number(env("PERF_PILOT_PROVIDERS", "1000"));
 const providers = Number(env("PERF_PROVIDERS", "20000"));
 
 await db.connect();
@@ -36,11 +39,27 @@ const results: ScenarioResult[] = [];
 const started = new Date().toISOString();
 try {
   const owner = await testUser(api, emulator, "perf-owner@perf.test");
-  const seeded = await seedProviders(api, db, owner, providers);
-  console.log(`seeded ${seeded} provider branches`);
-
-  results.push(await searchScenario(api, { concurrency: 16, durationMs: 30_000 }));
+  const template = await publishTemplate(api, owner);
+  const pilot = await cloneProviders(db, template, 1, pilotProviders - 1);
+  console.log(`seeded ${String(pilot)} provider branches`);
+  results.push(
+    await searchScenario(api, db, { concurrency: 16, durationMs: 30_000, providers: pilot }),
+  );
+  const dense = await cloneProviders(db, template, pilotProviders, providers - 1);
+  console.log(`seeded ${String(dense)} provider branches`);
+  results.push(
+    await searchScenario(api, db, {
+      concurrency: 16,
+      durationMs: 30_000,
+      providers: dense,
+      stress: true,
+    }),
+  );
   console.log("search done");
+  results.push(
+    await requestCreateScenario(api, db, emulator, { users: 60, perUser: 25, concurrency: 8 }),
+  );
+  console.log("request create done");
   results.push(await quotaScenario(api, emulator, { users: 25, burst: 10, dailyLimit: 3 }));
   console.log("quota done");
   results.push(
@@ -66,7 +85,13 @@ const verdicts = results.map((r) => ({
 const failedChecks = verdicts.flatMap((v) =>
   v.checks.filter((c) => !c.ok).map((c) => `${v.key}: ${c.name} (${c.detail})`),
 );
-const report = { started, finished: new Date().toISOString(), providers, verdicts, failedChecks };
+const report = {
+  started,
+  finished: new Date().toISOString(),
+  providers: { pilot: pilotProviders, stress: providers },
+  verdicts,
+  failedChecks,
+};
 writeFileSync(env("PERF_OUT", "perf-results.json"), JSON.stringify(report, null, 2));
 
 const rows = verdicts.map(
@@ -74,7 +99,7 @@ const rows = verdicts.map(
     `| ${v.target.name} | ${String(v.summary.count)} | ${String(v.summary.p50)} | ${String(v.summary.p95)} | ${String(v.summary.p99)} | ${String(v.summary.max)} | ${String(v.summary.throughput)} | ${String(v.summary.errorRate)} | ${String(v.target.p95Ms)} / ${String(v.target.p99Ms)} | ${v.met ? "met" : `missed: ${v.misses.join("; ")}`} |`,
 );
 const markdown = [
-  `### Load test (${String(providers)} provider branches)`,
+  `### Load test (${String(pilotProviders)} then ${String(providers)} provider branches)`,
   "",
   "| Scenario | Samples | p50 ms | p95 ms | p99 ms | max ms | per s | error rate | target p95 / p99 ms | SLO |",
   "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",

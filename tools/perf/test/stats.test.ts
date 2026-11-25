@@ -61,6 +61,6 @@ describe("SLO evaluation", () => {
       ),
     );
     expect(slow.met).toBe(false);
-    expect(slow.misses.join("; ")).toMatch(/p95 900 ms > 500 ms.*error rate/);
+    expect(slow.misses.join("; ")).toMatch(/p95 900 ms > 400 ms.*error rate/);
   });
 });

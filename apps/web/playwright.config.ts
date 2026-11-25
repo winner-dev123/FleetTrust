@@ -10,6 +10,12 @@ const CI = Boolean(process.env["CI"]);
 const WEB_PORT = 3100;
 const API_PORT = 8787;
 
+/**
+ * Browser matrix (docs/qa/device-matrix.md). Chromium always runs; E2E_ALL_BROWSERS=1 (set in
+ * CI) adds Firefox and WebKit (Safari's engine) on desktop and an iPhone-sized WebKit.
+ */
+const ALL_BROWSERS = Boolean(process.env["E2E_ALL_BROWSERS"]) && !process.env["PLAYWRIGHT_CHANNEL"];
+
 const AUTH_EMULATOR = "http://127.0.0.1:9099";
 const MOCK_API = `http://127.0.0.1:${String(API_PORT)}`;
 
@@ -35,6 +41,19 @@ export default defineConfig({
     },
     // WCAG 1.4.10 Reflow: every page must work at 320 CSS pixels without sideways scrolling.
     { name: "mobile", use: { ...devices["Pixel 7"], viewport: { width: 320, height: 780 } } },
+    ...(ALL_BROWSERS
+      ? [
+          {
+            name: "firefox",
+            use: { ...devices["Desktop Firefox"], viewport: { width: 1280, height: 900 } },
+          },
+          {
+            name: "webkit",
+            use: { ...devices["Desktop Safari"], viewport: { width: 1280, height: 900 } },
+          },
+          { name: "iphone", use: { ...devices["iPhone 13"] } },
+        ]
+      : []),
   ],
   webServer: [
     {
