@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fleettrust.invalid/rfcs/events/PaymentRefunded.schema.json",
+  "title": "PaymentRefunded",
+  "description": "A full or partial refund completed. PROPOSED in RFC-0002: specification only (ADR-0011), not emitted by any code.",
+  "x-fleettrust": {
+    "status": "proposed",
+    "rfc": "RFC-0002",
+    "module": "payments",
+    "aggregateType": "service_request",
+    "transport": "transactional outbox (ADR-0007)",
+    "delivery": "at least once; consumers are idempotent on the outbox event ID"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["requestId", "paymentIntentId", "amount", "reason", "occurredAt"],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "paymentIntentId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "amount": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "type": "string",
+          "pattern": "^[0-9]+(.[0-9]{1,2})?$",
+          "description": "Decimal string in major units, never a float"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "ISO 4217"
+        }
+      }
+    },
+    "reason": {
+      "type": "string",
+      "enum": ["provider_cancelled", "appointment_cancelled", "dispute_lost", "goodwill"]
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

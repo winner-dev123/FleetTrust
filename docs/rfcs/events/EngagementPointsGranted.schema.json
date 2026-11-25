@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fleettrust.invalid/rfcs/events/EngagementPointsGranted.schema.json",
+  "title": "EngagementPointsGranted",
+  "description": "A positive ledger entry was written. PROPOSED in RFC-0001: specification only (ADR-0011), not emitted by any code.",
+  "x-fleettrust": {
+    "status": "proposed",
+    "rfc": "RFC-0001",
+    "module": "engagement",
+    "aggregateType": "user",
+    "transport": "transactional outbox (ADR-0007)",
+    "delivery": "at least once; consumers are idempotent on the outbox event ID"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "userId",
+    "entryId",
+    "points",
+    "ruleVersion",
+    "sourceEventId",
+    "sourceEventType",
+    "occurredAt"
+  ],
+  "properties": {
+    "userId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "entryId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "points": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "ruleVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sourceEventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The existing outbox event that earned the points (unique: one grant per source event)"
+    },
+    "sourceEventType": {
+      "type": "string",
+      "enum": ["ServiceRequestCompleted", "ArticleCommentCreated", "VehicleDocumentExpiring"]
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

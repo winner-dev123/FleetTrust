@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fleettrust.invalid/rfcs/events/AssistSuggestionRecorded.schema.json",
+  "title": "AssistSuggestionRecorded",
+  "description": "An AI suggestion was produced and the human's response recorded. No input text is included. PROPOSED in RFC-0004: specification only (ADR-0011), not emitted by any code.",
+  "x-fleettrust": {
+    "status": "proposed",
+    "rfc": "RFC-0004",
+    "module": "assist",
+    "aggregateType": "user",
+    "transport": "transactional outbox (ADR-0007)",
+    "delivery": "at least once; consumers are idempotent on the outbox event ID"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "suggestionId",
+    "useCase",
+    "outcome",
+    "model",
+    "promptVersion",
+    "latencyMs",
+    "occurredAt"
+  ],
+  "properties": {
+    "suggestionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "useCase": {
+      "type": "string",
+      "enum": ["request_draft", "moderation_triage", "profile_description"]
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["accepted", "edited", "rejected", "timed_out"]
+    },
+    "model": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "promptVersion": {
+      "type": "string",
+      "maxLength": 50
+    },
+    "latencyMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,7 +1,8 @@
 /**
- * ADR-0011: future modules (payments/escrow, reviews/ratings, rewards/streaks) exist only as
- * RFCs. These rules catch the concrete ways such a module would sneak into the codebase:
- * tables and columns, API routes, UI routes, config/feature flags and payment SDKs.
+ * ADR-0011: future modules (payments/escrow, reviews/ratings, rewards/streaks, AI, telematics,
+ * multilingual) exist only as RFCs (docs/rfcs). These rules catch the concrete ways such a module
+ * would sneak into the codebase: tables and columns, API routes, UI routes, config/feature flags
+ * and SDKs (payments, AI models, i18n frameworks, telematics).
  * A line containing `guard-allow: <reason>` is exempt (the reason is required and reviewed).
  */
 
@@ -37,6 +38,12 @@ const EXCLUDED_STEMS = [
   "stripe",
   "paypal",
   "testimonial",
+  // AI (RFC-0004), telematics (RFC-0005) and translated content (RFC-0006).
+  "llm",
+  "embedding",
+  "telematics",
+  "geofence",
+  "translation",
 ] as const;
 
 const STEM_PATTERN = new RegExp(`(^|[_\\-/.])(${EXCLUDED_STEMS.join("|")})s?($|[_\\-/.])`, "i");
@@ -61,6 +68,43 @@ const PAYMENT_SDKS = [
   /^flutterwave/,
   /^mollie/,
   /^@mollie\//,
+];
+
+/** SDKs of the other excluded modules: AI models, i18n frameworks, telematics vendors. */
+const EXCLUDED_SDKS: { rule: string; patterns: RegExp[] }[] = [
+  {
+    rule: "ai-sdk",
+    patterns: [
+      /^openai$/,
+      /^@anthropic-ai\//,
+      /^@google\/generative-ai$/,
+      /^@google\/genai$/,
+      /^@google-cloud\/vertexai$/,
+      /^langchain$/,
+      /^@langchain\//,
+      /^ai$/,
+      /^@ai-sdk\//,
+      /^cohere-ai$/,
+      /^@mistralai\//,
+      /^ollama$/,
+      /^replicate$/,
+      /^@huggingface\//,
+      /^@aws-sdk\/client-bedrock/,
+    ],
+  },
+  {
+    rule: "i18n-framework",
+    patterns: [
+      /^i18next$/,
+      /^react-i18next$/,
+      /^next-i18next$/,
+      /^next-intl$/,
+      /^react-intl$/,
+      /^@formatjs\//,
+      /^@lingui\//,
+    ],
+  },
+  { rule: "telematics-sdk", patterns: [/^@samsarahq\//, /^mg-api-js$/, /^@geotab\//] },
 ];
 
 const ALLOW = /guard-allow:\s*\S+/;
@@ -194,6 +238,16 @@ export function checkDependencies(file: SourceFile): Violation[] {
           rule: "payment-sdk",
           detail: `${field}: ${name}`,
         });
+      }
+      for (const group of EXCLUDED_SDKS) {
+        if (group.patterns.some((pattern) => pattern.test(name))) {
+          violations.push({
+            path: file.path,
+            line: 1,
+            rule: group.rule,
+            detail: `${field}: ${name}`,
+          });
+        }
       }
     }
   }

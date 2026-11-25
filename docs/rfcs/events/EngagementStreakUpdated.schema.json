@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fleettrust.invalid/rfcs/events/EngagementStreakUpdated.schema.json",
+  "title": "EngagementStreakUpdated",
+  "description": "A streak grew or reset after a missed day. PROPOSED in RFC-0001: specification only (ADR-0011), not emitted by any code.",
+  "x-fleettrust": {
+    "status": "proposed",
+    "rfc": "RFC-0001",
+    "module": "engagement",
+    "aggregateType": "user",
+    "transport": "transactional outbox (ADR-0007)",
+    "delivery": "at least once; consumers are idempotent on the outbox event ID"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["userId", "kind", "current", "longest", "localDate", "occurredAt"],
+  "properties": {
+    "userId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["active_days", "documents_current"]
+    },
+    "current": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "longest": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "localDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

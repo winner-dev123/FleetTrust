@@ -1,7 +1,7 @@
 # Handoff — Prompt 29: Staging, production and launch
 
 - Date: 2026-11-25
-- Status: **awaiting approval** · PR #31
+- Status: **approved** · merged as PR #31 → `d13425e` (CI 10/10 green on `303529d`)
 - Prompt 28 approved and merged (PR #30 → `467307e`).
 
 ## Assumptions and owner decisions

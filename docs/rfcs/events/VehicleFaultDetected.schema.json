@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fleettrust.invalid/rfcs/events/VehicleFaultDetected.schema.json",
+  "title": "VehicleFaultDetected",
+  "description": "A new diagnostic trouble code appeared; the fleet manager decides what to do. PROPOSED in RFC-0005: specification only (ADR-0011), not emitted by any code.",
+  "x-fleettrust": {
+    "status": "proposed",
+    "rfc": "RFC-0005",
+    "module": "telematics",
+    "aggregateType": "vehicle",
+    "transport": "transactional outbox (ADR-0007)",
+    "delivery": "at least once; consumers are idempotent on the outbox event ID"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["vehicleId", "organizationId", "code", "severity", "readAt", "occurredAt"],
+  "properties": {
+    "vehicleId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "organizationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[PCBU][0-9A-F]{4}$",
+      "description": "OBD-II trouble code"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "warning", "critical"]
+    },
+    "readAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
