@@ -224,7 +224,7 @@ export type TrustDashboardDto = z.infer<typeof trustDashboardSchema>;
 
 export const memberHistorySchema = z.object({
   userId: z.uuid(),
-  status: z.enum(["active", "suspended"]),
+  status: z.enum(["active", "suspended", "deleted"]),
   powerUser: z.enum(POWER_USER_STATUSES),
   sanctions: z.array(sanctionSchema),
   appeals: z.array(moderationAppealSchema),

@@ -147,6 +147,8 @@ export const apiEnvSchema = z
     ADMIN_MFA: z.enum(["required", "off"]).optional(),
     /** Web origin: support sign-in links continue here. */
     PUBLIC_WEB_URL: envFields.httpUrl().default("http://localhost:3000"),
+    /** Worker role: how often the data retention rules run (Prompt 27). Daily by default. */
+    RETENTION_INTERVAL_MS: z.coerce.number().int().min(60_000).max(604_800_000).default(86_400_000),
     ROUTING_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(86_400).default(3_600),
   })
   .superRefine((env, ctx) => {

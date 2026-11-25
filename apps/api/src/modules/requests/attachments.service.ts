@@ -15,6 +15,12 @@ import { DATABASE, type DatabaseProvider } from "../../database/database.module.
 import { sniffContentType } from "../../platform/scanning/file-type.js";
 import { stripImageMetadata } from "../../platform/scanning/image-metadata.js";
 import { MALWARE_SCANNER, type MalwareScanner } from "../../platform/scanning/malware-scanner.js";
+import {
+  KEY_WRAPPER,
+  type KeyWrapper,
+  openFile,
+  sealFile,
+} from "../../platform/crypto/envelope.js";
 import { OBJECT_STORAGE, type ObjectStorage } from "../../platform/storage/index.js";
 import { notFound, requestError } from "./shared.js";
 
@@ -35,6 +41,7 @@ export class AttachmentsService {
     @Inject(DATABASE) private readonly database: DatabaseProvider,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
     @Inject(MALWARE_SCANNER) private readonly scanner: MalwareScanner,
+    @Inject(KEY_WRAPPER) private readonly keys: KeyWrapper,
   ) {}
 
   private get db(): Database {
@@ -102,11 +109,23 @@ export class AttachmentsService {
       throw await reject("malformed_image", "content_type_mismatch");
     }
     const storageKey = `request-photos/${row.id}.${EXTENSIONS[row.declaredContentType] ?? "bin"}`;
-    await this.storage.write("sensitive", storageKey, clean, row.declaredContentType);
+    // Encrypted at rest with a per-file key (Prompt 27); the type is kept on the row.
+    const sealed = await sealFile(this.keys, clean, row.id);
+    await this.storage.write(
+      "sensitive",
+      storageKey,
+      sealed.ciphertext,
+      "application/octet-stream",
+    );
     await this.storage.delete("quarantine", row.quarantineKey);
     await this.db
       .update(serviceRequestAttachments)
-      .set({ status: "available", storageKey, contentType: row.declaredContentType })
+      .set({
+        status: "available",
+        storageKey,
+        contentType: row.declaredContentType,
+        ...sealed.columns,
+      })
       .where(eq(serviceRequestAttachments.id, row.id));
     return { id: row.id, status: "available" };
   }
@@ -117,7 +136,12 @@ export class AttachmentsService {
       throw notFound();
     }
     return {
-      data: await this.storage.read("sensitive", attachment.storageKey),
+      data: await openFile(
+        this.keys,
+        await this.storage.read("sensitive", attachment.storageKey),
+        attachment,
+        attachment.id,
+      ),
       contentType: attachment.contentType,
     };
   }

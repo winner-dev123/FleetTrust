@@ -8,9 +8,11 @@ import { type ReactNode, useEffect } from "react";
 import { useAccountState } from "@/lib/account";
 import { appNavigation } from "@/lib/nav";
 import { rememberReturnPath } from "@/lib/return-path";
+import { takeExitPath } from "@/lib/session-exit";
 import { useSession } from "@/lib/session";
 
 import { ErrorNotice, Loading, Notice } from "./feedback";
+import { ConsentGate } from "./consent-gate";
 import { SiteNotice } from "./site-notice";
 import { NavMenu } from "./nav-menu";
 
@@ -52,6 +54,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (session.status !== "signed-out") return;
+    const exit = takeExitPath();
+    if (exit) {
+      router.replace(exit);
+      return;
+    }
     rememberReturnPath(window.localStorage, window.location.pathname + window.location.search);
     router.replace("/sign-in");
   }, [session.status, router]);
@@ -80,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <ErrorNotice error={account.error} />
       );
   } else {
-    body = children;
+    body = <ConsentGate>{children}</ConsentGate>;
     nav = (
       <aside className="app-nav">
         <NavMenu

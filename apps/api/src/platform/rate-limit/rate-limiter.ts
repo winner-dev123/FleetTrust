@@ -22,6 +22,11 @@ export class MemoryRateLimiter implements RateLimiter {
 
   constructor(private readonly now: () => number = () => Date.now()) {}
 
+  /** Forgets every window (tests that make many requests from one address). */
+  clear(): void {
+    this.windows.clear();
+  }
+
   hit(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult> {
     const now = this.now();
     let window = this.windows.get(key);

@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { ConsentGate } from "../src/components/consent-gate";
 import { useTheme } from "../src/components/theme";
 import { getRuntime } from "../src/platform/runtime";
 import { NetworkProvider } from "../src/state/network";
@@ -40,6 +41,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth/finish" options={{ title: "Signing in" }} />
           </Stack>
           <PushListener />
+          <ConsentGate />
           <StatusBar style="auto" />
         </NetworkProvider>
       </SessionProvider>

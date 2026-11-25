@@ -21,6 +21,7 @@ describe("FirebaseAuthVerifier", () => {
       verifyIdToken: vi.fn().mockResolvedValue(decoded),
       revokeRefreshTokens: vi.fn(),
       generateSignInWithEmailLink: vi.fn(),
+      deleteUser: vi.fn(),
     };
 
     const identity = await new FirebaseAuthVerifier(auth).verifyIdToken("tok", {
@@ -49,6 +50,7 @@ describe("FirebaseAuthVerifier", () => {
       verifyIdToken: vi.fn().mockRejectedValue(firebaseError(code)),
       revokeRefreshTokens: vi.fn(),
       generateSignInWithEmailLink: vi.fn(),
+      deleteUser: vi.fn(),
     };
     const error = await new FirebaseAuthVerifier(auth)
       .verifyIdToken("tok", { checkRevoked: false })
@@ -63,6 +65,7 @@ describe("FirebaseAuthVerifier", () => {
       verifyIdToken: vi.fn(),
       revokeRefreshTokens: vi.fn().mockResolvedValue(undefined),
       generateSignInWithEmailLink: vi.fn().mockResolvedValue("https://link.example/x"),
+      deleteUser: vi.fn(),
     };
     await new FirebaseAuthVerifier(auth).revokeSessions("abc123");
     expect(auth.revokeRefreshTokens).toHaveBeenCalledWith("abc123");
@@ -75,6 +78,7 @@ describe("FirebaseAuthVerifier.signInLink", () => {
       verifyIdToken: vi.fn(),
       revokeRefreshTokens: vi.fn(),
       generateSignInWithEmailLink: vi.fn().mockResolvedValue("https://link.example/abc"),
+      deleteUser: vi.fn(),
     };
     const link = await new FirebaseAuthVerifier(auth).signInLink(
       "driver@example.com",
@@ -85,5 +89,21 @@ describe("FirebaseAuthVerifier.signInLink", () => {
       url: "https://app.example.com/auth/finish",
       handleCodeInApp: true,
     });
+  });
+});
+
+describe("FirebaseAuthVerifier.deleteAccount", () => {
+  it("deletes the Firebase user and ignores one that is already gone", async () => {
+    const gone = Object.assign(new Error("gone"), { code: "auth/user-not-found" });
+    const auth = {
+      verifyIdToken: vi.fn(),
+      revokeRefreshTokens: vi.fn(),
+      generateSignInWithEmailLink: vi.fn(),
+      deleteUser: vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(gone),
+    };
+    const verifier = new FirebaseAuthVerifier(auth);
+    await verifier.deleteAccount("abc");
+    await verifier.deleteAccount("abc");
+    expect(auth.deleteUser).toHaveBeenCalledTimes(2);
   });
 });

@@ -25,6 +25,6 @@ import { VerificationService } from "./verification.service.js";
     DocumentAccessController,
   ],
   providers: [VerificationService, ReviewService],
-  exports: [VerificationService],
+  exports: [VerificationService, ReviewService],
 })
 export class VerificationModule {}

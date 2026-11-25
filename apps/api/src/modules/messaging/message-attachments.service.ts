@@ -8,6 +8,12 @@ import { DATABASE, type DatabaseProvider } from "../../database/database.module.
 import { sniffContentType } from "../../platform/scanning/file-type.js";
 import { stripImageMetadata } from "../../platform/scanning/image-metadata.js";
 import { MALWARE_SCANNER, type MalwareScanner } from "../../platform/scanning/malware-scanner.js";
+import {
+  KEY_WRAPPER,
+  type KeyWrapper,
+  openFile,
+  sealFile,
+} from "../../platform/crypto/envelope.js";
 import { OBJECT_STORAGE, type ObjectStorage } from "../../platform/storage/index.js";
 import { MessagingService, messagingError, notFound } from "./messaging.service.js";
 
@@ -30,6 +36,7 @@ export class MessageAttachmentsService {
     @Inject(DATABASE) private readonly database: DatabaseProvider,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
     @Inject(MALWARE_SCANNER) private readonly scanner: MalwareScanner,
+    @Inject(KEY_WRAPPER) private readonly keys: KeyWrapper,
     private readonly messaging: MessagingService,
   ) {}
 
@@ -109,7 +116,14 @@ export class MessageAttachmentsService {
       }
     }
     const storageKey = `message-attachments/${row.id}.${EXTENSIONS[row.declaredContentType] ?? "bin"}`;
-    await this.storage.write("sensitive", storageKey, clean, row.declaredContentType);
+    // Encrypted at rest with a per-file key (Prompt 27); the type is kept on the row.
+    const sealed = await sealFile(this.keys, clean, row.id);
+    await this.storage.write(
+      "sensitive",
+      storageKey,
+      sealed.ciphertext,
+      "application/octet-stream",
+    );
     await this.storage.delete("quarantine", row.quarantineKey);
     await this.db
       .update(messageAttachments)
@@ -118,6 +132,7 @@ export class MessageAttachmentsService {
         storageKey,
         contentType: row.declaredContentType,
         size: clean.length,
+        ...sealed.columns,
       })
       .where(eq(messageAttachments.id, row.id));
     return { id: row.id, status: "available" };
@@ -156,7 +171,12 @@ export class MessageAttachmentsService {
       throw notFound();
     }
     return {
-      data: await this.storage.read("sensitive", attachment.storageKey),
+      data: await openFile(
+        this.keys,
+        await this.storage.read("sensitive", attachment.storageKey),
+        attachment,
+        attachment.id,
+      ),
       contentType: attachment.contentType,
     };
   }

@@ -66,6 +66,63 @@ function LocationStatus() {
   );
 }
 
+/**
+ * Account deletion in the app (App Store and Play policy; Prompt 27). The person types DELETE;
+ * the API also needs a recent sign-in. A copy of the data is downloaded on the website.
+ */
+function DeleteAccount() {
+  const { api, platform, signOut } = useSession();
+  const router = useRouter();
+  const [typed, setTyped] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.deleteAccount("account.delete");
+      await signOut().catch(() => undefined);
+      router.replace("/");
+    } catch (failure) {
+      setError(errorMessage(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card title="Your data">
+      <Body>Download a copy of your data from the FleetTrust website.</Body>
+      <Button
+        label="Download my data on the website"
+        variant="ghost"
+        onPress={() => void platform.device.openExternal(`${mobileEnv.webUrl}/app/account`)}
+      />
+      <Heading level={2}>Delete your account</Heading>
+      <Body small muted>
+        Your profile, vehicles, contacts, lists, alerts and preferences are erased. Messages you
+        sent stay for the people who received them, shown as from a deleted member. This can&apos;t
+        be undone.
+      </Body>
+      <TextField
+        label="Type DELETE to confirm"
+        autoCapitalize="characters"
+        value={typed}
+        onChangeText={setTyped}
+      />
+      {error ? <Body tone="danger">{error}</Body> : null}
+      <Button
+        label="Delete my account"
+        variant="danger"
+        busy={busy}
+        disabled={typed.trim() !== "DELETE"}
+        onPress={() => void remove()}
+      />
+    </Card>
+  );
+}
+
 function SignedInAccount() {
   const { api, platform, user, signOut } = useSession();
   const router = useRouter();
@@ -167,6 +224,7 @@ function SignedInAccount() {
           onPress={() => void platform.device.openExternal(`${mobileEnv.webUrl}/app/account`)}
         />
       </Card>
+      <DeleteAccount />
       <Card title="Sign out">
         <Body small muted>
           Signing out removes your drafts and unsent messages from this phone.

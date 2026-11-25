@@ -169,3 +169,45 @@ describe("emergency never waits for a connection", () => {
     expect(screen.queryByRole("button", { name: "Send alert" })).not.toBeOnTheScreen();
   });
 });
+
+describe("privacy", () => {
+  it("asks for the terms once after sign-in and records the agreement", async () => {
+    const user = userEvent.setup();
+    const api = new FakeApi();
+    api.consentsAccepted = false;
+    await openApp("/", { api });
+    expect(await screen.findByText("Before you start")).toBeOnTheScreen();
+    await user.press(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByText("Turn on the agreement to continue.")).toBeOnTheScreen();
+    await user.press(
+      screen.getByRole("checkbox", {
+        name: "I agree to the terms of service and have read the privacy notice",
+      }),
+    );
+    await user.press(screen.getByRole("button", { name: "Continue" }));
+    await waitFor(() => {
+      expect(screen.queryByText("Before you start")).not.toBeOnTheScreen();
+    });
+    expect(
+      api
+        .callsTo("POST", "/v1/me/consents")
+        .map((c) => (c.body as { purpose: string }).purpose)
+        .sort(),
+    ).toEqual(["privacy", "terms"]);
+  });
+
+  it("deletes the account only after typing DELETE, then signs out", async () => {
+    const user = userEvent.setup();
+    const { device, api } = await openApp("/account");
+    const remove = await screen.findByRole("button", { name: "Delete my account" });
+    expect(remove).toBeDisabled();
+    await user.type(screen.getByLabelText("Type DELETE to confirm"), "DELETE");
+    await user.press(screen.getByRole("button", { name: "Delete my account" }));
+    await waitFor(() => {
+      expect(api.accountDeleted).toBe(true);
+    });
+    await waitFor(() => {
+      expect(device.user).toBeNull();
+    });
+  });
+});

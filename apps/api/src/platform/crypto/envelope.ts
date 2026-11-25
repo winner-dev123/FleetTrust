@@ -138,3 +138,49 @@ export class KmsKeyWrapper implements KeyWrapper {
     return Buffer.from(result["plaintext"], "base64");
   }
 }
+
+/** Columns that hold an envelope-encrypted file's key material (base64, never the data key). */
+export interface SealedColumns {
+  wrappedKey: string;
+  iv: string;
+  authTag: string;
+  keyId: string;
+}
+
+/** Encrypts a file for the sensitive bucket; store `ciphertext` and keep `columns` on the row. */
+export async function sealFile(
+  wrapper: KeyWrapper,
+  data: Buffer,
+  aad: string,
+): Promise<{ ciphertext: Buffer; columns: SealedColumns }> {
+  const blob = await encryptBlob(wrapper, data, aad);
+  return {
+    ciphertext: blob.ciphertext,
+    columns: {
+      wrappedKey: blob.wrappedKey.toString("base64"),
+      iv: blob.iv.toString("base64"),
+      authTag: blob.authTag.toString("base64"),
+      keyId: blob.keyId,
+    },
+  };
+}
+
+/** Decrypts a stored file. Rows written before encryption (no wrapped key) are returned as is. */
+export async function openFile(
+  wrapper: KeyWrapper,
+  stored: Buffer,
+  row: { wrappedKey: string | null; iv: string | null; authTag: string | null },
+  aad: string,
+): Promise<Buffer> {
+  if (row.wrappedKey === null || row.iv === null || row.authTag === null) return stored;
+  return decryptBlob(
+    wrapper,
+    {
+      ciphertext: stored,
+      wrappedKey: Buffer.from(row.wrappedKey, "base64"),
+      iv: Buffer.from(row.iv, "base64"),
+      authTag: Buffer.from(row.authTag, "base64"),
+    },
+    aad,
+  );
+}

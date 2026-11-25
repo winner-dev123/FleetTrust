@@ -288,6 +288,13 @@
       "when": 1795569209742,
       "tag": "0040_admin_console_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795570728863,
+      "tag": "0041_privacy_and_hardening",
+      "breakpoints": true
     }
   ]
 }

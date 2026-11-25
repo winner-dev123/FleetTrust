@@ -68,6 +68,12 @@ export function SiteFooter() {
           <li>
             <Link href="/emergency">Emergency help</Link>
           </li>
+          <li>
+            <Link href="/legal/privacy">Privacy notice</Link>
+          </li>
+          <li>
+            <Link href="/legal/terms">Terms of service</Link>
+          </li>
         </ul>
       </div>
     </footer>

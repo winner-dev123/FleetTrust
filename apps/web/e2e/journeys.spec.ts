@@ -203,3 +203,39 @@ test.describe("admin console", () => {
     await expect(page.getByRole("link", { name: "Admin console" })).toHaveCount(0);
   });
 });
+
+test.describe("privacy", () => {
+  test("a new member accepts the terms once, downloads their data and deletes the account", async ({
+    page,
+  }) => {
+    await signIn(page, uniqueEmail("fresh"));
+    await page.goto("/app/account");
+    await expect(page.getByRole("heading", { name: "Before you start", level: 1 })).toBeVisible();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByText("Tick the box to continue.")).toBeVisible();
+    await page
+      .getByLabel("I agree to the terms of service and have read the privacy notice")
+      .check();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "Privacy and your data" })).toBeVisible();
+
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download my data" }).click();
+    expect((await download).suggestedFilename()).toBe("fleettrust-data.json");
+
+    await page.getByRole("button", { name: "Delete my account…" }).click();
+    const dialog = page.getByRole("alertdialog", { name: "Delete my account?" });
+    await expect(dialog.getByRole("button", { name: "Delete my account" })).toBeDisabled();
+    await dialog.getByLabel("Type DELETE to confirm").fill("DELETE");
+    await dialog.getByRole("button", { name: "Delete my account" }).click();
+    await page.waitForURL((url) => url.pathname === "/");
+  });
+
+  test("pages carry the security headers", async ({ page }) => {
+    const response = await page.goto("/");
+    const headers = response?.headers() ?? {};
+    expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(headers["x-frame-options"]).toBe("DENY");
+    expect(headers["x-content-type-options"]).toBe("nosniff");
+  });
+});

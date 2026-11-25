@@ -1,6 +1,9 @@
 import { createApiClient } from "@fleettrust/sdk";
 import {
   COMMUNITY_CONTENT_LABEL,
+  CONSENT_PURPOSES,
+  CURRENT_CONSENT_VERSIONS,
+  REQUIRED_CONSENTS,
   DEFAULT_MESSAGING_PREFERENCES,
   INDICATIVE_PRICE_DISCLAIMER,
   type MessageDto,
@@ -31,12 +34,26 @@ type Handler = (input: { params: string[]; body: Record<string, unknown>; query:
 export class FakeApi {
   readonly calls: Call[] = [];
   offline = false;
+  /** False: the person hasn't accepted the current terms yet (consent gate). */
+  consentsAccepted = true;
+  accountDeleted = false;
   readonly messages: MessageDto[] = [f.message(1, "Hello, how can we help?")];
   private readonly routes: { method: string; pattern: RegExp; handle: Handler }[] = [];
   private seq = 1;
 
   constructor() {
     this.on("GET", "/v1/me", () => ({ body: f.me }));
+    this.on("GET", "/v1/me/consents", () => ({ body: this.consentStates() }));
+    this.on("POST", "/v1/me/consents", ({ body }) => {
+      if (REQUIRED_CONSENTS.includes(body["purpose"] as "terms") && body["granted"] === true) {
+        this.consentsAccepted = true;
+      }
+      return { body: this.consentStates() };
+    });
+    this.on("DELETE", "/v1/me", () => {
+      this.accountDeleted = true;
+      return { status: 204 };
+    });
     this.on("GET", "/v1/me/messaging-preferences", () => ({ body: DEFAULT_MESSAGING_PREFERENCES }));
     this.on("PUT", "/v1/me/devices", () => ({ status: 204 }));
     this.on("POST", "/v1/me/devices/unregister", () => ({ status: 204 }));
@@ -105,6 +122,22 @@ export class FakeApi {
     this.on("GET", "/v1/me/inbox", () => ({
       body: { notifications: [], unreadNotifications: 0, unreadConversations: 0 },
     }));
+  }
+
+  private consentStates() {
+    return CONSENT_PURPOSES.map((purpose) => {
+      const required = REQUIRED_CONSENTS.includes(purpose);
+      const granted = required && this.consentsAccepted ? true : null;
+      return {
+        purpose,
+        required,
+        currentVersion: CURRENT_CONSENT_VERSIONS[purpose],
+        granted,
+        version: granted ? CURRENT_CONSENT_VERSIONS[purpose] : null,
+        recordedAt: granted ? f.NOW : null,
+        needsAnswer: required && !this.consentsAccepted,
+      };
+    });
   }
 
   /** Adds or replaces a route. `:param` matches one path segment. */

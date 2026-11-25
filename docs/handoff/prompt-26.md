@@ -1,7 +1,7 @@
 # Handoff — Prompt 26: Administration and operations
 
 - Date: 2026-11-24
-- Status: **awaiting owner approval** · branch `feat/prompt-26-admin`
+- Status: **approved** · merged as PR #28 → `c5338d6` (CI 6/6 green on `4611b09`)
 - Prompt 25 approved and merged (PR #27 → `f621a16`).
 
 ## Assumptions

@@ -68,6 +68,14 @@ export class FakeAuthVerifier implements AuthVerifier {
     return Promise.resolve();
   }
 
+  readonly deletedAccounts: string[] = [];
+
+  deleteAccount(uid: string): Promise<void> {
+    this.deletedAccounts.push(uid);
+    this.disabled.add(uid);
+    return Promise.resolve();
+  }
+
   readonly signInLinks: { email: string; continueUrl: string }[] = [];
 
   signInLink(email: string, continueUrl: string): Promise<string> {

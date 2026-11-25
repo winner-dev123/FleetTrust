@@ -103,7 +103,8 @@ export const verificationCases = pgTable(
     ),
     check(
       "verification_cases_reason_required",
-      sql`${t.status} NOT IN ('rejected', 'changes_requested') OR char_length(${t.decisionReason}) >= 3`,
+      // COALESCE: a length check on NULL is NULL, which a CHECK treats as passing (fixed in Prompt 27).
+      sql`${t.status} NOT IN ('rejected', 'changes_requested') OR COALESCE(char_length(${t.decisionReason}), 0) >= 3`,
     ),
   ],
 );
@@ -209,7 +210,7 @@ export const verificationBadges = pgTable(
     ),
     check(
       "verification_badges_revocation_reason",
-      sql`${t.endReason} IS DISTINCT FROM 'revoked' OR (${t.endedBy} IS NOT NULL AND char_length(${t.endNote}) >= 3)`,
+      sql`${t.endReason} IS DISTINCT FROM 'revoked' OR (${t.endedBy} IS NOT NULL AND COALESCE(char_length(${t.endNote}), 0) >= 3)`,
     ),
   ],
 );
