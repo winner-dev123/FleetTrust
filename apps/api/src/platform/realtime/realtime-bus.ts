@@ -23,8 +23,10 @@ export class MemoryRealtimeBus implements RealtimeBus {
 
   publish(channel: string, payload: unknown): Promise<void> {
     // Deliver asynchronously, like a network bus, with a copy (no shared references).
+    // A microtask, not setImmediate: the load test (Prompt 28) found the last message of a
+    // burst sat unsent in an otherwise idle API process until the next request woke it.
     const copy: unknown = JSON.parse(JSON.stringify(payload));
-    setImmediate(() => this.emitter.emit(channel, copy));
+    queueMicrotask(() => this.emitter.emit(channel, copy));
     return Promise.resolve();
   }
 
