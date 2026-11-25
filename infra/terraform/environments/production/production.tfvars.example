@@ -5,3 +5,4 @@ billing_account = "" # XXXXXX-XXXXXX-XXXXXX to enable the budget alert
 web_origins     = ["https://example.com"]
 api_host        = "" # e.g. api.example.com, after the first deploy
 web_host        = "" # e.g. example.com, after the first deploy
+api_domain      = "" # e.g. api.example.com: creates the load balancer, certificate and Cloud Armor

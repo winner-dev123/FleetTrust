@@ -43,3 +43,9 @@ variable "web_host" {
   type        = string
   default     = ""
 }
+
+variable "api_domain" {
+  description = "Custom API domain behind the load balancer and Cloud Armor (empty: none yet)."
+  type        = string
+  default     = ""
+}

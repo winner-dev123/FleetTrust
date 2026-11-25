@@ -18,3 +18,8 @@ output "release_variables" {
     clamav_host                = module.fleettrust.clamav_host
   }
 }
+
+output "api_ip_address" {
+  description = "A record for the API domain (empty until api_domain is set)."
+  value       = module.fleettrust.api_ip_address
+}

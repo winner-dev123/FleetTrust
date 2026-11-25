@@ -42,6 +42,7 @@ module "fleettrust" {
   web_origins        = var.web_origins
   api_host           = var.api_host
   web_host           = var.web_host
+  api_domain         = var.api_domain
 
   db_tier              = "db-custom-2-7680"
   db_high_availability = true

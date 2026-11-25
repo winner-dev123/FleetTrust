@@ -277,7 +277,12 @@ describe("feature settings", () => {
     const list = (await admin.as().get("/v1/admin/features").expect(200))
       .body as FeatureSettingDto[];
     expect(list.map((s) => s.key).sort()).toEqual(
-      ["community.auto_hide_reporters", "signups.paused", "site.notice"].sort(),
+      [
+        "community.auto_hide_reporters",
+        "signups.paused",
+        "signups.pilot_allowlist",
+        "site.notice",
+      ].sort(),
     );
     await admin
       .as()
