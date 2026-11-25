@@ -2,7 +2,7 @@
 
 import { ErrorNotice, Loading, Notice } from "@/components/feedback";
 import { Card, PageHeader, Stat } from "@/components/layout";
-import { formatDate, formatDateTime, titleCase } from "@/lib/format";
+import { formatDate, formatDateTime, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 

@@ -6,7 +6,7 @@ import { ButtonLink } from "@/components/button";
 import { ErrorNotice, Loading, Notice } from "@/components/feedback";
 import { Card, PageHeader, Stat } from "@/components/layout";
 import { useAccount } from "@/lib/account";
-import { formatDateTime, titleCase } from "@/lib/format";
+import { formatDateTime, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Badge, EmptyState, Notice } from "@/components/feedback";
-import { formatDate, titleCase } from "@/lib/format";
+import { formatDate, titleCase } from "@fleettrust/types";
 import { publicApi } from "@/lib/public-api";
 
 export const dynamic = "force-dynamic";

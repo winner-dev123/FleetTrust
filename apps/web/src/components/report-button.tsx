@@ -4,8 +4,8 @@ import { REPORT_REASONS, type ReportTargetType } from "@fleettrust/types";
 import Link from "next/link";
 import { type SubmitEvent, useState } from "react";
 
-import { errorMessage } from "@/lib/errors";
-import { titleCase } from "@/lib/format";
+import { errorMessage } from "@fleettrust/sdk";
+import { titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 
 import { Button } from "./button";

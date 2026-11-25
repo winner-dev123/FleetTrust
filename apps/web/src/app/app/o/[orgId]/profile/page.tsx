@@ -14,7 +14,7 @@ import { Button } from "@/components/button";
 import { Checkbox, TextArea, TextField } from "@/components/field";
 import { ErrorNotice, Loading, Notice } from "@/components/feedback";
 import { Card, PageHeader } from "@/components/layout";
-import { errorMessage } from "@/lib/errors";
+import { errorMessage } from "@fleettrust/sdk";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 

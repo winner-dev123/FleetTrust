@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { errorMessage } from "@/lib/errors";
+import { errorMessage } from "@fleettrust/sdk";
 import { useSession } from "@/lib/session";
 
 import { Button } from "./button";

@@ -3,7 +3,7 @@
 import { type CreateVehicle, VEHICLE_TYPE_LABELS, VEHICLE_TYPES } from "@fleettrust/types";
 import { type SubmitEvent, useState } from "react";
 
-import { errorMessage } from "@/lib/errors";
+import { errorMessage } from "@fleettrust/sdk";
 
 import { Button } from "./button";
 import { SelectField, TextField } from "./field";

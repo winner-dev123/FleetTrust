@@ -13,8 +13,8 @@ import { SelectField, TextArea, TextField } from "@/components/field";
 import { Notice } from "@/components/feedback";
 import { Card, PageHeader } from "@/components/layout";
 import { textToDocument } from "@/lib/article-text";
-import { errorMessage } from "@/lib/errors";
-import { titleCase } from "@/lib/format";
+import { errorMessage } from "@fleettrust/sdk";
+import { titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 
 /** Write an article: saved as a draft, then published (new accounts go to moderation first). */

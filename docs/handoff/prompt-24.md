@@ -1,7 +1,7 @@
 # Handoff — Prompt 24: Web product and design system
 
 - Date: 2026-11-24
-- Status: **awaiting owner approval** · branch `feat/prompt-24-web`
+- Status: **approved** · merged as PR #26 → `aa34a6b` (CI 6/6 green on `6b89316`)
 - Prompt 23 approved and merged (PR #25 → `fd20171`).
 
 ## Assumptions

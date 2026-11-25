@@ -1,7 +1,7 @@
-import { ApiError } from "@fleettrust/sdk";
+import { ApiError } from "./client.js";
 import { describe, expect, it } from "vitest";
 
-import { errorMessage } from "./errors";
+import { errorMessage } from "./errors.js";
 
 describe("errorMessage", () => {
   it("explains common reasons in plain language", () => {

@@ -9,7 +9,7 @@ import { TextField } from "@/components/field";
 import { Notice } from "@/components/feedback";
 import { Card, PageHeader } from "@/components/layout";
 import { useAccount } from "@/lib/account";
-import { errorMessage } from "@/lib/errors";
+import { errorMessage } from "@fleettrust/sdk";
 import { useSession } from "@/lib/session";
 
 type Path = "personal" | OrganizationKind;

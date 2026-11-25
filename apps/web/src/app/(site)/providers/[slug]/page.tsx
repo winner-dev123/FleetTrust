@@ -12,7 +12,7 @@ import { cache } from "react";
 
 import { ButtonLink } from "@/components/button";
 import { Badge, Notice } from "@/components/feedback";
-import { formatDate } from "@/lib/format";
+import { formatDate } from "@fleettrust/types";
 import { publicApi } from "@/lib/public-api";
 
 import { ContactDetails } from "./contact-details";

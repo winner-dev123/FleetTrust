@@ -6,7 +6,7 @@ import { type SubmitEvent, useState } from "react";
 import { Button } from "@/components/button";
 import { TextArea, TextField } from "@/components/field";
 import { Notice } from "@/components/feedback";
-import { errorMessage } from "@/lib/errors";
+import { errorMessage } from "@fleettrust/sdk";
 import { useSession } from "@/lib/session";
 
 /** Apply with a message and the contact details you choose to share with this employer. */

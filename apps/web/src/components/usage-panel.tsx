@@ -1,6 +1,6 @@
 import { CAPABILITIES, type EntitlementsResponse } from "@fleettrust/types";
 
-import { formatDate } from "@/lib/format";
+import { formatDate } from "@fleettrust/types";
 
 import { Notice } from "./feedback";
 import { UsageMeter } from "./layout";

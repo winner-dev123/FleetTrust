@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/button";
 import { EmptyState, ErrorNotice, Loading } from "@/components/feedback";
 import { PageHeader } from "@/components/layout";
-import { formatDateTime } from "@/lib/format";
-import { notificationHref } from "@/lib/notifications";
+import { formatDateTime } from "@fleettrust/types";
+import { notificationHref } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 

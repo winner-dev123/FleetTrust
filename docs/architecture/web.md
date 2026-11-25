@@ -57,7 +57,7 @@ Next.js 16 (App Router) in `apps/web`, hosted on Firebase App Hosting. Design: [
 ## Map
 
 - `GET /v1/geo/map-config` gives `{ tileUrl, attribution }`.
-- `lib/map.ts` does the Web Mercator maths and lays out the tiles.
+- `@fleettrust/ui` (`map.ts`, shared with the mobile app since Prompt 25) does the Web Mercator maths and lays out the tiles.
 - Only https templates are drawn (http on localhost). Without a template, a grid is shown with a note.
 - The searcher's location stays in the browser: it's in the URL of their own search and the API never stores it (ADR-0019).
 

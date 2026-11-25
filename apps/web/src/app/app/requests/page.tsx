@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ButtonLink } from "@/components/button";
 import { Badge, EmptyState, ErrorNotice, Loading } from "@/components/feedback";
 import { PageHeader } from "@/components/layout";
-import { formatDate, titleCase } from "@/lib/format";
+import { formatDate, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
