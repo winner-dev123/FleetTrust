@@ -1,7 +1,7 @@
 # Handoff — Prompt 28: Performance, reliability and end-to-end QA
 
 - Date: 2026-11-25
-- Status: **awaiting approval** · PR #30
+- Status: **approved** · merged as PR #30 → `467307e` (CI 7/7 green on `bbfc60e`)
 - Prompt 27 approved and merged (PR #29 → `ad7fc0d`).
 
 ## Assumptions

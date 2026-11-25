@@ -884,6 +884,7 @@ function featureList() {
       value: featureValues.has(key) ? featureValues.get(key) : definition.defaultValue,
       defaultValue: definition.defaultValue,
       public: definition.public,
+      ...("editor" in definition ? { editor: definition.editor } : {}),
       updatedAt: null,
       updatedBy: null,
     };

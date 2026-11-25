@@ -48,5 +48,7 @@ export const authErrorReasonSchema = z.enum([
   "profile_incomplete",
   /** New accounts are paused by an admin; existing accounts are unaffected. */
   "signups_paused",
+  /** Limited pilot: this email isn't on the pilot allowlist (setting signups.pilot_allowlist). */
+  "pilot_invite_only",
 ]);
 export type AuthErrorReason = z.infer<typeof authErrorReasonSchema>;

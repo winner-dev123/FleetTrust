@@ -1,0 +1,7 @@
+# Copy to production.tfvars (not committed: it names people and accounts).
+project_id      = "fleettrust-production"
+alert_email     = "ops@example.com"
+billing_account = "" # XXXXXX-XXXXXX-XXXXXX to enable the budget alert
+web_origins     = ["https://example.com"]
+api_host        = "" # e.g. api.example.com, after the first deploy
+web_host        = "" # e.g. example.com, after the first deploy

@@ -31,8 +31,8 @@ Each stage needs explicit owner approval before the next starts. Status values: 
 | 25  | React Native mobile product                | approved (merged, PR #27)          | [prompt-25.md](prompt-25.md) |
 | 26  | Administration and operations              | approved (merged, PR #28)          | [prompt-26.md](prompt-26.md) |
 | 27  | Security and privacy hardening             | approved (merged, PR #29)          | [prompt-27.md](prompt-27.md) |
-| 28  | Performance, reliability and end-to-end QA | awaiting approval                  | [prompt-28.md](prompt-28.md) |
-| 29  | Staging, production and launch             | todo                               |                              |
+| 28  | Performance, reliability and end-to-end QA | approved (merged, PR #30)          | [prompt-28.md](prompt-28.md) |
+| 29  | Staging, production and launch             | in progress                        | [prompt-29.md](prompt-29.md) |
 | 30  | Future extensibility specification only    | todo                               |                              |
 
 ## Prompt 01 acceptance criteria

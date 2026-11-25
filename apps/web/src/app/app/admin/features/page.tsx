@@ -72,8 +72,8 @@ function SettingEditor({
         ) : (
           <TextArea
             label="Text"
-            hint="Leave empty to hide it."
-            maxLength={280}
+            hint={setting.editor?.emptyHint ?? "Leave empty to clear it."}
+            maxLength={setting.editor?.maxLength ?? 280}
             value={typeof value === "string" ? value : ""}
             onChange={(event) => {
               setValue(event.target.value);

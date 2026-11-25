@@ -1,0 +1,5 @@
+# Copy to backend.hcl (not committed). The bucket is created once, by hand, before the first init:
+#   gcloud storage buckets create gs://fleettrust-staging-tfstate --location=europe-west1 #     --uniform-bucket-level-access --public-access-prevention
+#   gcloud storage buckets update gs://fleettrust-staging-tfstate --versioning
+bucket = "fleettrust-staging-tfstate"
+prefix = "fleettrust"
