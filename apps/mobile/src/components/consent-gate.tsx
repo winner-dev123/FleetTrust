@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { CONSENT_LABELS, type ConsentStateDto } from "@fleettrust/types";
 import { useEffect, useState } from "react";
@@ -41,7 +42,7 @@ export function ConsentGate() {
 
   async function accept() {
     if (!agreed) {
-      setError("Turn on the agreement to continue.");
+      setError(copy.consent.agreeFirst);
       return;
     }
     setBusy(true);
@@ -80,13 +81,18 @@ export function ConsentGate() {
         contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg, paddingTop: 64 }}
       >
         <Heading>
-          {missing.some((c) => c.version !== null) ? "Our terms have changed" : "Before you start"}
+          {missing.some((c) => c.version !== null)
+            ? copy.consent.termsChanged
+            : copy.consent.beforeYouStart}
         </Heading>
-        <Body>Please read and accept these to use FleetTrust:</Body>
+        <Body>{copy.consent.intro}</Body>
         {missing.map((c) => (
           <Button
             key={c.purpose}
-            label={`Read the ${CONSENT_LABELS[c.purpose].toLowerCase()} (version ${c.currentVersion})`}
+            label={fill(copy.consent.readDocument, {
+              document: CONSENT_LABELS[c.purpose].toLowerCase(),
+              version: c.currentVersion,
+            })}
             variant="ghost"
             onPress={() =>
               void platform.device.openExternal(
@@ -95,17 +101,13 @@ export function ConsentGate() {
             }
           />
         ))}
-        <Toggle
-          label="I agree to the terms of service and have read the privacy notice"
-          value={agreed}
-          onChange={setAgreed}
-        />
+        <Toggle label={copy.consent.agree} value={agreed} onChange={setAgreed} />
         {error ? (
           <Notice tone="danger" live>
             <Body>{error}</Body>
           </Notice>
         ) : null}
-        <Button label="Continue" busy={busy} onPress={() => void accept()} />
+        <Button label={copy.consent.continue} busy={busy} onPress={() => void accept()} />
       </ScrollView>
     </View>
   );

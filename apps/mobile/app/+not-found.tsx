@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import { useRouter } from "expo-router";
 
 import { Body, Button, Heading, Screen } from "../src/components/ui";
@@ -6,10 +7,10 @@ export default function NotFound() {
   const router = useRouter();
   return (
     <Screen>
-      <Heading>Page not found</Heading>
-      <Body>That link doesn&apos;t lead anywhere in the app.</Body>
+      <Heading>{copy.notFound.title}</Heading>
+      <Body>{copy.notFound.body}</Body>
       <Button
-        label="Go to search"
+        label={copy.notFound.goToSearch}
         onPress={() => {
           router.replace("/");
         }}

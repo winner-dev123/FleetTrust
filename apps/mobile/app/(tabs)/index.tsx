@@ -1,3 +1,4 @@
+import { copy, fill, plural } from "@fleettrust/copy";
 import {
   CATEGORY_LABELS,
   formatDistance,
@@ -34,7 +35,7 @@ import { useSession } from "../../src/state/session";
 type Category = (typeof PROVIDER_CATEGORIES)[number] | "all";
 
 const CATEGORY_OPTIONS: readonly { value: Category; label: string }[] = [
-  { value: "all", label: "Any service" },
+  { value: "all", label: copy.find.anyService },
   ...PROVIDER_CATEGORIES.map((value) => ({ value, label: CATEGORY_LABELS[value] })),
 ];
 
@@ -120,48 +121,53 @@ export default function FindScreen() {
 
   return (
     <Screen>
-      <Heading>Find help nearby</Heading>
+      <Heading>{copy.find.title}</Heading>
       <LocationPicker
         value={location}
         onChange={setLocation}
-        label="Where are you?"
-        hint="Search near you or near a place you type."
+        label={copy.find.whereLabel}
+        hint={copy.find.whereHint}
       />
       <TextField
-        label="What do you need?"
+        label={copy.find.needLabel}
         optional
         value={q}
         onChangeText={setQ}
         maxLength={100}
-        placeholder="For example: brakes, tyre repair"
+        placeholder={copy.find.needPlaceholder}
       />
-      <Choice label="Service" options={CATEGORY_OPTIONS} value={category} onChange={setCategory} />
-      <Toggle label="Open now" value={openNow} onChange={setOpenNow} />
+      <Choice
+        label={copy.find.serviceLabel}
+        options={CATEGORY_OPTIONS}
+        value={category}
+        onChange={setCategory}
+      />
+      <Toggle label={copy.find.openNow} value={openNow} onChange={setOpenNow} />
       <Button
-        label="Search"
+        label={copy.common.search}
         busy={busy && !results}
         disabled={!location}
-        hint={location ? undefined : "Choose a location first"}
+        hint={location ? undefined : copy.find.chooseLocationFirst}
         onPress={() => void search()}
       />
       {!location ? (
         <Body small muted>
-          Choose a location to search.
+          {copy.find.chooseLocationToSearch}
         </Body>
       ) : null}
       {error ? <ErrorNotice error={error} onRetry={() => void search()} /> : null}
-      {busy && !results ? <Loading label="Searching…" /> : null}
+      {busy && !results ? <Loading label={copy.find.searching} /> : null}
       {results ? (
-        <View style={{ gap: 12 }} accessibilityLabel="Search results">
+        <View style={{ gap: 12 }} accessibilityLabel={copy.find.resultsLabel}>
           <View style={styles.row}>
             <Heading level={2}>
               {results.items.length === 0
-                ? "No results"
-                : `${String(results.items.length)} results`}
+                ? copy.find.noResults
+                : plural(results.items.length, copy.find.resultCount)}
             </Heading>
             {results.items.length > 0 ? (
               <Button
-                label={showMap ? "Hide map" : "Show map"}
+                label={showMap ? copy.find.hideMap : copy.find.showMap}
                 variant="ghost"
                 onPress={() => {
                   setShowMap((value) => !value);
@@ -170,17 +176,15 @@ export default function FindScreen() {
             ) : null}
           </View>
           <Body small muted>
-            Ranked by relevance and distance. Plans and payments never change the order.
+            {copy.find.rankingNote}
           </Body>
           {status !== "signed-in" && results.items.length > 0 ? (
             <Body small muted>
-              Locations are approximate until you sign in.
+              {copy.find.approximateNote}
             </Body>
           ) : null}
           {results.items.length === 0 ? (
-            <EmptyState title="Nothing found here">
-              Try another service, turn off &quot;Open now&quot;, or search near another place.
-            </EmptyState>
+            <EmptyState title={copy.find.emptyTitle}>{copy.find.emptyBody}</EmptyState>
           ) : null}
           {showMap && results.items.length > 0 ? (
             <ProviderMap
@@ -194,8 +198,22 @@ export default function FindScreen() {
           {results.items.map((result, index) => (
             <ListRow
               key={result.branchId}
-              title={`${String(index + 1)}. ${result.tradingName}${selected === result.branchId ? " (selected on map)" : ""}`}
-              subtitle={`${result.branchName}${result.locality ? ` · ${result.locality}` : ""} · ${result.location.approximate ? "about " : ""}${formatDistance(result.distanceKm * 1000)} away`}
+              title={fill(
+                selected === result.branchId
+                  ? copy.find.resultTitleSelected
+                  : copy.find.resultTitle,
+                { number: index + 1, name: result.tradingName },
+              )}
+              subtitle={[
+                result.branchName,
+                result.locality,
+                fill(
+                  result.location.approximate ? copy.find.distanceApproximate : copy.find.distance,
+                  { distance: formatDistance(result.distanceKm * 1000) },
+                ),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
               onPress={() => {
                 router.push(`/providers/${result.slug}`);
               }}
@@ -213,11 +231,11 @@ export default function FindScreen() {
                   </View>
                   <Body small muted>
                     {result.categories.map((c) => CATEGORY_LABELS[c]).join(", ")}
-                    {result.coversSearchLocation ? " · Travels to your location" : ""}
+                    {result.coversSearchLocation ? ` · ${copy.find.travelsToYou}` : ""}
                   </Body>
                   {result.priceHighlights.map((price) => (
                     <Body key={price.name} small>
-                      {price.name}: {price.label}
+                      {fill(copy.find.priceLine, { name: price.name, price: price.label })}
                     </Body>
                   ))}
                 </View>
@@ -231,7 +249,7 @@ export default function FindScreen() {
           ) : null}
           {results.nextCursor ? (
             <Button
-              label="Show more results"
+              label={copy.find.showMore}
               variant="secondary"
               busy={busy}
               onPress={() => void search(results.nextCursor ?? undefined)}

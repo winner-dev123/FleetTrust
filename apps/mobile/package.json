@@ -13,6 +13,7 @@
     "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
+    "@fleettrust/copy": "workspace:*",
     "@fleettrust/env": "workspace:*",
     "@fleettrust/sdk": "workspace:*",
     "@fleettrust/types": "workspace:*",

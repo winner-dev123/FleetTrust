@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import type { MapConfig } from "@fleettrust/types";
 import {
   fitZoom,
@@ -82,7 +83,7 @@ export function ProviderMap({
   return (
     <View style={{ gap: theme.spacing.sm }}>
       <View
-        accessibilityLabel="Map of results"
+        accessibilityLabel={copy.map.label}
         onLayout={(event) => {
           setWidth(Math.max(200, Math.round(event.nativeEvent.layout.width)));
         }}
@@ -184,51 +185,51 @@ export function ProviderMap({
           </Text>
         ) : null}
       </View>
-      <View style={styles.row} accessibilityRole="toolbar" accessibilityLabel="Map controls">
+      <View style={styles.row} accessibilityRole="toolbar" accessibilityLabel={copy.map.controls}>
         <Button
-          label="Zoom in"
+          label={copy.map.zoomIn}
           variant="ghost"
           onPress={() => {
             zoom(1);
           }}
         />
         <Button
-          label="Zoom out"
+          label={copy.map.zoomOut}
           variant="ghost"
           onPress={() => {
             zoom(-1);
           }}
         />
         <Button
-          label="North"
+          label={copy.map.north}
           variant="ghost"
           onPress={() => {
             move(0, -PAN_STEP);
           }}
         />
         <Button
-          label="South"
+          label={copy.map.south}
           variant="ghost"
           onPress={() => {
             move(0, PAN_STEP);
           }}
         />
         <Button
-          label="West"
+          label={copy.map.west}
           variant="ghost"
           onPress={() => {
             move(-PAN_STEP, 0);
           }}
         />
         <Button
-          label="East"
+          label={copy.map.east}
           variant="ghost"
           onPress={() => {
             move(PAN_STEP, 0);
           }}
         />
         <Button
-          label="Show all results"
+          label={copy.map.showAll}
           variant="ghost"
           onPress={() => {
             setView(null);
@@ -237,7 +238,7 @@ export function ProviderMap({
       </View>
       {!template ? (
         <Body small muted>
-          Map background not configured in this environment. Pins show relative positions.
+          {copy.map.noBackground}
         </Body>
       ) : null}
     </View>

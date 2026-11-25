@@ -371,6 +371,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@fleettrust/copy':
+        specifier: workspace:*
+        version: link:../../packages/copy
       '@fleettrust/env':
         specifier: workspace:*
         version: link:../../packages/env
@@ -581,6 +584,25 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.15.0(supports-color@8.1.1)
+
+  packages/copy:
+    dependencies:
+      '@fleettrust/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@fleettrust/config':
+        specifier: workspace:*
+        version: link:../config
+      eslint:
+        specifier: 'catalog:'
+        version: 10.15.0(supports-color@8.1.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(jsdom@26.1.0(supports-color@8.1.1))(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/db:
     dependencies:

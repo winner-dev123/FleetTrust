@@ -10,18 +10,19 @@ FleetTrust would be offered in more than one language: first the interface (webs
 
 ## Where the code stands today (honest baseline)
 
-| Area                      | Today                                                                                           | Gap for translation                                                             |
-| ------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Text encoding             | UTF-8 everywhere; `safeText` normalises to NFC                                                  | None                                                                            |
-| Dates, numbers, money     | Central helpers in `packages/types/src/format.ts` using `Intl`, with the locale fixed to `"en"` | Pass the user's locale instead of `"en"`                                        |
-| Domain labels             | Central maps in `@fleettrust/types` (categories, vehicle types, consents, opening hours)        | Turn the maps into message keys                                                 |
-| Error messages            | Central reason → message map in the SDK (`packages/sdk/src/errors.ts`)                          | Message keys per reason                                                         |
-| Screen text (web and app) | **Mostly written inline in components**                                                         | Extract into catalogs (the largest task)                                        |
-| Emails and push           | Built in the API in English                                                                     | Templates per locale                                                            |
-| `<html lang>`             | `"en"`                                                                                          | Set from the active locale                                                      |
-| Right-to-left scripts     | Not handled                                                                                     | Logical CSS properties and mirrored layouts (only if an RTL language is chosen) |
+| Area                    | Today                                                                                              | Gap for translation                                                             |
+| ----------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Text encoding           | UTF-8 everywhere; `safeText` normalises to NFC                                                     | None                                                                            |
+| Dates, numbers, money   | Central helpers in `packages/types/src/format.ts` using `Intl`, with the locale fixed to `"en"`    | Pass the user's locale instead of `"en"`                                        |
+| Domain labels           | Central maps in `@fleettrust/types` (categories, vehicle types, consents, opening hours)           | Turn the maps into message keys                                                 |
+| Error messages          | Central reason → message map in the SDK (`packages/sdk/src/errors.ts`)                             | Message keys per reason                                                         |
+| Screen text, mobile app | **In the English catalog** `@fleettrust/copy`, enforced by `apps/mobile/test/copy-catalog.test.ts` | Message keys already in place                                                   |
+| Screen text, website    | **Mostly written inline in components**                                                            | Extract into the same catalog (the remaining task)                              |
+| Emails and push         | Built in the API in English                                                                        | Templates per locale                                                            |
+| `<html lang>`           | `"en"`                                                                                             | Set from the active locale                                                      |
+| Right-to-left scripts   | Not handled                                                                                        | Logical CSS properties and mirrored layouts (only if an RTL language is chosen) |
 
-SRS §7's "strings kept outside code" is therefore **partly met** (labels, errors, formatting). The migration path starts by closing that gap.
+SRS §7's "strings kept outside code" is therefore **met for the mobile app** and **partly met for the website** (labels, errors, formatting). The migration path starts by closing the website gap.
 
 ## Why it's excluded today, and preconditions
 
@@ -85,7 +86,7 @@ The website and app components (string extraction), `NotificationsService` (temp
 
 ## Migration path
 
-1. **Extract English first.** Move inline screen text into the English catalog with no behaviour change (this closes the SRS §7 gap). A copy guard test, like `copy-guards.test.ts`, fails on new inline user-visible strings.
+1. **Extract English first.** Move inline screen text into the English catalog (`packages/copy`) with no behaviour change; this closes the SRS §7 gap. **Done for the mobile app** (a guard test fails on new inline text there). The website is next, area by area, with the same guard.
 2. **Decide.** Choose the launch languages and the translation workflow. Write the ADR. The guard's i18n-framework block is narrowed to the chosen library.
 3. **Expand.** Add the `users.locale` column (nullable), the language picker, locale-aware `format.ts`, and per-locale notification templates.
 4. **Translate and review:** professional translation, legal review of the safety and legal texts, and a native-speaker pass on the main journeys (the same journeys as the accessibility manual checks).

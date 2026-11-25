@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import { notificationPath } from "@fleettrust/types";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -54,11 +55,11 @@ export function PushListener() {
       style={{ position: "absolute", left: 8, right: 8, top: 56, zIndex: 10 }}
       testID="push-banner"
     >
-      <Notice title={banner.title ?? "FleetTrust"} live>
+      <Notice title={banner.title ?? copy.push.bannerFallbackTitle} live>
         {banner.body ? <Body>{banner.body}</Body> : null}
         <View style={{ flexDirection: "row", gap: 8 }}>
           <Button
-            label="Open"
+            label={copy.push.bannerOpen}
             onPress={() => {
               const target = pushTarget(banner.data);
               setBanner(null);
@@ -66,7 +67,7 @@ export function PushListener() {
             }}
           />
           <Button
-            label="Dismiss"
+            label={copy.push.bannerDismiss}
             variant="ghost"
             onPress={() => {
               setBanner(null);

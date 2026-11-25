@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import {
   CATEGORY_LABELS,
   formatDate,
@@ -44,46 +45,49 @@ export default function ProviderScreen() {
         <>
           <Heading>{profile.data.tradingName}</Heading>
           <Body muted>{profile.data.categories.map((c) => CATEGORY_LABELS[c]).join(" · ")}</Body>
-          <View style={styles.row} accessibilityLabel="Verification">
+          <View style={styles.row} accessibilityLabel={copy.provider.verificationLabel}>
             {profile.data.verification.map((badge) => (
               <Badge
                 key={badge.badgeType}
                 tone={badge.status === "verified" ? "verified" : "caution"}
-                label={`${verificationLabel(badge.badgeType, badge.status)}${
+                label={
                   badge.status === "verified" && badge.expiresAt
-                    ? ` (until ${formatDate(badge.expiresAt)})`
-                    : ""
-                }`}
+                    ? fill(copy.provider.badgeUntil, {
+                        label: verificationLabel(badge.badgeType, badge.status),
+                        date: formatDate(badge.expiresAt),
+                      })
+                    : verificationLabel(badge.badgeType, badge.status)
+                }
               />
             ))}
           </View>
           <Body small muted>
-            Verification means FleetTrust checked documents for that item. It isn&apos;t an
-            endorsement or a quality rating, and plans can&apos;t buy it.
+            {copy.provider.verificationNote}
           </Body>
           <Button
-            label="Request a quote"
+            label={copy.provider.requestQuote}
             onPress={() => {
               router.push(`/requests/new?provider=${encodeURIComponent(profile.data.slug)}`);
             }}
           />
           {profile.data.description ? (
-            <Card title="About">
+            <Card title={copy.provider.aboutTitle}>
               <Body>{profile.data.description}</Body>
               {profile.data.vehicleTypes.length > 0 ? (
                 <Body small>
-                  Vehicles:{" "}
-                  {profile.data.vehicleTypes.map((v) => VEHICLE_TYPE_LABELS[v]).join(", ")}
+                  {fill(copy.provider.vehicles, {
+                    types: profile.data.vehicleTypes.map((v) => VEHICLE_TYPE_LABELS[v]).join(", "),
+                  })}
                 </Body>
               ) : null}
             </Card>
           ) : null}
-          <Card title="Contact">
+          <Card title={copy.provider.contactTitle}>
             {profile.data.contact ? (
               <>
                 {profile.data.contact.phone ? (
                   <Button
-                    label={`Call ${profile.data.contact.phone}`}
+                    label={fill(copy.provider.call, { phone: profile.data.contact.phone })}
                     variant="secondary"
                     onPress={() =>
                       void platform.device.openExternal(`tel:${profile.data.contact?.phone ?? ""}`)
@@ -91,22 +95,24 @@ export default function ProviderScreen() {
                   />
                 ) : null}
                 {profile.data.contact.email ? (
-                  <Body>Email: {profile.data.contact.email}</Body>
+                  <Body>{fill(copy.provider.email, { email: profile.data.contact.email })}</Body>
                 ) : null}
                 {profile.data.contact.website ? (
-                  <Body>Website: {profile.data.contact.website}</Body>
+                  <Body>
+                    {fill(copy.provider.website, { website: profile.data.contact.website })}
+                  </Body>
                 ) : null}
               </>
             ) : (
-              <Body muted>Sign in to see phone numbers and street addresses.</Body>
+              <Body muted>{copy.provider.signInForContact}</Body>
             )}
           </Card>
-          <Card title="Services and indicative prices">
+          <Card title={copy.provider.servicesTitle}>
             <Notice>
               <Body small>{profile.data.catalog.disclaimer}</Body>
             </Notice>
             {profile.data.catalog.offerings.length === 0 ? (
-              <Body muted>No services listed yet.</Body>
+              <Body muted>{copy.provider.noServices}</Body>
             ) : null}
             {profile.data.catalog.offerings.map((offering) => (
               <View key={offering.id} style={{ gap: 2 }}>
@@ -120,7 +126,7 @@ export default function ProviderScreen() {
               </View>
             ))}
           </Card>
-          <Heading level={2}>Branches and opening hours</Heading>
+          <Heading level={2}>{copy.provider.branchesTitle}</Heading>
           {profile.data.branches.map((branch) => (
             <Card key={branch.id} title={branch.name}>
               <Body>
@@ -130,20 +136,20 @@ export default function ProviderScreen() {
               </Body>
               {branch.location.approximate ? (
                 <Body small muted>
-                  Street address shown after you sign in.
+                  {copy.provider.addressAfterSignIn}
                 </Body>
               ) : null}
               <Body>{openingStatusLabel(branch.hours.status)}</Body>
               {branch.serviceRadiusKm ? (
-                <Body small>Travels up to {branch.serviceRadiusKm} km</Body>
+                <Body small>{fill(copy.provider.travelsUpTo, { km: branch.serviceRadiusKm })}</Body>
               ) : null}
               <Body small muted>
-                Times are local ({branch.timeZone}).
+                {fill(copy.provider.localTimes, { timeZone: branch.timeZone })}
               </Body>
             </Card>
           ))}
           <Body small muted>
-            Profile published {formatDate(profile.data.publishedAt)}.
+            {fill(copy.provider.published, { date: formatDate(profile.data.publishedAt) })}
           </Body>
         </>
       ) : null}

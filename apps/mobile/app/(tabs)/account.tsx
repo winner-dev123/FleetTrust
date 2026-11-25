@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import type { MessagingPreferences } from "@fleettrust/types";
 import { useRouter } from "expo-router";
@@ -24,13 +25,13 @@ import { useSession } from "../../src/state/session";
 
 const PUSH_SWITCHES: readonly { key: keyof MessagingPreferences; label: string; hint?: string }[] =
   [
-    { key: "pushMessages", label: "New messages" },
-    { key: "pushRequests", label: "Quotes and service requests" },
-    { key: "pushCommunity", label: "Community (comments, friends, groups)" },
+    { key: "pushMessages", label: copy.account.pushMessages },
+    { key: "pushRequests", label: copy.account.pushRequests },
+    { key: "pushCommunity", label: copy.account.pushCommunity },
     {
       key: "pushPreviews",
-      label: "Show message text on the lock screen",
-      hint: "Off: notifications say “New message” only.",
+      label: copy.account.pushPreviews,
+      hint: copy.account.pushPreviewsHint,
     },
   ];
 
@@ -51,14 +52,14 @@ function LocationStatus() {
   }, [platform]);
   if (permission === null) return null;
   return (
-    <Card title="Location">
+    <Card title={copy.account.locationTitle}>
       <Body>
         {permission === "granted"
-          ? "Allowed while you use the app. FleetTrust never tracks you in the background."
+          ? copy.account.locationAllowed
           : locationAdvice(permission).message}
       </Body>
       <Button
-        label="Location settings"
+        label={copy.account.locationSettings}
         variant="ghost"
         onPress={() => void platform.device.openSettings()}
       />
@@ -92,31 +93,29 @@ function DeleteAccount() {
   }
 
   return (
-    <Card title="Your data">
-      <Body>Download a copy of your data from the FleetTrust website.</Body>
+    <Card title={copy.account.dataTitle}>
+      <Body>{copy.account.dataBody}</Body>
       <Button
-        label="Download my data on the website"
+        label={copy.account.downloadData}
         variant="ghost"
         onPress={() => void platform.device.openExternal(`${mobileEnv.webUrl}/app/account`)}
       />
-      <Heading level={2}>Delete your account</Heading>
+      <Heading level={2}>{copy.account.deleteTitle}</Heading>
       <Body small muted>
-        Your profile, vehicles, contacts, lists, alerts and preferences are erased. Messages you
-        sent stay for the people who received them, shown as from a deleted member. This can&apos;t
-        be undone.
+        {copy.account.deleteBody}
       </Body>
       <TextField
-        label="Type DELETE to confirm"
+        label={fill(copy.account.deleteConfirmLabel, { word: copy.account.deleteConfirmWord })}
         autoCapitalize="characters"
         value={typed}
         onChangeText={setTyped}
       />
       {error ? <Body tone="danger">{error}</Body> : null}
       <Button
-        label="Delete my account"
+        label={copy.account.deleteButton}
         variant="danger"
         busy={busy}
-        disabled={typed.trim() !== "DELETE"}
+        disabled={typed.trim() !== copy.account.deleteConfirmWord}
         onPress={() => void remove()}
       />
     </Card>
@@ -157,19 +156,26 @@ function SignedInAccount() {
 
   return (
     <>
-      <Body muted>Signed in as {me.email ?? user?.email ?? "you"}</Body>
+      <Body muted>
+        {fill(copy.account.signedInAs, {
+          email: me.email ?? user?.email ?? copy.account.signedInAsFallback,
+        })}
+      </Body>
       {message ? (
         <Notice tone={message.ok ? "success" : "danger"} live>
           <Body>{message.text}</Body>
         </Notice>
       ) : null}
-      <Card title="Profile">
-        {!me.profileComplete ? (
-          <Body tone="caution">Add a display name to request quotes and post.</Body>
-        ) : null}
-        <TextField label="Display name" maxLength={50} value={displayName} onChangeText={setName} />
+      <Card title={copy.account.profileTitle}>
+        {!me.profileComplete ? <Body tone="caution">{copy.account.addDisplayName}</Body> : null}
+        <TextField
+          label={copy.account.displayName}
+          maxLength={50}
+          value={displayName}
+          onChangeText={setName}
+        />
         <Button
-          label="Save name"
+          label={copy.account.saveName}
           variant="secondary"
           busy={busy === "name"}
           onPress={() =>
@@ -179,15 +185,15 @@ function SignedInAccount() {
                 const updated = await api.updateMe({ displayName: displayName.trim() || null });
                 data.setData({ me: updated, preferences });
               },
-              "Name saved.",
+              copy.account.nameSaved,
             )
           }
         />
       </Card>
       <PushPrompt always />
-      <Card title="Which notifications">
+      <Card title={copy.account.notificationsTitle}>
         <Body small muted>
-          Everything is also kept in your notifications list.
+          {copy.account.notificationsKept}
         </Body>
         {PUSH_SWITCHES.map((item) => (
           <Toggle
@@ -202,13 +208,13 @@ function SignedInAccount() {
                   const updated = await api.updateMessagingPreferences({ [item.key]: value });
                   data.setData({ me, preferences: updated });
                 },
-                "Saved.",
+                copy.account.saved,
               )
             }
           />
         ))}
         <Button
-          label="Open notifications"
+          label={copy.account.openNotifications}
           variant="ghost"
           onPress={() => {
             router.push("/notifications");
@@ -216,24 +222,24 @@ function SignedInAccount() {
         />
       </Card>
       <LocationStatus />
-      <Card title="Plans, appeals and businesses">
-        <Body>Plan usage, appeals and business tools are on the FleetTrust website for now.</Body>
+      <Card title={copy.account.websiteTitle}>
+        <Body>{copy.account.websiteBody}</Body>
         <Button
-          label="Open the website"
+          label={copy.account.openWebsite}
           variant="ghost"
           onPress={() => void platform.device.openExternal(`${mobileEnv.webUrl}/app/account`)}
         />
       </Card>
       <DeleteAccount />
-      <Card title="Sign out">
+      <Card title={copy.account.signOutTitle}>
         <Body small muted>
-          Signing out removes your drafts and unsent messages from this phone.
+          {copy.account.signOutBody}
         </Body>
         <Button
-          label="Sign out"
+          label={copy.account.signOut}
           variant="secondary"
           busy={busy === "signout"}
-          onPress={() => void run("signout", signOut, "Signed out.")}
+          onPress={() => void run("signout", signOut, copy.account.signedOut)}
         />
       </Card>
     </>
@@ -244,13 +250,10 @@ export default function AccountScreen() {
   const { status } = useSession();
   return (
     <Screen>
-      <Heading>Account</Heading>
+      <Heading>{copy.account.title}</Heading>
       {status === "loading" ? <Loading /> : null}
       {status === "signed-out" ? (
-        <SignInPrompt
-          title="Sign in or create an account"
-          reason="It's free. Emergency alerts are never limited by a plan."
-        />
+        <SignInPrompt title={copy.account.signInTitle} reason={copy.account.signInReason} />
       ) : null}
       {status === "signed-in" ? <SignedInAccount /> : null}
     </Screen>

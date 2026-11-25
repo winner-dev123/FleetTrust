@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { type PersonDto, titleCase } from "@fleettrust/types";
 import { useState } from "react";
@@ -54,61 +55,62 @@ function Contacts() {
 
   return (
     <>
-      <Body>
-        People you trust to receive your alerts. They must accept before they can be alerted.
-        Primary contacts are alerted first; backups if nobody responds in time.
-      </Body>
-      <PushPrompt reason="Turn on notifications so you see alerts from people who trust you." />
+      <Body>{copy.trustedContacts.intro}</Body>
+      <PushPrompt reason={copy.trustedContacts.pushReason} />
       {message ? (
         <Notice tone={message.ok ? "success" : "danger"} live>
           <Body>{message.text}</Body>
         </Notice>
       ) : null}
-      <Card title="Your trusted contacts">
-        {mine.length === 0 ? <EmptyState title="No trusted contacts yet" /> : null}
+      <Card title={copy.trustedContacts.mineTitle}>
+        {mine.length === 0 ? <EmptyState title={copy.trustedContacts.empty} /> : null}
         {mine.map((contact) => (
           <View key={contact.id} style={{ gap: 4 }}>
             <Body>
               {contact.person.displayName} ·{" "}
               {contact.status === "active" && contact.muted
-                ? "Paused alerts"
+                ? copy.trustedContacts.pausedAlerts
                 : titleCase(contact.status)}{" "}
               · {titleCase(contact.priority)}
             </Body>
             <Button
-              label={`Remove ${contact.person.displayName}`}
+              label={fill(copy.trustedContacts.remove, { name: contact.person.displayName })}
               variant="ghost"
               onPress={() =>
-                void act(() => api.removeTrustedContact(contact.id), "Contact removed.")
+                void act(() => api.removeTrustedContact(contact.id), copy.trustedContacts.removed)
               }
             />
           </View>
         ))}
         <TextField
-          label="Add a contact"
-          hint="Search by display name"
+          label={copy.trustedContacts.addLabel}
+          hint={copy.trustedContacts.addHint}
           value={query}
           maxLength={50}
           onChangeText={setQuery}
         />
-        <Button label="Search people" variant="secondary" onPress={() => void search()} />
-        {people?.length === 0 ? <Body muted>Nobody found with that name.</Body> : null}
+        <Button
+          label={copy.trustedContacts.searchPeople}
+          variant="secondary"
+          onPress={() => void search()}
+        />
+        {people?.length === 0 ? <Body muted>{copy.trustedContacts.nobodyFound}</Body> : null}
         {people?.map((person) => (
           <Button
             key={person.userId}
-            label={`Invite ${person.displayName}`}
+            label={fill(copy.trustedContacts.invite, { name: person.displayName })}
             variant="secondary"
             onPress={() =>
               void act(
                 () => api.inviteTrustedContact(person.userId),
-                `Invitation sent to ${person.displayName}.`,
+                fill(copy.trustedContacts.invited, { name: person.displayName }),
               )
             }
           />
         ))}
       </Card>
       {forOthers.length > 0 ? (
-        <Card title="You're a trusted contact for">
+        <Card title={copy.trustedContacts.forOthersTitle}>
           {forOthers.map((contact) => (
             <View key={contact.id} style={{ gap: 4 }}>
               <Body>
@@ -117,18 +119,21 @@ function Contacts() {
               {contact.status === "pending" ? (
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <Button
-                    label="Accept"
+                    label={copy.trustedContacts.accept}
                     onPress={() =>
-                      void act(() => api.respondToTrustedContact(contact.id, true), "You accepted.")
+                      void act(
+                        () => api.respondToTrustedContact(contact.id, true),
+                        copy.trustedContacts.accepted,
+                      )
                     }
                   />
                   <Button
-                    label="Decline"
+                    label={copy.trustedContacts.decline}
                     variant="ghost"
                     onPress={() =>
                       void act(
                         () => api.respondToTrustedContact(contact.id, false),
-                        "You declined.",
+                        copy.trustedContacts.declined,
                       )
                     }
                   />
@@ -146,12 +151,12 @@ export default function TrustedContactsScreen() {
   const { status } = useSession();
   return (
     <Screen>
-      <Heading>Trusted contacts</Heading>
+      <Heading>{copy.trustedContacts.title}</Heading>
       {status === "loading" ? <Loading /> : null}
       {status === "signed-out" ? (
         <SignInPrompt
-          title="Sign in to manage contacts"
-          reason="Trusted contacts belong to your account."
+          title={copy.trustedContacts.signInTitle}
+          reason={copy.trustedContacts.signInReason}
         />
       ) : null}
       {status === "signed-in" ? <Contacts /> : null}

@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import type { ConversationDto, MessageDto } from "@fleettrust/types";
 import { formatDateTime } from "@fleettrust/types";
 import { useLocalSearchParams } from "expo-router";
@@ -178,13 +179,15 @@ function Thread({ id, uid }: { id: string; uid: string }) {
       {conversation.warning ? <Notice tone="caution">{conversation.warning}</Notice> : null}
       <Body small muted>
         {live === "live"
-          ? "Live"
+          ? copy.conversation.live
           : online
-            ? "Connecting…"
-            : "Offline: new messages appear when you reconnect"}
+            ? copy.conversation.connecting
+            : copy.conversation.offline}
       </Body>
-      <View accessibilityLabel="Messages" style={{ gap: theme.spacing.sm }}>
-        {messages.size === 0 && waiting.length === 0 ? <Body muted>No messages yet.</Body> : null}
+      <View accessibilityLabel={copy.conversation.messagesLabel} style={{ gap: theme.spacing.sm }}>
+        {messages.size === 0 && waiting.length === 0 ? (
+          <Body muted>{copy.conversation.empty}</Body>
+        ) : null}
         {bySeq(messages.values()).map((message) => (
           <View
             key={message.id}
@@ -201,13 +204,15 @@ function Thread({ id, uid }: { id: string; uid: string }) {
             }}
           >
             <Body small muted>
-              {message.sender.mine ? "You" : message.sender.name} ·{" "}
-              {formatDateTime(message.createdAt)}
+              {fill(copy.conversation.meta, {
+                sender: message.sender.mine ? copy.conversation.you : message.sender.name,
+                time: formatDateTime(message.createdAt),
+              })}
             </Body>
-            <Body>{message.body ?? "Message removed"}</Body>
+            <Body>{message.body ?? copy.conversation.removed}</Body>
             {message.warnings.includes("payment_request") ? (
               <Body small tone="caution">
-                This message mentions a payment. Never pay to an account you can&apos;t verify.
+                {copy.conversation.paymentWarning}
               </Body>
             ) : null}
           </View>
@@ -231,18 +236,20 @@ function Thread({ id, uid }: { id: string; uid: string }) {
             {item.state === "failed" ? (
               <>
                 <Body small tone="danger">
-                  Not sent: {item.error ?? "refused"}
+                  {fill(copy.conversation.notSent, {
+                    reason: item.error ?? copy.conversation.refused,
+                  })}
                 </Body>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <Button
-                    label="Retry"
+                    label={copy.conversation.retry}
                     variant="secondary"
                     onPress={() => {
                       void outbox?.retry(item.clientMessageId).then(() => outbox.flush());
                     }}
                   />
                   <Button
-                    label="Delete"
+                    label={copy.conversation.delete}
                     variant="ghost"
                     onPress={() => {
                       void outbox?.remove(item.clientMessageId);
@@ -252,7 +259,7 @@ function Thread({ id, uid }: { id: string; uid: string }) {
               </>
             ) : (
               <Body small muted>
-                {online ? "Sending…" : "Waiting to send (offline)"}
+                {online ? copy.conversation.sending : copy.conversation.waitingOffline}
               </Body>
             )}
           </View>
@@ -261,25 +268,21 @@ function Thread({ id, uid }: { id: string; uid: string }) {
       {conversation.canSend ? (
         <>
           <TextField
-            label="Message"
+            label={copy.conversation.messageLabel}
             multiline
             maxLength={4000}
             value={body ?? ""}
             onChangeText={setBody}
-            hint={
-              online
-                ? undefined
-                : "You're offline. Messages wait on this phone and send when you're back."
-            }
+            hint={online ? undefined : copy.conversation.offlineHint}
           />
           <Button
-            label={online ? "Send" : "Send when online"}
+            label={online ? copy.conversation.send : copy.conversation.sendWhenOnline}
             onPress={() => void send()}
             disabled={(body ?? "").trim() === ""}
           />
         </>
       ) : (
-        <Body muted>You can&apos;t send messages in this conversation.</Body>
+        <Body muted>{copy.conversation.cannotSend}</Body>
       )}
     </>
   );
@@ -293,8 +296,8 @@ export default function ConversationScreen() {
       {status === "loading" ? <Loading /> : null}
       {status === "signed-out" ? (
         <SignInPrompt
-          title="Sign in to see this conversation"
-          reason="Messages are private to your account."
+          title={copy.conversation.signInTitle}
+          reason={copy.conversation.signInReason}
         />
       ) : null}
       {status === "signed-in" && user && typeof id === "string" ? (

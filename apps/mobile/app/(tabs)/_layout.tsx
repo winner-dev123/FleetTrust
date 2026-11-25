@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import { useRouter } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
 import { Pressable, Text } from "react-native";
@@ -11,8 +12,8 @@ function EmergencyButton() {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Emergency"
-      accessibilityHint="Official emergency guidance and alerts to your trusted contacts"
+      accessibilityLabel={copy.tabs.emergency}
+      accessibilityHint={copy.tabs.emergencyHint}
       onPress={() => {
         router.push("/emergency");
       }}
@@ -26,7 +27,7 @@ function EmergencyButton() {
         justifyContent: "center",
       }}
     >
-      <Text style={{ color: theme.color.onDanger, fontWeight: "700" }}>Emergency</Text>
+      <Text style={{ color: theme.color.onDanger, fontWeight: "700" }}>{copy.tabs.emergency}</Text>
     </Pressable>
   );
 }
@@ -50,11 +51,14 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontSize: theme.type.fontSize.sm, fontWeight: "700" },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Find help", tabBarLabel: "Find" }} />
-      <Tabs.Screen name="requests" options={{ title: "Requests" }} />
-      <Tabs.Screen name="messages" options={{ title: "Messages" }} />
-      <Tabs.Screen name="community" options={{ title: "Community" }} />
-      <Tabs.Screen name="account" options={{ title: "Account" }} />
+      <Tabs.Screen
+        name="index"
+        options={{ title: copy.tabs.findTitle, tabBarLabel: copy.tabs.find }}
+      />
+      <Tabs.Screen name="requests" options={{ title: copy.tabs.requests }} />
+      <Tabs.Screen name="messages" options={{ title: copy.tabs.messages }} />
+      <Tabs.Screen name="community" options={{ title: copy.tabs.community }} />
+      <Tabs.Screen name="account" options={{ title: copy.tabs.account }} />
     </Tabs>
   );
 }
