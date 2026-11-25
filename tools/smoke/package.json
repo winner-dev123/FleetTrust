@@ -1,0 +1,20 @@
+{
+  "name": "@fleettrust/smoke",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Smoke tests for a deployed (or locally started) FleetTrust environment: health, readiness, security headers, public endpoints, auth refusals, CORS, realtime and the website. Runs directly on Node 24 (type stripping). Used by the release workflows and the release rehearsal.",
+  "scripts": {
+    "smoke": "node src/run.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@fleettrust/config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
