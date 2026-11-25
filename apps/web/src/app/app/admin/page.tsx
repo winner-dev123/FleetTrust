@@ -1,17 +1,49 @@
 "use client";
 
-import { ErrorNotice, Loading, Notice } from "@/components/feedback";
+import { STAFF_ROLE_LABELS, STAFF_ROLE_SCOPES } from "@fleettrust/types";
+
+import { ErrorNotice, Loading } from "@/components/feedback";
 import { Card, PageHeader, Stat } from "@/components/layout";
 import { formatDate, formatDateTime, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
+import { useAdmin } from "@/lib/admin-context";
 import { useLoad } from "@/lib/use-load";
 
-/**
- * Trust and safety overview for FleetTrust staff (moderators and verification reviewers).
- * Read-only here: the full admin console with actions is Prompt 26. Everyone else gets 404
- * from the API, so this page shows nothing to them.
- */
+/** What each of the person's staff roles allows (least privilege, SRS §2.3). */
+function RoleSummary() {
+  const me = useAdmin();
+  return (
+    <Card title="Your roles">
+      <ul className="list-plain">
+        {me.roles.map((role) => (
+          <li key={role}>
+            <strong>{STAFF_ROLE_LABELS[role]}:</strong> {STAFF_ROLE_SCOPES[role]}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+/** Console home: the person's roles, plus the trust and safety overview for those who use it. */
 export default function AdminPage() {
+  const me = useAdmin();
+  const trust =
+    me.roles.includes("trust_safety_moderator") || me.roles.includes("verification_reviewer");
+  return (
+    <>
+      <PageHeader title="Admin console" description="FleetTrust staff tools." />
+      <RoleSummary />
+      {trust ? <TrustOverview /> : null}
+    </>
+  );
+}
+
+/**
+ * Trust and safety overview, shared by moderators and verification reviewers. Everyone else
+ * gets 404 from the API, so it isn't loaded for them.
+ */
+function TrustOverview() {
   const { api } = useSession();
   const data = useLoad(async () => {
     const [dashboard, queue] = await Promise.all([
@@ -28,15 +60,7 @@ export default function AdminPage() {
 
   return (
     <>
-      <PageHeader
-        title="Trust and safety"
-        description="Shared overview for moderators and verification reviewers."
-      />
-      <Notice>
-        <p className="small">
-          Read-only overview. Moderation, verification and plan actions are in the admin console.
-        </p>
-      </Notice>
+      <h2>Trust and safety</h2>
       <div className="grid">
         <Card title="Reports">
           <Stat label="open" value={dashboard.reports.open} />

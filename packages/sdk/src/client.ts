@@ -1,4 +1,55 @@
 import {
+  type AdminErrorReason,
+  type AdminMe,
+  adminMeSchema,
+  appealDecisionRequestSchema,
+  type AssignPlanRequest,
+  assignPlanRequestSchema,
+  type AuditPage,
+  auditPageSchema,
+  type AuditQuery,
+  auditQuerySchema,
+  type BillingAccount,
+  billingAccountSchema,
+  closeSupportCaseSchema,
+  CONFIRM_ACTION_HEADER,
+  endAssignmentRequestSchema,
+  type FeatureSettingDto,
+  featureSettingSchema,
+  grantStaffRoleSchema,
+  type IrreversibleAction,
+  type OpenSupportCase,
+  openSupportCaseSchema,
+  type PlanAssignmentDto,
+  planAssignmentSchema,
+  type PlanDto,
+  planSchema,
+  type PlatformStaffMemberDto,
+  platformStaffMemberSchema,
+  type PublicConfig,
+  publicConfigSchema,
+  type QuotaOverrideDto,
+  quotaOverrideSchema,
+  type ReviewAppealDto,
+  reviewAppealSchema,
+  type ReviewCaseDto,
+  reviewCaseSchema,
+  type ReviewDecisionRequest,
+  reviewDecisionRequestSchema,
+  revokeBadgeRequestSchema,
+  revokeStaffRoleSchema,
+  type ServiceCategoryDto,
+  serviceCategorySchema,
+  type SetOverrideRequest,
+  setOverrideRequestSchema,
+  type StaffRole,
+  type SupportAccountDto,
+  supportAccountSchema,
+  type SupportCaseDto,
+  supportCaseSchema,
+  supportLookupSchema,
+  type UpdateServiceCategory,
+  updateServiceCategorySchema,
   type MemberHistoryDto,
   memberHistorySchema,
   type ModerationAppealDto,
@@ -403,6 +454,7 @@ export type ApiErrorReason =
   | FleetErrorReason
   | JobErrorReason
   | TrustErrorReason
+  | AdminErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -1106,6 +1158,70 @@ export interface ApiClient {
   ): Promise<ModerationAppealDto>;
   /** Moderators and verification reviewers. */
   trustDashboard(): Promise<TrustDashboardDto>;
+
+  // --- Admin console (Prompt 26). Staff routes need MFA; non-staff get 404. -----------------
+  // Irreversible actions take the action name as `confirm`. Pass it only after the person
+  // confirmed; without it the API answers 428 confirmation_required.
+
+  /** Public site configuration (e.g. the site notice). */
+  publicConfig(): Promise<PublicConfig>;
+  /** Service categories in admin order, with whether new offerings may use them. */
+  taxonomy(): Promise<ServiceCategoryDto[]>;
+  /** Staff roles and MFA status of the caller (works without MFA, so the console can ask). */
+  adminMe(): Promise<AdminMe>;
+  staffMembers(): Promise<PlatformStaffMemberDto[]>;
+  grantStaffRole(
+    email: string,
+    role: StaffRole,
+    confirm: "staff.grant",
+  ): Promise<PlatformStaffMemberDto[]>;
+  revokeStaffRole(
+    userId: string,
+    role: StaffRole,
+    confirm: "staff.revoke",
+  ): Promise<PlatformStaffMemberDto[]>;
+  featureSettings(): Promise<FeatureSettingDto[]>;
+  setFeatureSetting(key: string, value: unknown): Promise<FeatureSettingDto>;
+  updateServiceCategory(
+    category: string,
+    change: UpdateServiceCategory,
+  ): Promise<ServiceCategoryDto>;
+  auditSearch(query?: AuditQuery): Promise<AuditPage>;
+  supportLookup(by: { email: string } | { userId: string }): Promise<SupportAccountDto>;
+  supportCases(status?: "open" | "closed"): Promise<SupportCaseDto[]>;
+  supportCase(caseId: string): Promise<SupportCaseDto>;
+  openSupportCase(request: OpenSupportCase): Promise<SupportCaseDto>;
+  closeSupportCase(caseId: string, resolution: string): Promise<SupportCaseDto>;
+  supportRevokeSessions(
+    caseId: string,
+    confirm: "support.revoke_sessions",
+  ): Promise<SupportCaseDto>;
+  supportSendSignInLink(caseId: string): Promise<SupportCaseDto>;
+  billingPlans(): Promise<PlanDto[]>;
+  billingAccount(subject: { type: "user" | "organization"; id: string }): Promise<BillingAccount>;
+  assignPlan(request: AssignPlanRequest): Promise<PlanAssignmentDto>;
+  endPlanAssignment(
+    assignmentId: string,
+    note: string | null,
+    confirm: "plan.end_assignment",
+  ): Promise<void>;
+  setQuotaOverride(request: SetOverrideRequest): Promise<QuotaOverrideDto>;
+  revokeQuotaOverride(overrideId: string): Promise<void>;
+  reviewQueue(
+    status?: "draft" | "submitted" | "changes_requested" | "approved" | "rejected" | "withdrawn",
+  ): Promise<ReviewCaseDto[]>;
+  reviewCase(caseId: string): Promise<ReviewCaseDto>;
+  decideReviewCase(caseId: string, decision: ReviewDecisionRequest): Promise<ReviewCaseDto>;
+  /** A five-minute, single-use link to view one document (audited). */
+  documentAccess(documentId: string): Promise<{ url: string; expiresAt: string }>;
+  revokeBadge(badgeId: string, reason: string, confirm: "badge.revoke"): Promise<void>;
+  reviewAppeals(status?: "open" | "upheld" | "overturned"): Promise<ReviewAppealDto[]>;
+  decideReviewAppeal(
+    appealId: string,
+    decision: "uphold" | "overturn",
+    reason: string,
+  ): Promise<ReviewAppealDto>;
+  purgeExpiredDocuments(confirm: "verification.purge"): Promise<{ purged: number }>;
   /** A published provider. Signed-in callers get contact details and exact locations. */
   provider(slug: string, options?: { signedIn?: boolean }): Promise<PublicProviderProfile>;
 
@@ -1241,6 +1357,8 @@ interface RequestSpec<TSchema extends z.ZodType | undefined> {
   schema: TSchema;
   body?: unknown;
   authenticated: boolean;
+  /** Irreversible staff actions: the action the person confirmed (X-Confirm-Action). */
+  confirm?: IrreversibleAction;
 }
 
 export function createApiClient(options: ApiClientOptions): ApiClient {
@@ -1278,7 +1396,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     try {
       response = await fetchImpl(`${baseUrl}${spec.path}`, {
         method: spec.method,
-        headers: await headersFor(spec.authenticated, spec.body !== undefined),
+        headers: {
+          ...(await headersFor(spec.authenticated, spec.body !== undefined)),
+          ...(spec.confirm ? { [CONFIRM_ACTION_HEADER]: spec.confirm } : {}),
+        },
         ...(spec.body === undefined ? {} : { body: JSON.stringify(spec.body) }),
         signal: controller.signal,
       });
@@ -3547,6 +3668,231 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         schema: myOrganizationSchema,
         body: acceptInvitationRequestSchema.parse({ token }),
         authenticated: true,
+      }),
+    publicConfig: () =>
+      send({ method: "GET", path: "/v1/config", schema: publicConfigSchema, authenticated: false }),
+    taxonomy: () =>
+      send({
+        method: "GET",
+        path: "/v1/taxonomy",
+        schema: z.array(serviceCategorySchema),
+        authenticated: false,
+      }),
+    adminMe: () =>
+      send({ method: "GET", path: "/v1/admin/me", schema: adminMeSchema, authenticated: true }),
+    staffMembers: () =>
+      send({
+        method: "GET",
+        path: "/v1/admin/staff",
+        schema: z.array(platformStaffMemberSchema),
+        authenticated: true,
+      }),
+    grantStaffRole: async (email, role, confirm) =>
+      send({
+        method: "POST",
+        path: "/v1/admin/staff/grant",
+        schema: z.array(platformStaffMemberSchema),
+        body: grantStaffRoleSchema.parse({ email, role }),
+        authenticated: true,
+        confirm,
+      }),
+    revokeStaffRole: async (userId, role, confirm) =>
+      send({
+        method: "POST",
+        path: "/v1/admin/staff/revoke",
+        schema: z.array(platformStaffMemberSchema),
+        body: revokeStaffRoleSchema.parse({ userId, role }),
+        authenticated: true,
+        confirm,
+      }),
+    featureSettings: () =>
+      send({
+        method: "GET",
+        path: "/v1/admin/features",
+        schema: z.array(featureSettingSchema),
+        authenticated: true,
+      }),
+    setFeatureSetting: (key, value) =>
+      send({
+        method: "PUT",
+        path: `/v1/admin/features/${encodeURIComponent(key)}`,
+        schema: featureSettingSchema,
+        body: { value },
+        authenticated: true,
+      }),
+    updateServiceCategory: async (category, change) =>
+      send({
+        method: "PUT",
+        path: `/v1/admin/taxonomy/${encodeURIComponent(category)}`,
+        schema: serviceCategorySchema,
+        body: updateServiceCategorySchema.parse(change),
+        authenticated: true,
+      }),
+    auditSearch: async (query) =>
+      send({
+        method: "GET",
+        path: `/v1/admin/audit${queryString(auditQuerySchema, query)}`,
+        schema: auditPageSchema,
+        authenticated: true,
+      }),
+    supportLookup: async (by) =>
+      send({
+        method: "GET",
+        path: `/v1/admin/support/accounts${queryString(supportLookupSchema, by)}`,
+        schema: supportAccountSchema,
+        authenticated: true,
+      }),
+    supportCases: (status = "open") =>
+      send({
+        method: "GET",
+        path: `/v1/admin/support/cases?status=${status}`,
+        schema: z.array(supportCaseSchema),
+        authenticated: true,
+      }),
+    supportCase: (caseId) =>
+      send({
+        method: "GET",
+        path: `/v1/admin/support/cases/${encodeURIComponent(caseId)}`,
+        schema: supportCaseSchema,
+        authenticated: true,
+      }),
+    openSupportCase: async (request) =>
+      send({
+        method: "POST",
+        path: "/v1/admin/support/cases",
+        schema: supportCaseSchema,
+        body: openSupportCaseSchema.parse(request),
+        authenticated: true,
+      }),
+    closeSupportCase: async (caseId, resolution) =>
+      send({
+        method: "POST",
+        path: `/v1/admin/support/cases/${encodeURIComponent(caseId)}/close`,
+        schema: supportCaseSchema,
+        body: closeSupportCaseSchema.parse({ resolution }),
+        authenticated: true,
+      }),
+    supportRevokeSessions: (caseId, confirm) =>
+      send({
+        method: "POST",
+        path: `/v1/admin/support/cases/${encodeURIComponent(caseId)}/revoke-sessions`,
+        schema: supportCaseSchema,
+        authenticated: true,
+        confirm,
+      }),
+    supportSendSignInLink: (caseId) =>
+      send({
+        method: "POST",
+        path: `/v1/admin/support/cases/${encodeURIComponent(caseId)}/send-sign-in-link`,
+        schema: supportCaseSchema,
+        authenticated: true,
+      }),
+    billingPlans: () =>
+      send({
+        method: "GET",
+        path: "/v1/admin/billing/plans",
+        schema: z.array(planSchema),
+        authenticated: true,
+      }),
+    billingAccount: (subject) =>
+      send({
+        method: "GET",
+        path: `/v1/admin/billing/${subject.type === "user" ? "users" : "organizations"}/${encodeURIComponent(subject.id)}`,
+        schema: billingAccountSchema,
+        authenticated: true,
+      }),
+    assignPlan: async (request) =>
+      send({
+        method: "POST",
+        path: "/v1/admin/billing/assignments",
+        schema: planAssignmentSchema,
+        body: assignPlanRequestSchema.parse(request),
+        authenticated: true,
+      }),
+    endPlanAssignment: async (assignmentId, note, confirm) =>
+      send({
+        method: "POST",
+        path: `/v1/admin/billing/assignments/${encodeURIComponent(assignmentId)}/end`,
+        schema: undefined,
+        body: endAssignmentRequestSchema.parse(note === null ? {} : { note }),
+        authenticated: true,
+        confirm,
+      }),
+    setQuotaOverride: async (request) =>
+      send({
+        method: "POST",
+        path: "/v1/admin/billing/overrides",
+        schema: quotaOverrideSchema,
+        body: setOverrideRequestSchema.parse(request),
+        authenticated: true,
+      }),
+    revokeQuotaOverride: (overrideId) =>
+      send({
+        method: "DELETE",
+        path: `/v1/admin/billing/overrides/${encodeURIComponent(overrideId)}`,
+        schema: undefined,
+        authenticated: true,
+      }),
+    reviewQueue: (status = "submitted") =>
+      send({
+        method: "GET",
+        path: `/v1/admin/verification/cases?status=${encodeURIComponent(status)}`,
+        schema: z.array(reviewCaseSchema),
+        authenticated: true,
+      }),
+    reviewCase: (caseId) =>
+      send({
+        method: "GET",
+        path: `/v1/admin/verification/cases/${encodeURIComponent(caseId)}`,
+        schema: reviewCaseSchema,
+        authenticated: true,
+      }),
+    decideReviewCase: async (caseId, decision) =>
+      send({
+        method: "POST",
+        path: `/v1/admin/verification/cases/${encodeURIComponent(caseId)}/decision`,
+        schema: reviewCaseSchema,
+        body: reviewDecisionRequestSchema.parse(decision),
+        authenticated: true,
+      }),
+    documentAccess: (documentId) =>
+      send({
+        method: "POST",
+        path: `/v1/admin/verification/documents/${encodeURIComponent(documentId)}/access`,
+        schema: z.object({ url: z.string(), expiresAt: z.string() }),
+        authenticated: true,
+      }),
+    revokeBadge: async (badgeId, reason, confirm) =>
+      send({
+        method: "POST",
+        path: `/v1/admin/verification/badges/${encodeURIComponent(badgeId)}/revoke`,
+        schema: undefined,
+        body: revokeBadgeRequestSchema.parse({ reason }),
+        authenticated: true,
+        confirm,
+      }),
+    reviewAppeals: (status = "open") =>
+      send({
+        method: "GET",
+        path: `/v1/admin/verification/appeals?status=${status}`,
+        schema: z.array(reviewAppealSchema),
+        authenticated: true,
+      }),
+    decideReviewAppeal: async (appealId, decision, reason) =>
+      send({
+        method: "POST",
+        path: `/v1/admin/verification/appeals/${encodeURIComponent(appealId)}/decision`,
+        schema: reviewAppealSchema,
+        body: appealDecisionRequestSchema.parse({ decision, reason }),
+        authenticated: true,
+      }),
+    purgeExpiredDocuments: (confirm) =>
+      send({
+        method: "POST",
+        path: "/v1/admin/verification/purge",
+        schema: z.object({ purged: z.number().int() }),
+        authenticated: true,
+        confirm,
       }),
   };
 }

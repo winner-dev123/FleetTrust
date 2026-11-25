@@ -20,3 +20,4 @@ export * from "./crm.js";
 export * from "./parts.js";
 export * from "./fleet.js";
 export * from "./trust.js";
+export * from "./admin.js";

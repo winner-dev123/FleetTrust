@@ -44,8 +44,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       const me = await api.me();
       const [organizations, isStaff] = await Promise.all([
         api.myOrganizations(),
-        // Everyone else gets 404: staff areas are invisible, not forbidden.
-        api.trustDashboard().then(
+        // Everyone else gets 404: staff areas are invisible, not forbidden. /v1/admin/me
+        // answers before MFA, so staff can still reach the console to set it up.
+        api.adminMe().then(
           () => true,
           () => false,
         ),

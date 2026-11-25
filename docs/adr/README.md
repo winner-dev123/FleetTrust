@@ -33,6 +33,7 @@ We record significant decisions as short ADRs ([Nygard format](https://cognitect
 | [0030](0030-power-user-sanctions-and-appeals.md)     | Power User earned from identity, age, activity and standing (never bought); member sanctions, appeals, shared trust and safety dashboard | Accepted                                                                                        |
 | [0031](0031-web-app-and-design-system.md)            | Web app on the shared SDK: token-based design system, built-in tile map, browser tests against a contract-checked mock API               | Accepted                                                                                        |
 | [0032](0032-mobile-app.md)                           | Mobile app: Expo dev builds and Expo Router, device ports, web-path deep links, offline drafts, idempotent message outbox                | Accepted                                                                                        |
+| [0033](0033-admin-console.md)                        | Admin console: mandatory staff MFA, least-privilege roles, confirmed irreversible actions, scoped audit search                           | Accepted                                                                                        |
 
 ## Template
 

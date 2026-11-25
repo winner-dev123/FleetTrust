@@ -11,6 +11,7 @@ import { rememberReturnPath } from "@/lib/return-path";
 import { useSession } from "@/lib/session";
 
 import { ErrorNotice, Loading, Notice } from "./feedback";
+import { SiteNotice } from "./site-notice";
 import { NavMenu } from "./nav-menu";
 
 /** Pages a suspended member can still use (the API marks them @AllowSuspended). */
@@ -93,6 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <TopBar />
+      <SiteNotice />
       <div className="app-layout">
         {nav}
         <main id="main" tabIndex={-1} className="container stack stack--lg">

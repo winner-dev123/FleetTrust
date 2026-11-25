@@ -82,7 +82,7 @@ export function appNavigation(
   if (options.isStaff) {
     sections.push({
       title: "FleetTrust staff",
-      items: [{ href: "/app/admin", label: "Trust and safety" }],
+      items: [{ href: "/app/admin", label: "Admin console" }],
     });
   }
   return sections;

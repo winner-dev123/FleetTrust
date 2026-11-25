@@ -69,6 +69,8 @@ describe("migrations on a fresh database", () => {
       "0036_fleet_and_jobs_triggers",
       "0037_trust_and_safety",
       "0038_trust_and_safety_triggers",
+      "0039_admin_console",
+      "0040_admin_console_triggers",
     ]);
   });
 
@@ -115,6 +117,7 @@ describe("migrations on a fresh database", () => {
       "document_access_grants",
       "emergency_guidance",
       "emergency_incidents",
+      "feature_settings",
       "fleet_expenses",
       "fleet_incidents",
       "fleet_preferred_providers",
@@ -160,6 +163,7 @@ describe("migrations on a fresh database", () => {
       "saved_list_members",
       "saved_list_share_links",
       "saved_lists",
+      "service_category_settings",
       "service_quotes",
       "service_records",
       "service_request_attachments",
@@ -169,6 +173,7 @@ describe("migrations on a fresh database", () => {
       "social_settings",
       "staff_availability",
       "staff_time_off",
+      "support_cases",
       "trusted_contacts",
       "user_blocks",
       "users",

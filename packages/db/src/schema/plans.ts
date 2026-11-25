@@ -260,16 +260,19 @@ export const quotaConsumptions = pgTable(
   ],
 );
 
+/** Must match STAFF_ROLES in @fleettrust/types (an API test enforces it). */
 export const PLATFORM_ROLES = [
-  "billing_operator",
+  "super_admin",
   "verification_reviewer",
+  "billing_operator",
   "trust_safety_moderator",
+  "support_agent",
 ] as const;
 export type PlatformRole = (typeof PLATFORM_ROLES)[number];
 
 /**
- * FleetTrust staff roles (SRS §2.4). Granted from the command line (`pnpm db:staff`), never
- * through the API, until the admin console (Prompt 26) adds MFA-protected management.
+ * FleetTrust staff roles (SRS §2.3). Super admins manage them in the admin console (MFA,
+ * recent sign-in and a typed confirmation); `pnpm db:staff` bootstraps the first super admin.
  */
 export const platformStaff = pgTable(
   "platform_staff",

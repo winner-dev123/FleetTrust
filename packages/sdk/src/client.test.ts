@@ -751,3 +751,43 @@ describe("organizations", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+describe("admin console methods", () => {
+  const caseDto = {
+    id: "0190e000-0000-7000-8000-000000000001",
+    userId: "0190e000-0000-7000-8000-000000000002",
+    subjectEmail: "driver@example.com",
+    reason: "Lost phone",
+    status: "open",
+    resolution: null,
+    openedBy: "agent@example.com",
+    openedAt: "2026-11-24T10:00:00.000Z",
+    closedAt: null,
+    actions: [],
+  };
+
+  it("sends the confirmed action only on irreversible calls", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(() => Promise.resolve(jsonResponse(caseDto)));
+    const client = createApiClient({ baseUrl: "https://api.example.test", fetch });
+
+    await client.supportRevokeSessions(caseDto.id, "support.revoke_sessions");
+    await client.supportSendSignInLink(caseDto.id);
+    const [revoke, link] = fetch.mock.calls.map(
+      ([, init]) => init?.headers as Record<string, string>,
+    );
+    expect(revoke?.["X-Confirm-Action"]).toBe("support.revoke_sessions");
+    expect(link?.["X-Confirm-Action"]).toBeUndefined();
+  });
+
+  it("validates admin input before sending", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    const client = createApiClient({ baseUrl: "https://api.example.test", fetch });
+    await expect(
+      client.grantStaffRole("not-an-email", "support_agent", "staff.grant"),
+    ).rejects.toThrow();
+    await expect(client.updateServiceCategory("towing", {})).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});

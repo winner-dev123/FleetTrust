@@ -10,6 +10,7 @@ import {
 import { Inject, Injectable } from "@nestjs/common";
 
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
+import { SettingsService } from "../../platform/settings/index.js";
 import type { VerifiedIdentity } from "./auth-verifier.js";
 
 /** last_seen_at is a hint, not an audit trail: write it at most this often per user. */
@@ -22,9 +23,20 @@ export class DatabaseUnavailableError extends Error {
   }
 }
 
+/** New accounts are paused by an admin (feature setting `signups.paused`). */
+export class SignupsPausedError extends Error {
+  constructor() {
+    super("new sign-ups are paused");
+    this.name = "SignupsPausedError";
+  }
+}
+
 @Injectable()
 export class UsersService {
-  constructor(@Inject(DATABASE) private readonly database: DatabaseProvider) {}
+  constructor(
+    @Inject(DATABASE) private readonly database: DatabaseProvider,
+    private readonly settings: SettingsService,
+  ) {}
 
   private get db(): Database {
     if (this.database === null) throw new DatabaseUnavailableError();
@@ -69,6 +81,8 @@ export class UsersService {
   async findOrCreate(identity: VerifiedIdentity, requestId?: string): Promise<User> {
     const existing = await this.findByFirebaseUid(identity.uid);
     if (existing) return this.refresh(existing, identity);
+    // Admin lever for abuse waves: existing accounts keep working (Prompt 26).
+    if (await this.settings.get("signups.paused")) throw new SignupsPausedError();
 
     const created = await this.db.transaction(async (tx) => {
       const [row] = await tx

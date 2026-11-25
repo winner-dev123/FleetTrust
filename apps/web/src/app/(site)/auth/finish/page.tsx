@@ -8,15 +8,19 @@ import { browser } from "react-dom";
 import { Button } from "@/components/button";
 import { TextField } from "@/components/field";
 import { Loading, Notice } from "@/components/feedback";
+import { MfaChallenge } from "@/components/mfa-challenge";
+import { isMfaRequiredError } from "@/lib/admin";
 import { clearPendingEmail, normaliseEmail, readPendingEmail } from "@/lib/email-link";
 import { apiClient, firebaseAuth } from "@/lib/firebase";
+import { type PendingMfa, pendingMfa } from "@/lib/mfa";
 import { afterSignInPath } from "@/lib/pending-invitation";
 
 type State =
   | { kind: "signing-in"; email: string }
   | { kind: "need-email" }
   | { kind: "invalid" }
-  | { kind: "failed" };
+  | { kind: "failed" }
+  | { kind: "mfa"; pending: PendingMfa };
 
 /** Decides the first state from the link in the address bar and the email remembered on this device. */
 function initialState(): State {
@@ -37,7 +41,16 @@ function FinishSignIn() {
     let cancelled = false;
     const run = async () => {
       try {
-        await signInWithEmailLink(firebaseAuth(), state.email, window.location.href);
+        try {
+          await signInWithEmailLink(firebaseAuth(), state.email, window.location.href);
+        } catch (error) {
+          // Staff accounts with two-step sign-in finish with a code from their app.
+          if (!isMfaRequiredError(error)) throw error;
+          clearPendingEmail(window.localStorage);
+          window.history.replaceState(null, "", "/auth/finish");
+          if (!cancelled) setState({ kind: "mfa", pending: pendingMfa(error) });
+          return;
+        }
         clearPendingEmail(window.localStorage);
         // Remove the one-time code from the address bar and history.
         window.history.replaceState(null, "", "/auth/finish");
@@ -60,6 +73,17 @@ function FinishSignIn() {
   }
 
   switch (state.kind) {
+    case "mfa":
+      return (
+        <MfaChallenge
+          available={state.pending.available}
+          resolve={async (code) => {
+            await state.pending.resolve(code);
+            await apiClient().me();
+            router.replace(afterSignInPath());
+          }}
+        />
+      );
     case "signing-in":
       return <Loading label="Signing you in…" />;
     case "need-email":

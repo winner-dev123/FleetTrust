@@ -4,6 +4,7 @@ import { ApiConfigModule } from "./config/config.module.js";
 import type { ApiEnv } from "./config/env.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { AdminModule } from "./modules/admin/index.js";
 import { EntitlementsModule } from "./modules/entitlements/index.js";
 import { IdentityModule } from "./modules/identity/index.js";
 import { ListsModule } from "./modules/lists/index.js";
@@ -29,6 +30,7 @@ import { ObservabilityModule } from "./observability/observability.module.js";
 import { ClockModule } from "./platform/clock/index.js";
 import { MapsModule } from "./platform/maps/index.js";
 import { RateLimitModule } from "./platform/rate-limit/index.js";
+import { SettingsModule } from "./platform/settings/index.js";
 import { EmailModule } from "./platform/email/index.js";
 import { PushModule } from "./platform/push/index.js";
 import { RealtimeModule } from "./platform/realtime/index.js";
@@ -71,6 +73,8 @@ export class AppModule {
         RealtimeModule.forRoot(env),
         PushModule.forRoot(env),
         EmailModule.forRoot(env),
+        // Admin feature and service-category settings, read by several modules.
+        SettingsModule,
         // Registers the global AuthGuard: every route requires sign-in unless marked @Public().
         IdentityModule.forRoot(env),
         // Tenancy: @OrgPermission() routes check membership and role after sign-in.
@@ -99,6 +103,8 @@ export class AppModule {
         FleetModule,
         JobsModule,
         PowerUserModule,
+        // Admin console API: staff roles, settings, categories, audit search, support.
+        AdminModule,
         HealthModule,
       ],
     };

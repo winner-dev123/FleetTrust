@@ -67,6 +67,15 @@ export class FakeAuthVerifier implements AuthVerifier {
     this.revokedAt.set(uid, Date.now());
     return Promise.resolve();
   }
+
+  readonly signInLinks: { email: string; continueUrl: string }[] = [];
+
+  signInLink(email: string, continueUrl: string): Promise<string> {
+    this.signInLinks.push({ email, continueUrl });
+    return Promise.resolve(
+      `${continueUrl}?mode=signIn&oobCode=fake-${String(this.signInLinks.length)}`,
+    );
+  }
 }
 
 export class FakeAppCheckVerifier implements AppCheckVerifier {
