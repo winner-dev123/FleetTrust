@@ -223,6 +223,7 @@ async function subscribe(
   wsUrl: string,
   token: string,
   conversationId: string,
+  after = 0,
 ): Promise<Subscriber> {
   const socket = new WebSocket(wsUrl);
   const arrivals = new Map<string, number>();
@@ -244,7 +245,7 @@ async function subscribe(
         message?: { id: string };
       };
       if (frame.type === "ready")
-        socket.send(JSON.stringify({ type: "subscribe", conversationId, after: 0 }));
+        socket.send(JSON.stringify({ type: "subscribe", conversationId, after }));
       if (frame.type === "subscribed") {
         clearTimeout(timer);
         resolve();
@@ -364,6 +365,29 @@ export async function messagingScenario(
       .map((f) => `unexpected frame: ${f}`),
     `seqs sent: ${String(Math.min(...[...sent.values()].map((v) => v.seq)))}–${String(Math.max(...[...sent.values()].map((v) => v.seq)))}`,
   ];
+  // Evidence for a miss: is the message stored, and does a fresh subscription replay it?
+  const firstMissed = Math.min(...missedBySeq.keys());
+  const witness = members.find((m, index) => {
+    const id = [...sent].find(([, info]) => info.seq === firstMissed)?.[0];
+    return (
+      id !== undefined && !subscribers[index]?.arrivals.has(id) && m.id !== sent.get(id)?.sender.id
+    );
+  });
+  if (missing > 0 && witness) {
+    const page = (await api.call(
+      "GET",
+      `/v1/conversations/${conversation.id}/messages?after=${String(firstMissed - 1)}`,
+      { token: witness.token },
+    )) as { status: number; body: { items?: { seq: number; status: string }[] } };
+    diagnosis.push(
+      `REST after ${String(firstMissed - 1)}: ${String(page.status)} ${JSON.stringify(page.body.items?.map((m) => [m.seq, m.status]) ?? page.body).slice(0, 160)}`,
+    );
+    const again = await subscribe(wsUrl, witness.token, conversation.id, firstMissed - 1);
+    diagnosis.push(
+      `resubscribe after ${String(firstMissed - 1)} replayed ${String(again.arrivals.size)} messages`,
+    );
+    again.socket.close();
+  }
   for (const s of subscribers) s.socket.close();
 
   return [

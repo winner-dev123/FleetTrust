@@ -90,6 +90,9 @@ jobs:
           PG_EXEC: docker exec -i ${{ job.services.postgres.id }}
           DRILL_OUT: restore-drill.json
         run: node tools/perf/src/restore-drill.ts
+      - name: API warnings and errors
+        if: always()
+        run: grep -hv '"level":"info"' api.log worker.log | tail -n 80 || true
       - name: Results (JSON)
         if: always()
         run: cat perf-results.json restore-drill.json 2>/dev/null || true
