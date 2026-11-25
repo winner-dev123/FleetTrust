@@ -78,6 +78,13 @@ jobs:
           API_URL: http://127.0.0.1:8080
           PERF_OUT: perf-results.json
         run: node tools/perf/src/run.ts
+      # Quiesce writers first, so the copy is compared with a database that no longer changes
+      # (pg_dump itself is consistent either way: it reads one MVCC snapshot).
+      - name: Stop the API and worker
+        run: |
+          pkill -f "node dist/main.js" || true
+          for i in $(seq 1 20); do pgrep -f "node dist/main.js" > /dev/null || exit 0; sleep 1; done
+          exit 1
       - name: Restore drill (backup, restore into a new database, verify)
         env:
           PG_EXEC: docker exec -i ${{ job.services.postgres.id }}

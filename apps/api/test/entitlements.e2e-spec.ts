@@ -309,12 +309,22 @@ describe("billing operators", () => {
     let body = (await owner.get(`/v1/orgs/${orgId}/entitlements`).expect(200))
       .body as EntitlementsResponse;
     expect(meter(body, "branches.max")).toMatchObject({ limit: null, source: "override" });
+    // Unlimited is enforced as unlimited, not as zero: more branches than the plan's 3.
+    for (let i = 1; i <= 4; i += 1) {
+      await owner
+        .post(`/v1/orgs/${orgId}/branches`, { name: `Unlimited ${String(i)}` })
+        .expect(201);
+    }
 
     await operator.del(`/v1/admin/billing/overrides/${created.id}`).expect(204);
     await operator.del(`/v1/admin/billing/overrides/${created.id}`).expect(404);
     body = (await owner.get(`/v1/orgs/${orgId}/entitlements`).expect(200))
       .body as EntitlementsResponse;
     expect(meter(body, "branches.max")).toMatchObject({ limit: 3, source: "plan" });
+    // Back on the plan: existing branches are kept, new ones are refused.
+    expect(
+      reason((await owner.post(`/v1/orgs/${orgId}/branches`, { name: "Over" }).expect(403)).body),
+    ).toBe("quota_exceeded");
 
     const notApplicable = await operator
       .post("/v1/admin/billing/overrides", {

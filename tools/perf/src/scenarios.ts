@@ -214,6 +214,9 @@ export async function quotaScenario(
 interface Subscriber {
   socket: WebSocket;
   arrivals: Map<string, number>;
+  /** Frames other than messages after subscribing (errors, unsubscribed...), for diagnosis. */
+  other: string[];
+  closed: boolean;
 }
 
 async function subscribe(
@@ -223,6 +226,11 @@ async function subscribe(
 ): Promise<Subscriber> {
   const socket = new WebSocket(wsUrl);
   const arrivals = new Map<string, number>();
+  const other: string[] = [];
+  const subscriber: Subscriber = { socket, arrivals, other, closed: false };
+  socket.addEventListener("close", () => {
+    subscriber.closed = true;
+  });
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error("socket did not become ready"));
@@ -242,15 +250,17 @@ async function subscribe(
         resolve();
       }
       // Other members never see clientMessageId (only the sender does), so match on the id.
-      if (frame.type === "message" && frame.message?.id && !arrivals.has(frame.message.id)) {
-        arrivals.set(frame.message.id, performance.now());
+      if (frame.type === "message" && frame.message?.id) {
+        if (!arrivals.has(frame.message.id)) arrivals.set(frame.message.id, performance.now());
+      } else if (!["ready", "subscribed", "pong"].includes(frame.type) && other.length < 5) {
+        other.push(JSON.stringify(frame).slice(0, 160));
       }
     });
     socket.addEventListener("error", () => {
       reject(new Error("socket error"));
     });
   });
-  return { socket, arrivals };
+  return subscriber;
 }
 
 export async function messagingScenario(
@@ -293,7 +303,7 @@ export async function messagingScenario(
     );
   }
 
-  const sent = new Map<string, { at: number; sender: TestUser }>();
+  const sent = new Map<string, { at: number; sender: TestUser; seq: number }>();
   const senders = [owner, ...members.slice(0, options.senders - 1)];
   const sendResult = await runLoad(
     async (i) => {
@@ -308,8 +318,8 @@ export async function messagingScenario(
           token: sender.token,
           body: { clientMessageId: randomUUID(), body: `Perf message ${String(i)}` },
         },
-      )) as { id: string };
-      sent.set(message.id, { at, sender });
+      )) as { id: string; seq: number };
+      sent.set(message.id, { at, sender, seq: message.seq });
     },
     { concurrency: options.senders, total: options.senders * options.messagesPerSender },
   );
@@ -328,15 +338,32 @@ export async function messagingScenario(
   }
   const delivery: number[] = [];
   let missing = 0;
+  const missedBySeq = new Map<number, number>();
   subscribers.forEach((subscriber, index) => {
     const self = members[index];
     for (const [id, info] of sent) {
       if (info.sender.id === self?.id) continue;
       const arrived = subscriber.arrivals.get(id);
-      if (arrived === undefined) missing += 1;
-      else delivery.push(arrived - info.at);
+      if (arrived === undefined) {
+        missing += 1;
+        missedBySeq.set(info.seq, (missedBySeq.get(info.seq) ?? 0) + 1);
+      } else delivery.push(arrived - info.at);
     }
   });
+  const diagnosis = [
+    ...[...missedBySeq]
+      .sort((a, b) => a[0] - b[0])
+      .slice(0, 10)
+      .map(([seq, n]) => `seq ${String(seq)} missed by ${String(n)} subscribers`),
+    ...(subscribers.some((s) => s.closed)
+      ? [`${String(subscribers.filter((s) => s.closed).length)} sockets closed early`]
+      : []),
+    ...subscribers
+      .flatMap((s) => s.other)
+      .slice(0, 5)
+      .map((f) => `unexpected frame: ${f}`),
+    `seqs sent: ${String(Math.min(...[...sent.values()].map((v) => v.seq)))}–${String(Math.max(...[...sent.values()].map((v) => v.seq)))}`,
+  ];
   for (const s of subscribers) s.socket.close();
 
   return [
@@ -362,7 +389,7 @@ export async function messagingScenario(
       notes: [
         `${String(subscribers.length)} members subscribed over WebSocket; latency from send start to arrival`,
       ],
-      samples: [],
+      samples: missing > 0 ? diagnosis : [],
     },
   ];
 }
