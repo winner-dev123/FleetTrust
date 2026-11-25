@@ -1,7 +1,7 @@
 # Handoff — Prompt 25: React Native mobile product
 
 - Date: 2026-11-24
-- Status: **awaiting owner approval** · branch `feat/prompt-25-mobile`
+- Status: **approved** · merged as PR #27 → `f621a16` (CI 6/6 green on `f6cb48d`)
 - Prompt 24 approved and merged (PR #26 → `aa34a6b`).
 
 ## Assumptions

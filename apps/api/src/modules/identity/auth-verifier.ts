@@ -38,6 +38,8 @@ export interface AuthVerifier {
   verifyIdToken(token: string, options: { checkRevoked: boolean }): Promise<VerifiedIdentity>;
   /** Invalidates every refresh token for the user ("sign out everywhere"). */
   revokeSessions(uid: string): Promise<void>;
+  /** A one-time email sign-in link for the address (support recovery, Prompt 26). */
+  signInLink(email: string, continueUrl: string): Promise<string>;
 }
 
 export const AUTH_VERIFIER = Symbol("AUTH_VERIFIER");

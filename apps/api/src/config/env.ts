@@ -140,6 +140,13 @@ export const apiEnvSchema = z
       .min(10_000)
       .max(86_400_000)
       .default(3_600_000),
+    /**
+     * Admin MFA (Prompt 26): staff routes need a second factor on the current sign-in
+     * (Identity Platform TOTP, OQ-12). Defaults to "required"; "off" only in local and test.
+     */
+    ADMIN_MFA: z.enum(["required", "off"]).optional(),
+    /** Web origin: support sign-in links continue here. */
+    PUBLIC_WEB_URL: envFields.httpUrl().default("http://localhost:3000"),
     ROUTING_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(86_400).default(3_600),
   })
   .superRefine((env, ctx) => {
@@ -212,6 +219,9 @@ export const apiEnvSchema = z
     }
     if (env.APP_ENV === "production" && env.ROUTING_PROVIDER === "straight-line") {
       issue("ROUTING_PROVIDER", "straight-line is for development only");
+    }
+    if (deployed && env.ADMIN_MFA === "off") {
+      issue("ADMIN_MFA", "can't be 'off' in staging and production");
     }
     if (deployed && env.PUSH_PROVIDER !== "fcm") {
       issue("PUSH_PROVIDER", "must be 'fcm' in staging and production");

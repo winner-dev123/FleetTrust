@@ -32,7 +32,7 @@ import {
 
 import { RateLimit } from "../../platform/rate-limit/index.js";
 import { parseBody } from "../../platform/validation.js";
-import { CurrentUser, PlatformRoleRequired, Public } from "../identity/index.js";
+import { CurrentUser, Irreversible, PlatformRoleRequired, Public } from "../identity/index.js";
 import { CurrentTenant, OrgPermission, type TenantAccess } from "../organizations/index.js";
 import { ReviewService } from "./review.service.js";
 import { verificationError } from "./shared.js";
@@ -239,6 +239,7 @@ export class ReviewController {
 
   @Post("badges/:badgeId/revoke")
   @HttpCode(204)
+  @Irreversible("badge.revoke")
   async revoke(
     @CurrentUser() reviewer: User,
     @Param("badgeId", IdParam) badgeId: string,
@@ -274,6 +275,7 @@ export class ReviewController {
   /** Runs the retention purge now (until the jobs runtime schedules it daily). */
   @Post("purge")
   @HttpCode(200)
+  @Irreversible("verification.purge")
   async purge(@CurrentUser() reviewer: User): Promise<{ purged: number }> {
     return { purged: await this.review.purgeExpiredDocuments(reviewer) };
   }

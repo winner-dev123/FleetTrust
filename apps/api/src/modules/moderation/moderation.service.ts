@@ -20,7 +20,6 @@ import {
   users,
 } from "@fleettrust/db";
 import {
-  AUTO_FLAG_REPORTS,
   type createReportSchema,
   type ModerationCase,
   type ModerationQueueItem,
@@ -30,6 +29,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { z } from "zod";
 
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
+import { SettingsService } from "../../platform/settings/index.js";
 import { currentRequestContext } from "../../observability/request-context.js";
 import { CLOCK, type Clock } from "../../platform/clock/index.js";
 import { REALTIME_BUS, type RealtimeBus } from "../../platform/realtime/index.js";
@@ -99,6 +99,7 @@ export class ModerationService {
     @Inject(DATABASE) private readonly database: DatabaseProvider,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(REALTIME_BUS) private readonly bus: RealtimeBus,
+    private readonly settings: SettingsService,
   ) {}
 
   private get db(): Database {
@@ -292,7 +293,9 @@ export class ModerationService {
       sql`SELECT count(DISTINCT reporter_user_id)::int AS n FROM content_reports
           WHERE target_type = ${type} AND target_id = ${id} AND status = 'open'`,
     );
-    if ((counted?.n ?? 0) < AUTO_FLAG_REPORTS) return false;
+    // The threshold is an admin setting (default AUTO_FLAG_REPORTS).
+    const threshold = await this.settings.get("community.auto_hide_reporters", executor);
+    if ((counted?.n ?? 0) < threshold) return false;
     let moved: { id: string }[];
     if (type === "article") {
       moved = await executor

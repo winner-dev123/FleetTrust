@@ -46,5 +46,7 @@ export const authErrorReasonSchema = z.enum([
   "app_check_failed",
   "account_suspended",
   "profile_incomplete",
+  /** New accounts are paused by an admin; existing accounts are unaffected. */
+  "signups_paused",
 ]);
 export type AuthErrorReason = z.infer<typeof authErrorReasonSchema>;

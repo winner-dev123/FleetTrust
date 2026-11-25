@@ -432,9 +432,13 @@ describe("downgrades are safe", () => {
         })
         .expect(201)
     ).body as PlanAssignmentDto;
-    await operator.post(`/v1/admin/billing/assignments/${assignment.id}/end`, {}).expect(204);
+    await operator
+      .post(`/v1/admin/billing/assignments/${assignment.id}/end`, {})
+      .set("X-Confirm-Action", "plan.end_assignment")
+      .expect(204);
     const again = await operator
       .post(`/v1/admin/billing/assignments/${assignment.id}/end`, {})
+      .set("X-Confirm-Action", "plan.end_assignment")
       .expect(409);
     expect(reason(again.body)).toBe("assignment_already_ended");
     const body = (await owner.get(`/v1/orgs/${orgId}/entitlements`).expect(200))

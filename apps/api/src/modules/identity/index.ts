@@ -18,5 +18,13 @@ export {
   RequireRecentLogin,
 } from "./decorators.js";
 export { IdentityModule } from "./identity.module.js";
-export { PlatformRoleGuard, PlatformRoleRequired } from "./platform-role.js";
+export {
+  adminMfaRequired,
+  Irreversible,
+  IrreversibleGuard,
+  MfaNotRequired,
+  PlatformRoleGuard,
+  PlatformRoleRequired,
+  type StaffRequest,
+} from "./platform-role.js";
 export { UsersService } from "./users.service.js";

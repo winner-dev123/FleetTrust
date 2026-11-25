@@ -51,6 +51,13 @@ export const auditEvents = pgTable(
     index("audit_events_org_time_idx").on(t.organizationId, t.occurredAt.desc()),
     index("audit_events_actor_time_idx").on(t.actorId, t.occurredAt.desc()),
     index("audit_events_target_idx").on(t.targetType, t.targetId),
+    // Admin audit search (Prompt 26): newest first, and by action family ("verification.%").
+    index("audit_events_time_idx").on(t.occurredAt.desc()),
+    index("audit_events_action_time_idx").using(
+      "btree",
+      sql`${t.action} text_pattern_ops`,
+      t.occurredAt.desc(),
+    ),
   ],
 );
 

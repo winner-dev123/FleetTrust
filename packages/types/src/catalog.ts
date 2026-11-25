@@ -175,5 +175,7 @@ export const catalogErrorReasonSchema = z.enum([
   "outside_branch_scope",
   "too_many_offerings",
   "date_out_of_range",
+  /** An admin closed the category to new offerings (Prompt 26); existing ones stay. */
+  "category_closed",
 ]);
 export type CatalogErrorReason = z.infer<typeof catalogErrorReasonSchema>;

@@ -38,7 +38,7 @@ import {
   RECENT_LOGIN,
   REQUIRE_DISPLAY_NAME,
 } from "./decorators.js";
-import { DatabaseUnavailableError, UsersService } from "./users.service.js";
+import { DatabaseUnavailableError, SignupsPausedError, UsersService } from "./users.service.js";
 
 /** Failed sign-in attempts allowed per client IP per window before 429 (brute-force/scraping brake). */
 export const FAILED_AUTH_LIMIT = 20;
@@ -124,6 +124,7 @@ export class AuthGuard implements CanActivate {
       if (error instanceof DatabaseUnavailableError) {
         throw new ServiceUnavailableException({ statusCode: 503, error: "service_unavailable" });
       }
+      if (error instanceof SignupsPausedError) deny("signups_paused", 403);
       throw error;
     }
     if (user.status === "suspended") {

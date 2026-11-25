@@ -72,7 +72,9 @@ pnpm db:staff list
 pnpm db:staff revoke ops@example.com billing_operator
 ```
 
-Uses `DATABASE_URL` (add `--test` for `DATABASE_URL_TEST`). Every grant and revocation is written to the audit log as a system action. MFA-protected management comes with the admin console (Prompt 26).
+Uses `DATABASE_URL` (add `--test` for `DATABASE_URL_TEST`). Every grant and revocation is written to the audit log as a system action.
+
+Since Prompt 26, super admins manage staff roles in the admin console (MFA, a recent sign-in and a typed confirmation; see [admin.md](admin.md)). The CLI remains for bootstrapping the first super admin: `pnpm db:staff grant <email> super_admin`.
 
 ## Downgrade behaviour
 

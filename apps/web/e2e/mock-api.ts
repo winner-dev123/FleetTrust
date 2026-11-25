@@ -68,6 +68,18 @@ import {
   type ServiceRequestDto,
   type TrustedContactDto,
   type VehicleDto,
+  adminMeSchema,
+  type AuditEntryDto,
+  auditPageSchema,
+  defaultServiceCategory,
+  FEATURE_SETTINGS,
+  FEATURE_SETTING_KEYS,
+  featureSettingSchema,
+  platformStaffMemberSchema,
+  publicConfigSchema,
+  serviceCategorySchema,
+  STAFF_ROLES,
+  type StaffRole,
 } from "@fleettrust/types";
 import { z } from "zod";
 
@@ -695,6 +707,214 @@ route("POST", "/v1/orgs", true, ({ user, body }) => {
   return { status: 201, schema: myOrganizationSchema, body: created };
 });
 route("GET", "/v1/trust-safety/dashboard", true, () => notFound);
+// --- Admin console (Prompt 26) --------------------------------------------------------------
+// Test staff are picked by email: "admin-…" is a super admin whose sign-in used two-step
+// verification; "nomfa-…" is a super admin who hasn't set it up yet.
+
+interface StaffGrant {
+  userId: string;
+  email: string;
+  role: StaffRole;
+  since: string;
+}
+const staffGrants: StaffGrant[] = [];
+const featureValues = new Map<string, unknown>();
+const auditLog: AuditEntryDto[] = [];
+
+function staffRolesOf(user: UserState | null): StaffRole[] {
+  if (!user?.email) return [];
+  const roles = new Set<StaffRole>(
+    staffGrants.filter((g) => g.userId === user.id).map((g) => g.role),
+  );
+  if (user.email.startsWith("admin-") || user.email.startsWith("nomfa-")) roles.add("super_admin");
+  return [...roles];
+}
+
+const mfaSatisfied = (user: UserState | null) => !(user?.email ?? "").startsWith("nomfa-");
+const mfaRequired = {
+  status: 403,
+  body: { statusCode: 403, error: "forbidden", reason: "mfa_required" },
+};
+
+/** Staff route: 404 for non-staff, 403 mfa_required without two-step sign-in. */
+function staffOnly(user: UserState | null, role: StaffRole) {
+  if (!staffRolesOf(user).includes(role)) return notFound;
+  if (!mfaSatisfied(user)) return mfaRequired;
+  return null;
+}
+
+function audit(
+  user: UserState,
+  action: string,
+  targetType: string,
+  targetId: string,
+  metadata: Record<string, unknown>,
+) {
+  auditLog.unshift({
+    id: newId(),
+    occurredAt: new Date().toISOString(),
+    actorType: "user",
+    actor: { id: user.id, email: user.email, displayName: user.displayName },
+    action,
+    targetType,
+    targetId,
+    organizationId: null,
+    requestId: null,
+    metadata,
+  });
+}
+
+function staffList() {
+  const byUser = new Map<
+    string,
+    {
+      userId: string;
+      email: string;
+      displayName: null;
+      roles: { role: StaffRole; since: string }[];
+    }
+  >();
+  for (const grant of staffGrants) {
+    const entry = byUser.get(grant.userId) ?? {
+      userId: grant.userId,
+      email: grant.email,
+      displayName: null,
+      roles: [],
+    };
+    entry.roles.push({ role: grant.role, since: grant.since });
+    byUser.set(grant.userId, entry);
+  }
+  return [...byUser.values()];
+}
+
+function featureList() {
+  return FEATURE_SETTING_KEYS.map((key) => {
+    const definition = FEATURE_SETTINGS[key];
+    return {
+      key,
+      label: definition.label,
+      description: definition.description,
+      value: featureValues.has(key) ? featureValues.get(key) : definition.defaultValue,
+      defaultValue: definition.defaultValue,
+      public: definition.public,
+      updatedAt: null,
+      updatedBy: null,
+    };
+  });
+}
+
+const confirmed = (req: IncomingMessage, action: string) =>
+  req.headers["x-confirm-action"] === action;
+const confirmationRequired = {
+  status: 428,
+  body: { statusCode: 428, error: "precondition_required", reason: "confirmation_required" },
+};
+
+route("GET", "/v1/config", false, () => ({
+  schema: publicConfigSchema,
+  body: { siteNotice: (featureValues.get("site.notice") as string | null | undefined) ?? null },
+}));
+route("GET", "/v1/taxonomy", false, () => ({
+  schema: z.array(serviceCategorySchema),
+  body: (
+    ["workshop", "fuel_station", "towing", "tyres", "parts", "parking", "mobile_mechanic"] as const
+  ).map(defaultServiceCategory),
+}));
+route("GET", "/v1/admin/me", true, ({ user }) => {
+  const roles = staffRolesOf(user);
+  if (!user || roles.length === 0) return notFound;
+  return {
+    schema: adminMeSchema,
+    body: {
+      userId: user.id,
+      email: user.email,
+      roles,
+      mfa: { required: true, satisfied: mfaSatisfied(user) },
+    },
+  };
+});
+route(
+  "GET",
+  "/v1/admin/staff",
+  true,
+  ({ user }) =>
+    staffOnly(user, "super_admin") ?? {
+      schema: z.array(platformStaffMemberSchema),
+      body: staffList(),
+    },
+);
+route("POST", "/v1/admin/staff/grant", true, ({ user, body, req }) => {
+  const denied = staffOnly(user, "super_admin");
+  if (denied || !user) return denied ?? notFound;
+  if (!confirmed(req, "staff.grant")) return confirmationRequired;
+  const email = text(body["email"], "").toLowerCase();
+  const role = STAFF_ROLES.find((r) => r === body["role"]);
+  if (!role || !email) return { status: 400, body: { statusCode: 400 } };
+  const existing = staffGrants.find((g) => g.email === email);
+  const userId = existing?.userId ?? newId();
+  if (!staffGrants.some((g) => g.email === email && g.role === role)) {
+    staffGrants.push({ userId, email, role, since: new Date().toISOString() });
+    audit(user, "staff.role_granted", "user", userId, { role, via: "console" });
+  }
+  return { schema: z.array(platformStaffMemberSchema), body: staffList() };
+});
+route("POST", "/v1/admin/staff/revoke", true, ({ user, body, req }) => {
+  const denied = staffOnly(user, "super_admin");
+  if (denied || !user) return denied ?? notFound;
+  if (!confirmed(req, "staff.revoke")) return confirmationRequired;
+  const index = staffGrants.findIndex(
+    (g) => g.userId === body["userId"] && g.role === body["role"],
+  );
+  if (index === -1) return notFound;
+  const [removed] = staffGrants.splice(index, 1);
+  if (removed)
+    audit(user, "staff.role_revoked", "user", removed.userId, {
+      role: removed.role,
+      via: "console",
+    });
+  return { schema: z.array(platformStaffMemberSchema), body: staffList() };
+});
+route(
+  "GET",
+  "/v1/admin/features",
+  true,
+  ({ user }) =>
+    staffOnly(user, "super_admin") ?? {
+      schema: z.array(featureSettingSchema),
+      body: featureList(),
+    },
+);
+route("PUT", "/v1/admin/features/:key", true, ({ user, params, body }) => {
+  const denied = staffOnly(user, "super_admin");
+  if (denied || !user) return denied ?? notFound;
+  const key = FEATURE_SETTING_KEYS.find((k) => k === params[0]);
+  if (!key) return notFound;
+  const parsed = FEATURE_SETTINGS[key].schema.safeParse(body["value"]);
+  if (!parsed.success) return { status: 400, body: { statusCode: 400 } };
+  featureValues.set(key, parsed.data);
+  audit(user, "feature.setting_changed", "feature_setting", key, { after: parsed.data });
+  return { schema: featureSettingSchema, body: featureList().find((f) => f.key === key) };
+});
+route("PUT", "/v1/admin/taxonomy/:category", true, ({ user, params }) => {
+  const denied = staffOnly(user, "super_admin");
+  if (denied) return denied;
+  const category = (
+    ["workshop", "fuel_station", "towing", "tyres", "parts", "parking", "mobile_mechanic"] as const
+  ).find((c) => c === params[0]);
+  return category
+    ? { schema: serviceCategorySchema, body: defaultServiceCategory(category) }
+    : notFound;
+});
+route("GET", "/v1/admin/audit", true, ({ user, query }) => {
+  if (staffRolesOf(user).length === 0) return notFound;
+  if (!mfaSatisfied(user)) return mfaRequired;
+  const action = query.get("action") ?? "";
+  const items = auditLog.filter(
+    (e) => !action || (action.endsWith(".") ? e.action.startsWith(action) : e.action === action),
+  );
+  return { schema: auditPageSchema, body: { items, nextCursor: null, scope: "all" } };
+});
+
 route("GET", "/v1/me/entitlements", true, ({ user }) => ({
   schema: entitlementsResponseSchema,
   body: entitlements({ type: "user", id: user?.id ?? newId() }),
@@ -1052,7 +1272,8 @@ const server = createServer((req, res) => {
       res.writeHead(204, {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE",
-        "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Firebase-AppCheck, Accept",
+        "Access-Control-Allow-Headers":
+          "Authorization, Content-Type, X-Firebase-AppCheck, Accept, X-Confirm-Action",
       });
       res.end();
       return;

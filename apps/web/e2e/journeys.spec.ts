@@ -151,3 +151,55 @@ test("keyboard users can skip to the content", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(page.locator("main")).toBeFocused();
 });
+
+test.describe("admin console", () => {
+  test("a super admin grants a role only after typing a confirmation, and finds it in the audit log", async ({
+    page,
+  }) => {
+    await signIn(page, uniqueEmail("admin"));
+    await page.goto("/app/admin/staff");
+    await expect(page.getByRole("heading", { name: "Staff roles", level: 1 })).toBeVisible();
+    const target = uniqueEmail("helper").toLowerCase();
+    await page.getByLabel("Email address").fill(target);
+    await page.getByLabel("Role").selectOption("support_agent");
+    await page.getByRole("button", { name: "Grant Support agent…" }).click();
+
+    const dialog = page.getByRole("alertdialog", { name: "Grant Support agent?" });
+    await expect(dialog).toContainText("can't be undone");
+    const confirm = dialog.getByRole("button", { name: "Grant Support agent" });
+    await expect(confirm).toBeDisabled();
+    await dialog.getByLabel(`Type ${target} to confirm`).fill("someone-else@example.test");
+    await expect(confirm).toBeDisabled();
+    await dialog.getByLabel(`Type ${target} to confirm`).fill(target);
+    await confirm.click();
+    await expect(page.getByText(`Granted Support agent to ${target}.`)).toBeVisible();
+    await expect(page.getByRole("region", { name: "Current staff" })).toContainText(target);
+
+    await page.goto("/app/admin/audit");
+    await page.getByLabel("Action").fill("staff.");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await expect(page.getByRole("region", { name: "Audit entries" })).toContainText(
+      "staff.role_granted",
+    );
+  });
+
+  test("staff without two-step sign-in can only open the setup page", async ({ page }) => {
+    await signIn(page, uniqueEmail("nomfa"));
+    await page.goto("/app/admin/staff");
+    await expect(
+      page.getByRole("heading", { name: "Two-step sign-in needed", level: 1 }),
+    ).toBeVisible();
+    await expect(page.getByRole("region", { name: "Current staff" })).toHaveCount(0);
+    await page.getByRole("link", { name: "Set it up or sign in with your code" }).click();
+    await expect(page.getByRole("heading", { name: "Two-step sign-in", level: 1 })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Start setup" })).toBeVisible();
+  });
+
+  test("everyone else sees no console", async ({ page }) => {
+    await signIn(page, uniqueEmail("member"));
+    await page.goto("/app/admin");
+    await expect(page.getByRole("heading", { name: "Page not found", level: 1 })).toBeVisible();
+    await page.goto("/app");
+    await expect(page.getByRole("link", { name: "Admin console" })).toHaveCount(0);
+  });
+});

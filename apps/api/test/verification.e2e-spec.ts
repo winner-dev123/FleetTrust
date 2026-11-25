@@ -192,6 +192,7 @@ describe("labels are accurate", () => {
       .post(`/v1/admin/verification/badges/${badge?.id ?? ""}/revoke`, {
         reason: "Licence reported suspended",
       })
+      .set("X-Confirm-Action", "badge.revoke")
       .expect(204);
     expect((await labelsOf("users", await userIdOf(revoked))).labels[0]?.status).toBe("unverified");
   });
@@ -569,6 +570,7 @@ describe("appeals", () => {
       .post(`/v1/admin/verification/badges/${badge?.id ?? ""}/revoke`, {
         reason: "Reported as forged",
       })
+      .set("X-Confirm-Action", "badge.revoke")
       .expect(204);
     const appealed = (
       await applicant

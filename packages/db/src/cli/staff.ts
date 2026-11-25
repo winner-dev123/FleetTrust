@@ -14,9 +14,9 @@ Roles: ${PLATFORM_ROLES.join(", ")}
 The user must have signed in at least once (their account is created on first sign-in).`;
 
 /**
- * Grants FleetTrust staff roles (billing operator) from the command line. There is
- * deliberately no API for this until the admin console adds MFA-protected management
- * (Prompt 26). Every change is written to the audit log as a system action.
+ * Grants FleetTrust staff roles from the command line. Since Prompt 26 super admins manage
+ * roles in the admin console (MFA, recent sign-in, typed confirmation); this CLI bootstraps
+ * the first super admin. Every change is written to the audit log as a system action.
  */
 await runCli(async () => {
   const args = process.argv.slice(2).filter((arg) => arg !== "--test");

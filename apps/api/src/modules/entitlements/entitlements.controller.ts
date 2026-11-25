@@ -25,7 +25,7 @@ import {
 
 import { RateLimit } from "../../platform/rate-limit/index.js";
 import { parseBody } from "../../platform/validation.js";
-import { CurrentUser, PlatformRoleRequired } from "../identity/index.js";
+import { CurrentUser, Irreversible, PlatformRoleRequired } from "../identity/index.js";
 import { BillingService } from "./billing.service.js";
 import { EntitlementsService, subjectOfUser } from "./entitlements.service.js";
 
@@ -92,6 +92,7 @@ export class BillingAdminController {
 
   @Post("assignments/:id/end")
   @HttpCode(204)
+  @Irreversible("plan.end_assignment")
   async end(
     @CurrentUser() actor: User,
     @Param("id", IdParam) id: string,

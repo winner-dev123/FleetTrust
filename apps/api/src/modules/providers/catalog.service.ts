@@ -35,6 +35,7 @@ import {
 } from "@nestjs/common";
 
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
+import { SettingsService } from "../../platform/settings/index.js";
 import { currentRequestContext } from "../../observability/request-context.js";
 import type { TenantAccess } from "../organizations/index.js";
 import { assertProvider, notFound } from "./shared.js";
@@ -138,7 +139,10 @@ export type SnapshotOffering = Omit<OfferingDto, "updatedAt" | "sortOrder">;
  */
 @Injectable()
 export class CatalogService {
-  constructor(@Inject(DATABASE) private readonly database: DatabaseProvider) {}
+  constructor(
+    @Inject(DATABASE) private readonly database: DatabaseProvider,
+    private readonly settings: SettingsService,
+  ) {}
 
   private get db(): Database {
     if (this.database === null) throw new Error("DATABASE_URL is not configured");
@@ -245,6 +249,9 @@ export class CatalogService {
         .from(providerOfferings)
         .where(eq(providerOfferings.organizationId, orgId));
       if (existing.length >= MAX_OFFERINGS) throw catalogError(409, "too_many_offerings");
+      if (!(await this.settings.acceptsNewOfferings(input.category, tx))) {
+        throw catalogError(409, "category_closed");
+      }
       await this.validate(tx, orgId, input);
       const [row] = await tx
         .insert(providerOfferings)
@@ -279,6 +286,13 @@ export class CatalogService {
       const current = await this.find(tx, orgId, id);
       this.assertScope(access, current.branchIds);
       this.assertScope(access, input.branchIds);
+      // Moving an offering into a closed category counts as a new offering there.
+      if (
+        input.category !== current.category &&
+        !(await this.settings.acceptsNewOfferings(input.category, tx))
+      ) {
+        throw catalogError(409, "category_closed");
+      }
       await this.validate(tx, orgId, input);
       await tx
         .update(providerOfferings)

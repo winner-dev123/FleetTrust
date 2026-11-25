@@ -38,7 +38,12 @@ export function toAuthenticationError(error: unknown): AuthenticationError {
 }
 
 export class FirebaseAuthVerifier implements AuthVerifier {
-  constructor(private readonly auth: Pick<Auth, "verifyIdToken" | "revokeRefreshTokens">) {}
+  constructor(
+    private readonly auth: Pick<
+      Auth,
+      "verifyIdToken" | "revokeRefreshTokens" | "generateSignInWithEmailLink"
+    >,
+  ) {}
 
   static forProject(projectId: string): FirebaseAuthVerifier {
     return new FirebaseAuthVerifier(getAuth(firebaseAdminApp(projectId)));
@@ -66,6 +71,13 @@ export class FirebaseAuthVerifier implements AuthVerifier {
 
   async revokeSessions(uid: string): Promise<void> {
     await this.auth.revokeRefreshTokens(uid);
+  }
+
+  signInLink(email: string, continueUrl: string): Promise<string> {
+    return this.auth.generateSignInWithEmailLink(email, {
+      url: continueUrl,
+      handleCodeInApp: true,
+    });
   }
 }
 

@@ -104,3 +104,25 @@ test("signed-in pages are accessible and fit the screen", async ({ page }) => {
     }
   }
 });
+
+const ADMIN_PAGES = [
+  "/app/admin",
+  "/app/admin/staff",
+  "/app/admin/features",
+  "/app/admin/taxonomy",
+  "/app/admin/audit",
+  "/app/admin/security",
+];
+
+test("admin console pages are accessible and fit the screen", async ({ page }) => {
+  test.setTimeout(120_000);
+  // "admin-…" accounts are super admins in the mock API, signed in with two-step verification.
+  await signIn(page, uniqueEmail("admin"));
+  for (const path of ADMIN_PAGES) {
+    await page.goto(path);
+    await expect(page.locator("main h1").first()).toBeVisible();
+    await expect(page.getByText(/^Loading/)).toHaveCount(0);
+    await expectAccessible(page, path);
+    await expectNoHorizontalScroll(page, path);
+  }
+});

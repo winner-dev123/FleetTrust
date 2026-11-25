@@ -40,6 +40,7 @@ describe("loadApiEnv", () => {
       APP_CHECK_MODE: "off",
       TRUST_PROXY_HOPS: 0,
       PUBLIC_API_URL: "http://localhost:8080",
+      PUBLIC_WEB_URL: "http://localhost:3000",
       STORAGE_DRIVER: "memory",
       DOCUMENT_KEY_PROVIDER: "local",
       MALWARE_SCANNER: "eicar-only",

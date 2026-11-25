@@ -13,15 +13,19 @@ import { type SubmitEvent, useState } from "react";
 import { Button } from "@/components/button";
 import { TextField } from "@/components/field";
 import { Notice } from "@/components/feedback";
+import { MfaChallenge } from "@/components/mfa-challenge";
+import { isMfaRequiredError } from "@/lib/admin";
 import { apiClient, firebaseAuth } from "@/lib/firebase";
 import { afterSignInPath } from "@/lib/pending-invitation";
 import { emailLinkSettings, normaliseEmail, rememberPendingEmail } from "@/lib/email-link";
+import { type PendingMfa, pendingMfa } from "@/lib/mfa";
 
 type Status =
   | { kind: "idle" }
   | { kind: "sending" }
   | { kind: "sent"; email: string }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  | { kind: "mfa"; pending: PendingMfa };
 
 /**
  * Minimal signup and sign-in (SRS FR-01): an email address or a Google/Apple account. No
@@ -56,14 +60,39 @@ export default function SignInPage() {
     }
   }
 
+  async function finish() {
+    await apiClient().me();
+    router.replace(afterSignInPath());
+  }
+
   async function signInWith(provider: AuthProvider) {
     try {
       await signInWithPopup(firebaseAuth(), provider);
-      await apiClient().me();
-      router.replace(afterSignInPath());
-    } catch {
+      await finish();
+    } catch (error) {
+      // Staff accounts with two-step sign-in need a code from their authenticator app.
+      if (isMfaRequiredError(error)) {
+        setStatus({ kind: "mfa", pending: pendingMfa(error) });
+        return;
+      }
       setStatus({ kind: "error", message: "Sign-in was cancelled or failed. Please try again." });
     }
+  }
+
+  if (status.kind === "mfa") {
+    return (
+      <div className="container stack" style={{ maxWidth: 460 }}>
+        <title>Two-step sign-in · FleetTrust</title>
+        <h1>Sign in to FleetTrust</h1>
+        <MfaChallenge
+          available={status.pending.available}
+          resolve={async (code) => {
+            await status.pending.resolve(code);
+            await finish();
+          }}
+        />
+      </div>
+    );
   }
 
   const apple = new OAuthProvider("apple.com");
