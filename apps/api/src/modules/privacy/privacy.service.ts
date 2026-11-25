@@ -2,6 +2,7 @@ import {
   and,
   articleBookmarks,
   articleComments,
+  articleImages,
   articles,
   auditEvents,
   communityGroupMembers,
@@ -26,6 +27,7 @@ import {
   notifications,
   or,
   organizations,
+  platformStaff,
   powerUserStatus,
   pushDevices,
   recordAuditEvent,
@@ -285,7 +287,21 @@ export class PrivacyService {
     }
 
     const files = await this.db.transaction(async (tx) => {
-      const toDelete: { bucket: "sensitive" | "quarantine"; key: string }[] = [];
+      const toDelete: { bucket: "sensitive" | "quarantine" | "public_media"; key: string }[] = [];
+
+      // Images they uploaded for articles: public files, so they must go with the articles.
+      const images = await tx
+        .select({
+          storageKey: articleImages.storageKey,
+          quarantineKey: articleImages.quarantineKey,
+        })
+        .from(articleImages)
+        .where(eq(articleImages.uploadedBy, id));
+      for (const image of images) {
+        if (image.storageKey) toDelete.push({ bucket: "public_media", key: image.storageKey });
+        toDelete.push({ bucket: "quarantine", key: image.quarantineKey });
+      }
+      await tx.delete(articleImages).where(eq(articleImages.uploadedBy, id));
 
       // Personal vehicles and their documents (fleet vehicles belong to the organization).
       const personal = await tx
@@ -390,6 +406,10 @@ export class PrivacyService {
       await tx.delete(staffAvailability).where(eq(staffAvailability.userId, id));
       await tx.delete(staffTimeOff).where(eq(staffTimeOff.userId, id));
       await tx.delete(memberships).where(eq(memberships.userId, id));
+      const staffRoles = await tx
+        .delete(platformStaff)
+        .where(eq(platformStaff.userId, id))
+        .returning({ role: platformStaff.role });
 
       // Their own writing is withdrawn; what others replied to stays in place.
       await tx
@@ -435,7 +455,12 @@ export class PrivacyService {
         targetType: "user",
         targetId: id,
         requestId: currentRequestContext()?.requestId,
-        metadata: { vehicles: personal.length, files: toDelete.length },
+        metadata: {
+          vehicles: personal.length,
+          files: toDelete.length,
+          articleImages: images.length,
+          staffRolesRemoved: staffRoles.map((r) => r.role),
+        },
       });
       return toDelete;
     });
