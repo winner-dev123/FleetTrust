@@ -1,7 +1,7 @@
 # Handoff — Prompt 30: Future extensibility (specification only)
 
 - Date: 2026-11-25
-- Status: **awaiting approval** · PR #32
+- Status: **approved** · merged as PR #32 → `1640145` (CI 10/10 green on `6ab2ce2`)
 - Prompt 29 approved and merged (PR #31 → `d13425e`).
 - This is the **last stage** of the prompt pack.
 
