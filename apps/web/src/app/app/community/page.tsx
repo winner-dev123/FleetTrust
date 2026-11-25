@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill, plural } from "@fleettrust/copy";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -10,6 +11,8 @@ import { errorMessage } from "@fleettrust/sdk";
 import { titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.app.community;
 
 /** Community: your articles, groups, friends and friend requests. */
 export default function CommunityPage() {
@@ -38,9 +41,9 @@ export default function CommunityPage() {
   return (
     <>
       <PageHeader
-        title="Community"
-        description="Share experience with other drivers, fleets and providers. Posts are opinions, not verified reviews."
-        actions={<ButtonLink href="/app/community/write">Write an article</ButtonLink>}
+        title={t.title}
+        description={t.description}
+        actions={<ButtonLink href="/app/community/write">{t.write}</ButtonLink>}
       />
       {message ? (
         <Notice tone={message.ok ? "success" : "danger"} live="polite">
@@ -52,7 +55,7 @@ export default function CommunityPage() {
       {data.status === "ready" ? (
         <>
           {data.data.requests.length > 0 ? (
-            <Card title="Friend requests">
+            <Card title={t.friendRequests}>
               <ul className="list-plain">
                 {data.data.requests.map((request) => (
                   <li key={request.id} className="cluster cluster--between">
@@ -62,19 +65,19 @@ export default function CommunityPage() {
                         onClick={() =>
                           void respond(
                             () => api.acceptFriendRequest(request.id),
-                            `You and ${request.person.displayName} are now friends.`,
+                            fill(t.nowFriends, { name: request.person.displayName }),
                           )
                         }
                       >
-                        Accept
+                        {t.accept}
                       </Button>
                       <Button
                         variant="ghost"
                         onClick={() =>
-                          void respond(() => api.declineFriendRequest(request.id), "Declined.")
+                          void respond(() => api.declineFriendRequest(request.id), t.declined)
                         }
                       >
-                        Decline
+                        {t.decline}
                       </Button>
                     </span>
                   </li>
@@ -83,9 +86,9 @@ export default function CommunityPage() {
             </Card>
           ) : null}
           <div className="grid">
-            <Card title="Your articles">
+            <Card title={t.yourArticles}>
               {data.data.articles.length === 0 ? (
-                <p className="muted">You haven&apos;t written anything yet.</p>
+                <p className="muted">{t.noArticles}</p>
               ) : (
                 <ul className="list-plain">
                   {data.data.articles.map((article) => (
@@ -108,26 +111,26 @@ export default function CommunityPage() {
                 </ul>
               )}
             </Card>
-            <Card title="Your groups">
+            <Card title={t.yourGroups}>
               {data.data.groups.length === 0 ? (
-                <p className="muted">You&apos;re not in any groups yet.</p>
+                <p className="muted">{t.noGroups}</p>
               ) : (
                 <ul className="list-plain">
                   {data.data.groups.map((group) => (
                     <li key={group.id}>
                       <strong>{group.name}</strong>{" "}
                       <span className="small muted">
-                        {String(group.memberCount)} members
-                        {group.membership?.status === "pending" ? " · waiting for approval" : ""}
+                        {plural(group.memberCount, t.members)}
+                        {group.membership?.status === "pending" ? ` · ${t.waitingApproval}` : ""}
                       </span>
                     </li>
                   ))}
                 </ul>
               )}
             </Card>
-            <Card title="Friends">
+            <Card title={t.friends}>
               {data.data.friends.length === 0 ? (
-                <EmptyState title="No friends yet" />
+                <EmptyState title={t.noFriends} />
               ) : (
                 <ul className="list-plain">
                   {data.data.friends.map((friend) => (

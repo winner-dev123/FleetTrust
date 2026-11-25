@@ -1,3 +1,5 @@
+import { webApp } from "./web-app.js";
+
 /**
  * Website text (apps/web). Kept apart from the app's sections because wording differs between
  * the website and the phone ("in this browser" vs "on this phone"); shared phrases are in
@@ -505,4 +507,7 @@ export const web = {
     noneDue: "No maintenance due",
     driver: "Driver: {name}",
   },
+
+  /** Signed-in pages (src/app/app). */
+  app: webApp,
 } as const;

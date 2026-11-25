@@ -107,15 +107,18 @@ const MIGRATED = [
   "src/app/not-found.tsx",
   "src/lib/nav.ts",
   "src/lib/price.ts",
+  "src/app/app",
 ];
 const DOCUMENTS = ["src/app/(site)/legal/", "src/app/(site)/accessibility/"];
+/** Not migrated yet: the organisation pages and the admin console move in later slices. */
+const NOT_YET = ["src/app/app/o/", "src/app/app/admin/"];
 
 const files = MIGRATED.flatMap((path) => {
   const full = join(root, path);
   return statSync(full).isDirectory() ? sourceFiles(full) : [full];
 }).filter((path) => {
   const rel = relative(root, path).replaceAll("\\", "/");
-  return !DOCUMENTS.some((doc) => rel.startsWith(doc));
+  return ![...DOCUMENTS, ...NOT_YET].some((doc) => rel.startsWith(doc));
 });
 
 describe("product text comes from @fleettrust/copy", () => {

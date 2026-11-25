@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import type { IncidentDto } from "@fleettrust/types";
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
@@ -11,6 +12,8 @@ import { errorMessage } from "@fleettrust/sdk";
 import { formatDateTime, formatDistance, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.app.incident;
 
 const REFRESH_MS = 15_000;
 
@@ -41,7 +44,7 @@ export default function IncidentPage(props: PageProps<"/app/emergency/[id]">) {
       incident.setData(updated);
       setMessage({
         ok: true,
-        text: kind === "resolve" ? "Alert closed. Glad you're OK." : "Alert cancelled.",
+        text: kind === "resolve" ? t.closed : t.cancelled,
       });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
@@ -62,7 +65,7 @@ export default function IncidentPage(props: PageProps<"/app/emergency/[id]">) {
           .then(
             (updated) => {
               incident.setData(updated);
-              setMessage({ ok: true, text: "Location updated." });
+              setMessage({ ok: true, text: t.locationUpdated });
             },
             (failure: unknown) => {
               setMessage({ ok: false, text: errorMessage(failure) });
@@ -70,13 +73,13 @@ export default function IncidentPage(props: PageProps<"/app/emergency/[id]">) {
           );
       },
       () => {
-        setMessage({ ok: false, text: "Location wasn't shared." });
+        setMessage({ ok: false, text: t.locationNotShared });
       },
       { enableHighAccuracy: true, timeout: 15_000 },
     );
   }
 
-  if (incident.status === "loading") return <Loading label="Loading your alert…" />;
+  if (incident.status === "loading") return <Loading label={t.loading} />;
   if (incident.status === "error") {
     return <ErrorNotice error={incident.error} onRetry={incident.reload} />;
   }
@@ -86,19 +89,19 @@ export default function IncidentPage(props: PageProps<"/app/emergency/[id]">) {
   return (
     <>
       <PageHeader
-        title={`${data.categoryLabel} alert`}
-        description={`Raised ${formatDateTime(data.createdAt)}`}
+        title={fill(t.title, { category: data.categoryLabel })}
+        description={fill(t.raised, { time: formatDateTime(data.createdAt) })}
       />
       <p>
         <Badge tone={data.status === "active" ? "danger" : "neutral"}>
-          {data.status === "active" ? "Active" : titleCase(data.status)}
+          {data.status === "active" ? t.active : titleCase(data.status)}
         </Badge>
       </p>
       <Notice tone="danger" title={data.guidance.label}>
         <p>
           {data.guidance.number ? (
             <>
-              Call <a href={`tel:${data.guidance.number}`}>{data.guidance.number}</a>.{" "}
+              {t.call} <a href={`tel:${data.guidance.number}`}>{data.guidance.number}</a>.{" "}
             </>
           ) : null}
           {data.guidance.text}
@@ -111,39 +114,38 @@ export default function IncidentPage(props: PageProps<"/app/emergency/[id]">) {
         </Notice>
       ) : null}
 
-      <Card title="Trusted contacts">
+      <Card title={t.contacts}>
         <p role="status" aria-live="polite">
           {acknowledged.length === 0
-            ? "No contact has responded yet."
-            : `${String(acknowledged.length)} of ${String(data.contacts.length)} responded.`}
+            ? t.noResponse
+            : fill(t.responded, { count: acknowledged.length, total: data.contacts.length })}
         </p>
         <ul className="list-plain">
           {data.contacts.map((contact) => (
             <li key={contact.userId}>
               <strong>{contact.displayName}</strong>{" "}
               {contact.acknowledgedAt ? (
-                <Badge tone="verified">Responded {formatDateTime(contact.acknowledgedAt)}</Badge>
+                <Badge tone="verified">
+                  {fill(t.respondedAt, { time: formatDateTime(contact.acknowledgedAt) })}
+                </Badge>
               ) : contact.notifiedAt ? (
-                <Badge>Notified {formatDateTime(contact.notifiedAt)}</Badge>
+                <Badge>{fill(t.notifiedAt, { time: formatDateTime(contact.notifiedAt) })}</Badge>
               ) : (
-                <Badge>Waiting to be notified</Badge>
+                <Badge>{t.waiting}</Badge>
               )}
             </li>
           ))}
         </ul>
         {data.conversationId ? (
           <p>
-            <Link href={`/app/messages/${data.conversationId}`}>Message your contacts</Link>
+            <Link href={`/app/messages/${data.conversationId}`}>{t.messageContacts}</Link>
           </p>
         ) : null}
       </Card>
 
       {data.providerOffers.length > 0 ? (
-        <Card title="Offers from nearby providers">
-          <p className="small muted">
-            Agree any price before work starts and pay the provider directly. Never pay upfront to
-            an account you can&apos;t verify.
-          </p>
+        <Card title={t.offers}>
+          <p className="small muted">{t.offersNote}</p>
           <ul className="list-plain">
             {data.providerOffers.map((offer) => (
               <li key={offer.organizationId}>
@@ -167,28 +169,27 @@ export default function IncidentPage(props: PageProps<"/app/emergency/[id]">) {
       ) : null}
 
       {data.status === "active" ? (
-        <Card title="Close or update this alert">
+        <Card title={t.closeOrUpdate}>
           <div className="cluster">
             {data.location ? (
               <Button variant="secondary" onClick={updateLocation}>
-                Update my location
+                {t.updateLocation}
               </Button>
             ) : null}
             <Button busy={busy} onClick={() => void close("resolve")}>
-              I&apos;m OK now: close alert
+              {t.imOk}
             </Button>
             <Button variant="ghost" busy={busy} onClick={() => void close("cancel")}>
-              Cancel: sent by mistake
+              {t.sentByMistake}
             </Button>
           </div>
           <p className="small muted" style={{ marginBottom: 0 }}>
-            Alerts close by themselves at {formatDateTime(data.expiresAt)}. Your location is erased
-            when the alert closes.
+            {fill(t.autoClose, { time: formatDateTime(data.expiresAt) })}
           </p>
         </Card>
       ) : null}
       <p>
-        <Link href="/app/emergency">Back to emergency</Link>
+        <Link href="/app/emergency">{t.back}</Link>
       </p>
     </>
   );

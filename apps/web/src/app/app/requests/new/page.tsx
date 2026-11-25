@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import {
   CATEGORY_LABELS,
   PROVIDER_CATEGORIES,
@@ -20,6 +21,8 @@ import { LocationPicker, type PickedLocation } from "@/components/location-picke
 import { errorMessage } from "@fleettrust/sdk";
 import { titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
+
+const t = copy.web.app.newRequest;
 
 type VehicleType = (typeof VEHICLE_TYPES)[number];
 type Urgency = (typeof REQUEST_URGENCIES)[number];
@@ -65,11 +68,11 @@ function NewRequestForm() {
     event.preventDefault();
     const found: Record<string, string> = {};
     if (description.trim().length < 10) {
-      found["description"] = "Describe the problem in at least 10 characters.";
+      found["description"] = t.describeTooShort;
     }
-    if (!location) found["location"] = "Choose where the vehicle is.";
+    if (!location) found["location"] = t.locationMissing;
     if (registration.trim() !== "" && !/^[A-Za-z0-9 -]{2,15}$/.test(registration.trim())) {
-      found["registration"] = "Use letters, digits, spaces and hyphens only.";
+      found["registration"] = t.registrationInvalid;
     }
     setErrors(found);
     if (Object.keys(found).length > 0 || !location) return;
@@ -104,14 +107,14 @@ function NewRequestForm() {
       {provider ? (
         <Notice>
           <p>
-            This request goes to <strong>{provider.tradingName}</strong> only.
+            {t.directBefore} <strong>{provider.tradingName}</strong> {t.directAfter}
           </p>
         </Notice>
       ) : null}
-      <Card title="What do you need?">
+      <Card title={t.what}>
         <div className="stack">
           <SelectField
-            label="Type of service"
+            label={t.serviceType}
             required
             value={category}
             onChange={(event) => {
@@ -123,8 +126,8 @@ function NewRequestForm() {
             }))}
           />
           <TextArea
-            label="Describe the problem"
-            hint="What happened, any warning lights or noises, and what you'd like done."
+            label={t.describe}
+            hint={t.describeHint}
             required
             maxLength={2000}
             value={description}
@@ -134,7 +137,7 @@ function NewRequestForm() {
             }}
           />
           <SelectField
-            label="How soon?"
+            label={t.howSoon}
             required
             value={urgency}
             onChange={(event) => {
@@ -144,10 +147,10 @@ function NewRequestForm() {
           />
         </div>
       </Card>
-      <Card title="Vehicle">
+      <Card title={t.vehicle}>
         <div className="grid">
           <SelectField
-            label="Vehicle type"
+            label={t.vehicleType}
             required
             value={vehicleType}
             onChange={(event) => {
@@ -156,7 +159,7 @@ function NewRequestForm() {
             options={VEHICLE_TYPES.map((value) => ({ value, label: VEHICLE_TYPE_LABELS[value] }))}
           />
           <TextField
-            label="Make"
+            label={t.make}
             maxLength={60}
             value={make}
             onChange={(event) => {
@@ -164,7 +167,7 @@ function NewRequestForm() {
             }}
           />
           <TextField
-            label="Model"
+            label={t.model}
             maxLength={60}
             value={model}
             onChange={(event) => {
@@ -172,8 +175,8 @@ function NewRequestForm() {
             }}
           />
           <TextField
-            label="Registration"
-            hint="Shared with providers who receive the request"
+            label={t.registration}
+            hint={t.registrationHint}
             maxLength={15}
             value={registration}
             error={errors["registration"]}
@@ -183,18 +186,18 @@ function NewRequestForm() {
           />
         </div>
       </Card>
-      <Card title="Where">
+      <Card title={t.where}>
         <div className="stack">
           <LocationPicker
             value={location}
             onChange={setLocation}
-            label="Where is the vehicle?"
-            hint="Providers see an area of about 1 km until you accept their quote."
+            label={t.whereLabel}
+            hint={t.whereHint}
           />
           {errors["location"] ? <p className="field__error">{errors["location"]}</p> : null}
           {!provider ? (
             <SelectField
-              label="Send to providers within"
+              label={t.radius}
               required
               value={String(radiusKm)}
               onChange={(event) => {
@@ -202,7 +205,7 @@ function NewRequestForm() {
               }}
               options={[10, 25, 50, 100].map((km) => ({
                 value: String(km),
-                label: `${String(km)} km`,
+                label: fill(t.km, { km }),
               }))}
             />
           ) : null}
@@ -215,7 +218,7 @@ function NewRequestForm() {
       ) : null}
       <div>
         <Button type="submit" busy={busy}>
-          {busy ? "Sending…" : "Send request"}
+          {busy ? t.sending : t.send}
         </Button>
       </div>
     </form>
@@ -225,10 +228,7 @@ function NewRequestForm() {
 export default function NewRequestPage() {
   return (
     <>
-      <PageHeader
-        title="Request a quote"
-        description="Free to ask. Quotes are indicative: you choose one, agree the final price and pay the provider directly."
-      />
+      <PageHeader title={t.title} description={t.description} />
       <Suspense fallback={<Loading />}>
         <NewRequestForm />
       </Suspense>
