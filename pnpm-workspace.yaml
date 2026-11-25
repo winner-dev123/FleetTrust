@@ -18,6 +18,12 @@ allowBuilds:
   protobufjs: false
   re2: false
 
+# Security overrides. @react-native-firebase/app pulls the Firebase JS SDK (for its web fallback),
+# whose Firestore pins an old @grpc/grpc-js (GHSA-m9gg-hp2v-232j, fixed in 1.13.6). The app runs
+# the native SDKs, so this code isn't used on phones; the override keeps the audit clean.
+overrides:
+  "@grpc/grpc-js@<1.13.6": 1.14.7
+
 # Single source of truth for shared dependency versions. Packages reference these with "catalog:".
 # pnpm also refuses versions published too recently (supply-chain protection); prefer pinning an
 # older release over adding minimumReleaseAgeExclude entries.

@@ -64,6 +64,11 @@
   - The chat screen re-subscribed on every new message (reconnecting each time). It now subscribes once per conversation.
   - Two Account buttons had the same name ("Open Settings"). The location one is now "Location settings".
 
+## CI findings (fixed)
+
+- **Dependency audit (high):** `@react-native-firebase/app` pulls the Firebase JS SDK (its web fallback), whose Firestore pinned `@grpc/grpc-js` 1.9.16 (GHSA-m9gg-hp2v-232j, fixed in 1.13.6). The phone app runs the native SDKs and never loads that code. A pnpm override in `pnpm-workspace.yaml` lifts old versions to 1.14.7 (already used elsewhere in the repo); `pnpm audit --prod --audit-level high` passes.
+- **Test timeout:** one screen test (typing a sentence and rendering the app twice) took longer than Jest's 5-second default on the CI runner. Screen tests render the whole app, so the mobile Jest timeout is now 30 seconds.
+
 ## Not built here (gaps in the app)
 
 - Google and Apple sign-in (must ship together on iOS, KC-01).
