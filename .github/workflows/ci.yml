@@ -130,7 +130,7 @@ jobs:
       - name: Start Firebase emulators
         run: |
           pnpm emulators > emulators.log 2>&1 &
-          for i in $(seq 1 90); do
+          for _ in $(seq 1 90); do
             if curl -s -o /dev/null http://127.0.0.1:9099/ && curl -s -o /dev/null http://127.0.0.1:9199/; then exit 0; fi
             sleep 2
           done
@@ -204,7 +204,7 @@ jobs:
         run: |
           test "$(docker run --rm --entrypoint id fleettrust-api:ci -u)" != "0"
           docker run -d --name api -p 8080:8080 -e APP_VERSION=ci fleettrust-api:ci
-          for i in $(seq 1 40); do curl -sf http://127.0.0.1:8080/health && break; sleep 0.5; done
+          for _ in $(seq 1 40); do curl -sf http://127.0.0.1:8080/health && break; sleep 0.5; done
           curl -sf http://127.0.0.1:8080/health | grep -q '"status":"ok"'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/health/ready)" = "503"
           docker logs api | head -3

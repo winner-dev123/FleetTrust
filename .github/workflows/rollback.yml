@@ -66,9 +66,11 @@ jobs:
           [ "$TARGET" != "$current" ] || { echo "::error::$TARGET is already serving"; exit 1; }
           version=$(gcloud run revisions describe "$TARGET" --region "$GCP_REGION" --format=json \
             | jq -r '.spec.containers[] | select(.name == "api") | .env[] | select(.name == "APP_VERSION") | .value')
-          echo "CURRENT=$current" >> "$GITHUB_ENV"
-          echo "TARGET=$TARGET" >> "$GITHUB_ENV"
-          echo "VERSION=$version" >> "$GITHUB_ENV"
+          {
+            echo "CURRENT=$current"
+            echo "TARGET=$TARGET"
+            echo "VERSION=$version"
+          } >> "$GITHUB_ENV"
           echo "Rolling back fleettrust-api from $current to $TARGET (release $version)"
 
       - name: Move all API traffic to it
