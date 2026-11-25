@@ -1,0 +1,13 @@
+# Production website (backend environment "production"). One warm instance so the first visitor
+# after a quiet period doesn't wait for a cold start. Replace the URL before the first rollout.
+runConfig:
+  minInstances: 1
+  maxInstances: 10
+
+env:
+  - variable: NEXT_PUBLIC_APP_ENV
+    value: production
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_API_URL
+    value: https://REPLACE-WITH-PRODUCTION-API-URL
+    availability: [BUILD, RUNTIME]

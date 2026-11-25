@@ -59,10 +59,16 @@ Try it locally: `OTEL_TRACES_EXPORTER=console pnpm --filter @fleettrust/api star
 | `GET /health`       | Liveness and startup probe      | Nothing external; never fails because of a dependency                                                        |
 | `GET /health/ready` | Readiness and deploy smoke test | Database ping with a 2 s timeout. 503 with coarse status (`unavailable`, `not_configured`), no error details |
 
-## Alerts to configure in staging (Prompt 29 finalises)
+## Alerts
 
-- Error Reporting: new error group → email/Chat.
-- Cloud Run 5xx ratio > 2 % for 5 min; p95 latency above the SRS §7 targets.
-- Uptime check on `/health/ready` from two regions.
-- Emergency path (Prompt 18): dispatch failures > 0, with paging.
-- Load shedding (Prompt 28): 503 `overloaded` responses above 1 % for 5 min mean the pool or the database is saturated. Each one is logged as an `overloaded:` warning by `AllExceptionsFilter`, not as an error report. See [slo.md](slo.md) for the SLOs and what to change.
+Terraform creates these in each environment ([monitoring.tf](../../infra/terraform/modules/fleettrust/monitoring.tf)), emailing `alert_email`. Error Reporting notifications for new error groups are switched on in the console (Error Reporting → Configure notifications).
+
+| Alert                    | Condition                                                                    | Why                                                                                                      |
+| ------------------------ | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| API 5xx                  | More than 2 % of requests for 5 minutes                                      | Broken release or dependency: consider rolling back ([release-and-rollback.md](release-and-rollback.md)) |
+| API latency              | p95 above 1 s for 10 minutes                                                 | SLOs are 400 ms (search) and 500 ms (writes) ([slo.md](slo.md))                                          |
+| Load shedding            | More than 10 `overloaded:` warnings in 5 minutes                             | Pool or Cloud SQL saturated (Prompt 28); see the capacity levers in slo.md                               |
+| **EMERGENCY** (critical) | Any emergency delivery failed after every retry, or a dispatcher tick failed | Someone's alert may not have reached a contact: follow the emergency playbook now                        |
+| Cloud SQL                | CPU or disk above 80 % for 10 minutes                                        | Capacity                                                                                                 |
+| Uptime                   | `/health/ready` failing from two or more regions                             | Outage (created once `api_host` is set)                                                                  |
+| Budget                   | 50, 90 and 100 % of the monthly budget                                       | Cost (OQ-07)                                                                                             |

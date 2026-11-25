@@ -1,0 +1,9 @@
+# Staging website (backend environment "staging"). Replace the URL with the staging API's public
+# URL (Terraform output / GitHub variable PUBLIC_API_URL) before the first rollout.
+env:
+  - variable: NEXT_PUBLIC_APP_ENV
+    value: staging
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_API_URL
+    value: https://REPLACE-WITH-STAGING-API-URL
+    availability: [BUILD, RUNTIME]

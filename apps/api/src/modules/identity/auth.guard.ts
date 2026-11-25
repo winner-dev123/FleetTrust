@@ -38,7 +38,12 @@ import {
   RECENT_LOGIN,
   REQUIRE_DISPLAY_NAME,
 } from "./decorators.js";
-import { DatabaseUnavailableError, SignupsPausedError, UsersService } from "./users.service.js";
+import {
+  DatabaseUnavailableError,
+  PilotInviteOnlyError,
+  SignupsPausedError,
+  UsersService,
+} from "./users.service.js";
 
 /** Failed sign-in attempts allowed per client IP per window before 429 (brute-force/scraping brake). */
 export const FAILED_AUTH_LIMIT = 20;
@@ -125,6 +130,7 @@ export class AuthGuard implements CanActivate {
         throw new ServiceUnavailableException({ statusCode: 503, error: "service_unavailable" });
       }
       if (error instanceof SignupsPausedError) deny("signups_paused", 403);
+      if (error instanceof PilotInviteOnlyError) deny("pilot_invite_only", 403);
       throw error;
     }
     // An erased account can't come back (its Firebase account is deleted too).

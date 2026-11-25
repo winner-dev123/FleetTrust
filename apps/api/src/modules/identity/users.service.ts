@@ -7,6 +7,7 @@ import {
   type User,
   users,
 } from "@fleettrust/db";
+import { isOnPilotAllowlist, parsePilotAllowlist } from "@fleettrust/types";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { DATABASE, type DatabaseProvider } from "../../database/database.module.js";
@@ -28,6 +29,14 @@ export class SignupsPausedError extends Error {
   constructor() {
     super("new sign-ups are paused");
     this.name = "SignupsPausedError";
+  }
+}
+
+/** Limited pilot: the email isn't on the pilot allowlist (setting `signups.pilot_allowlist`). */
+export class PilotInviteOnlyError extends Error {
+  constructor() {
+    super("this email address is not on the pilot allowlist");
+    this.name = "PilotInviteOnlyError";
   }
 }
 
@@ -83,6 +92,14 @@ export class UsersService {
     if (existing) return this.refresh(existing, identity);
     // Admin lever for abuse waves: existing accounts keep working (Prompt 26).
     if (await this.settings.get("signups.paused")) throw new SignupsPausedError();
+    // Limited pilot (Prompt 29): only verified addresses on the allowlist get a new account.
+    const pilot = parsePilotAllowlist(await this.settings.get("signups.pilot_allowlist"));
+    if (
+      pilot.length > 0 &&
+      !(identity.emailVerified && isOnPilotAllowlist(identity.email, pilot))
+    ) {
+      throw new PilotInviteOnlyError();
+    }
 
     const created = await this.db.transaction(async (tx) => {
       const [row] = await tx

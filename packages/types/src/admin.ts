@@ -132,9 +132,45 @@ interface SettingDefinition<T> {
   defaultValue: T;
   /** Readable by anyone through GET /v1/config (never secrets). */
   public: boolean;
+  /** Text settings: the editor's limit and what leaving it empty means. */
+  editor?: { maxLength: number; emptyHint: string };
 }
 
 const setting = <T>(definition: SettingDefinition<T>) => definition;
+
+// ---------------------------------------------------------------------------------------------
+// Limited pilot (Prompt 29): while the allowlist has entries, only matching, verified email
+// addresses can create an account. One entry per line (or comma separated): a full address
+// (jane@example.com) or a whole domain (@example.com). Existing accounts are unaffected.
+// ---------------------------------------------------------------------------------------------
+
+export const PILOT_ALLOWLIST_MAX_LENGTH = 4_000;
+const PILOT_ENTRY = /^(?:[^\s@,]+)?@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}$/;
+
+/** The allowlist's entries, normalised to lower case; empty means "anyone may sign up". */
+export function parsePilotAllowlist(text: string | null | undefined): string[] {
+  if (!text) return [];
+  return text
+    .split(/[\n,]/)
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry !== "");
+}
+
+/** Whether an email address matches an entry (exact address, or the domain for "@domain"). */
+export function isOnPilotAllowlist(email: string | null | undefined, entries: string[]): boolean {
+  if (!email) return false;
+  const address = email.trim().toLowerCase();
+  const domain = address.slice(address.lastIndexOf("@"));
+  return entries.some((entry) => (entry.startsWith("@") ? domain === entry : address === entry));
+}
+
+export const pilotAllowlistSchema = z
+  .string()
+  .max(PILOT_ALLOWLIST_MAX_LENGTH)
+  .refine(
+    (text) => parsePilotAllowlist(text).every((entry) => PILOT_ENTRY.test(entry)),
+    "Each entry must be an email address (jane@example.com) or a domain (@example.com)",
+  );
 
 export const FEATURE_SETTINGS = {
   "signups.paused": setting({
@@ -144,6 +180,18 @@ export const FEATURE_SETTINGS = {
     schema: z.boolean(),
     defaultValue: false,
     public: false,
+  }),
+  "signups.pilot_allowlist": setting({
+    label: "Limited pilot: who may create an account",
+    description:
+      "While this list has entries, only people whose verified email matches can create an account. One entry per line: a full address (jane@example.com) or a whole domain (@example.com). People who already have an account can still sign in.",
+    schema: pilotAllowlistSchema.nullable(),
+    defaultValue: null,
+    public: false,
+    editor: {
+      maxLength: PILOT_ALLOWLIST_MAX_LENGTH,
+      emptyHint: "Leave empty to let anyone sign up.",
+    },
   }),
   "community.auto_hide_reporters": setting({
     label: "Reports that hide content automatically",
@@ -160,6 +208,7 @@ export const FEATURE_SETTINGS = {
     schema: safeText(280).nullable(),
     defaultValue: null,
     public: true,
+    editor: { maxLength: 280, emptyHint: "Leave empty to hide it." },
   }),
 } as const;
 
@@ -176,6 +225,8 @@ export const featureSettingSchema = z.object({
   value: z.unknown(),
   defaultValue: z.unknown(),
   public: z.boolean(),
+  /** Text settings: the editor's limit and what leaving it empty means. */
+  editor: z.object({ maxLength: z.number().int().positive(), emptyHint: z.string() }).optional(),
   updatedAt: z.iso.datetime().nullable(),
   updatedBy: z.string().nullable(),
 });

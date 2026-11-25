@@ -61,14 +61,14 @@ jobs:
       - name: Start the Firebase Auth emulator
         run: |
           pnpm exec firebase emulators:start --only auth --project demo-fleettrust > emulator.log 2>&1 &
-          for i in $(seq 1 90); do curl -s -o /dev/null http://127.0.0.1:9099/ && exit 0; sleep 2; done
+          for _ in $(seq 1 90); do curl -s -o /dev/null http://127.0.0.1:9099/ && exit 0; sleep 2; done
           cat emulator.log; exit 1
       - name: Start the API (api and worker roles)
         working-directory: apps/api
         run: |
           APP_ROLE=api PORT=8080 TRUST_PROXY_HOPS=1 nohup node dist/main.js > ../../api.log 2>&1 &
           APP_ROLE=worker PORT=8081 EMERGENCY_TICK_MS=200 OUTBOX_RELAY_INTERVAL_MS=200 nohup node dist/main.js > ../../worker.log 2>&1 &
-          for i in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             if curl -sf http://127.0.0.1:8080/health > /dev/null && curl -sf http://127.0.0.1:8081/health > /dev/null; then exit 0; fi
             sleep 1
           done
@@ -86,7 +86,7 @@ jobs:
         if: ${{ !cancelled() && steps.load.outcome != 'skipped' }}
         run: |
           pkill -f "node dist/main.js" || true
-          for i in $(seq 1 20); do pgrep -f "node dist/main.js" > /dev/null || exit 0; sleep 1; done
+          for _ in $(seq 1 20); do pgrep -f "node dist/main.js" > /dev/null || exit 0; sleep 1; done
           exit 1
       - name: Restore drill (backup, restore into a new database, verify)
         if: ${{ !cancelled() && steps.load.outcome != 'skipped' }}

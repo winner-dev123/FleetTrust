@@ -64,7 +64,7 @@ gcloud kms keys add-iam-policy-binding verification --keyring=documents --locati
   --member=serviceAccount:$API_SA --role=roles/cloudkms.cryptoKeyEncrypterDecrypter
 ```
 
-**ClamAV:** run the official `clamav/clamav` image as an internal-only service, for example Cloud Run with ingress "internal" and a Direct VPC egress path from the API, or a small GCE instance in the VPC. It needs about 3 GB of memory for the signature database. `freshclam` keeps signatures current. If clamd is unreachable, uploads stay in quarantine and the complete call fails (fail closed). Monitor its error rate.
+**ClamAV:** the official `clamav/clamav` image runs on a small internal VM created by Terraform ([clamav.tf](../../infra/terraform/modules/fleettrust/clamav.tf)); the API reaches it over Direct VPC egress. It can't be a Cloud Run service: clamd speaks its own TCP protocol on port 3310, and Cloud Run only serves HTTP, gRPC and WebSockets. It needs about 3 GB of memory for the signature database. `freshclam` keeps signatures current. If clamd is unreachable, uploads stay in quarantine and the complete call fails (fail closed). Monitor its error rate.
 
 ## Granting reviewers
 

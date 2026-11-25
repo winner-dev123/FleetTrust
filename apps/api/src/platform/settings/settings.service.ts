@@ -82,6 +82,7 @@ export class SettingsService {
         value: parsed?.success ? parsed.data : definition.defaultValue,
         defaultValue: definition.defaultValue,
         public: definition.public,
+        ...("editor" in definition ? { editor: definition.editor } : {}),
         updatedAt: row?.updatedAt.toISOString() ?? null,
         updatedBy: row?.email ?? null,
       };

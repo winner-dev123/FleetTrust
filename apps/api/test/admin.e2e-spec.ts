@@ -277,7 +277,12 @@ describe("feature settings", () => {
     const list = (await admin.as().get("/v1/admin/features").expect(200))
       .body as FeatureSettingDto[];
     expect(list.map((s) => s.key).sort()).toEqual(
-      ["community.auto_hide_reporters", "signups.paused", "site.notice"].sort(),
+      [
+        "community.auto_hide_reporters",
+        "signups.paused",
+        "signups.pilot_allowlist",
+        "site.notice",
+      ].sort(),
     );
     await admin
       .as()
@@ -310,6 +315,52 @@ describe("feature settings", () => {
       await admin.as().put("/v1/admin/features/signups.paused", { value: false }).expect(200);
     }
     await client("fs-brand-new", "fs-brand-new@example.test").get("/v1/me").expect(200);
+  });
+
+  it("the pilot allowlist admits only listed, verified emails to new accounts", async () => {
+    const admin = await person("fs-pilot", ["super_admin"]);
+    const existing = await person("fs-pilot-existing");
+    const bad = await admin
+      .as()
+      .put("/v1/admin/features/signups.pilot_allowlist", { value: "pilot.test" })
+      .expect(400);
+    expect(JSON.stringify(bad.body)).toContain("email address");
+    const saved = (
+      await admin
+        .as()
+        .put("/v1/admin/features/signups.pilot_allowlist", {
+          value: "@pilot.test\nJane@Invited.test",
+        })
+        .expect(200)
+    ).body as FeatureSettingDto;
+    expect(saved.editor).toMatchObject({ maxLength: 4_000 });
+    try {
+      const refused = await client("fs-outsider", "outsider@elsewhere.test").get("/v1/me");
+      expect(refused.status).toBe(403);
+      expect(reason(refused.body)).toBe("pilot_invite_only");
+      // An unverified claim to a listed address doesn't get in either.
+      const unverified = await request(t.server)
+        .get("/v1/me")
+        .set(
+          "Authorization",
+          `Bearer ${t.auth.issue("fs-unverified", { email: "x@pilot.test", emailVerified: false })}`,
+        );
+      expect(reason(unverified.body)).toBe("pilot_invite_only");
+      await client("fs-domain", "driver@pilot.test").get("/v1/me").expect(200);
+      await client("fs-jane", "jane@invited.test").get("/v1/me").expect(200);
+      // People who already have an account keep signing in.
+      await existing.as().get("/v1/me").expect(200);
+    } finally {
+      await admin
+        .as()
+        .put("/v1/admin/features/signups.pilot_allowlist", { value: null })
+        .expect(200);
+    }
+    await client("fs-outsider", "outsider@elsewhere.test").get("/v1/me").expect(200);
+    expect(await auditActions("signups.pilot_allowlist")).toEqual([
+      "feature.setting_changed",
+      "feature.setting_changed",
+    ]);
   });
 
   it("the auto-hide threshold changes how many reports take content down", async () => {

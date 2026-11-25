@@ -11,6 +11,7 @@ import {
   type SourceFile,
   type Violation,
 } from "./rules.ts";
+import { checkRollbackSafety, ROLLBACK_BASELINE } from "./rollback.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..", "..");
 
@@ -49,6 +50,23 @@ export function runGuards(files: readonly string[]): Violation[] {
 
 const files = listFiles();
 const violations = runGuards(files);
+
+// Rollback safety: migrations after the baseline may only expand (docs/operations/release-and-rollback.md).
+const migrations = files.filter((file) => /^packages\/db\/migrations\/.+\.sql$/.test(file));
+const unsafe = migrations.flatMap((file) => checkRollbackSafety(read(file)));
+if (unsafe.length === 0) {
+  console.log(
+    `Rollback guard: ${String(migrations.length)} migrations checked, every one after ${String(ROLLBACK_BASELINE).padStart(4, "0")} only expands the schema.`,
+  );
+} else {
+  console.error("Rollback guard: these migrations would break the previous release:\n");
+  for (const v of unsafe) console.error(`  ${v.path}:${String(v.line)}  ${v.detail}`);
+  console.error(
+    "\nShip it as a contract release instead: add `-- contract: <reason>` at the top, after no\n" +
+      "running version uses what it removes (docs/operations/release-and-rollback.md).",
+  );
+  process.exitCode = 1;
+}
 if (violations.length === 0) {
   console.log(
     `ADR-0011 module guard: ${String(files.length)} files checked, no excluded modules found.`,

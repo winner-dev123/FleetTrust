@@ -1,0 +1,131 @@
+name: Release rehearsal
+
+# Rehearses a release and its rollback on a production-like stack, on every pull request
+# (docs/operations/release-and-rollback.md):
+#   1. the previous release's container image runs on PostgreSQL + PostGIS and passes the smoke test;
+#   2. the new image applies its migrations and takes over (API and website smoke tested);
+#   3. ROLLBACK: the previous image runs again on the migrated schema and passes the smoke test;
+#   4. roll forward again to the new image.
+# Step 3 is what makes "rollback = redeploy the previous image" safe; the rollback guard in
+# tools/repo-guards keeps migrations expand-only so it stays true.
+#
+# Two rehearsals run side by side: from the release this change replaces, and from the Prompt 26
+# release, whose schema stops at migration 0040, so the rollback crosses a real schema change
+# (0041: privacy columns, consents table, stricter checks). That release predates the security
+# headers (Prompt 27), so its own smoke tests skip only that check.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-rehearsal-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CI: "1"
+  TURBO_TELEMETRY_DISABLED: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  rehearsal:
+    name: Release rehearsal from ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: the previous release
+            previous: base
+            skip: ""
+          - label: an older release, across a schema change
+            previous: c5338d688e8ee5a109168751b2ae94f7c2afce66
+            skip: security headers
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        # Same image and digest as infra/local/compose.yaml.
+        image: postgis/postgis:17-3.6@sha256:1ac10b2551ba84ae05db8e7da477afcd0a3fede99bcb7705da2ee157390cb095
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
+          POSTGRES_DB: fleettrust_release
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U ci -d fleettrust_release"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://ci:ci-${{ github.run_id }}-${{ github.run_attempt }}@127.0.0.1:5432/fleettrust_release
+      PREVIOUS_SHA: ${{ matrix.previous == 'base' && (github.event.pull_request.base.sha || github.event.before) || matrix.previous }}
+      PREVIOUS_SKIP: ${{ matrix.skip }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Choose the previous release
+        run: |
+          previous="$PREVIOUS_SHA"
+          if [ -z "$previous" ] || ! git cat-file -e "${previous}^{commit}" 2> /dev/null; then
+            previous=$(git rev-parse HEAD~1)
+          fi
+          echo "PREVIOUS=$previous" >> "$GITHUB_ENV"
+          echo "NEW=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "Previous release: $previous; new release: $(git rev-parse HEAD)"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the previous and the new API image
+        run: |
+          git worktree add /tmp/previous "$PREVIOUS"
+          docker build -q -f /tmp/previous/apps/api/Dockerfile -t fleettrust-api:previous /tmp/previous
+          docker build -q -f apps/api/Dockerfile -t fleettrust-api:new .
+
+      - name: 1. Previous release on a fresh database
+        run: |
+          bash tools/smoke/rehearsal.sh migrate previous
+          bash tools/smoke/rehearsal.sh start previous "$PREVIOUS"
+          bash tools/smoke/rehearsal.sh smoke "$PREVIOUS" "" "$PREVIOUS_SKIP"
+          bash tools/smoke/rehearsal.sh stop previous
+
+      - name: 2. New release (migrations, API and website)
+        env:
+          NEXT_PUBLIC_APP_ENV: test
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8080
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: demo-fleettrust
+          NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+        run: |
+          bash tools/smoke/rehearsal.sh migrate new
+          bash tools/smoke/rehearsal.sh start new "$NEW"
+          pnpm turbo run build --filter "@fleettrust/web..." > /dev/null
+          (cd apps/web && nohup pnpm exec next start --port 3000 > ../../web.log 2>&1 &)
+          for _ in $(seq 1 60); do curl -sf http://localhost:3000/ > /dev/null && break; sleep 1; done
+          bash tools/smoke/rehearsal.sh smoke "$NEW" http://localhost:3000
+          bash tools/smoke/rehearsal.sh stop new
+
+      - name: 3. Roll back to the previous release on the migrated schema
+        run: |
+          bash tools/smoke/rehearsal.sh start previous "$PREVIOUS"
+          bash tools/smoke/rehearsal.sh smoke "$PREVIOUS" "" "$PREVIOUS_SKIP"
+          bash tools/smoke/rehearsal.sh stop rollback
+
+      - name: 4. Roll forward again
+        run: |
+          bash tools/smoke/rehearsal.sh start new "$NEW"
+          bash tools/smoke/rehearsal.sh smoke "$NEW"
+          bash tools/smoke/rehearsal.sh stop forward
+
+      - name: Logs
+        if: failure()
+        run: |
+          for f in api-*.log web.log; do [ -f "$f" ] && { echo "== $f"; tail -n 80 "$f"; }; done
+          docker logs api 2>&1 | tail -n 80 || true

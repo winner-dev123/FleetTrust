@@ -17,6 +17,8 @@ const REASON_MESSAGES: Partial<Record<ApiErrorReason, string>> = {
   sole_owner:
     "You're the only owner of an organization. Make someone else an owner, or close it, first.",
   signups_paused: "New accounts are paused for a short while. Please try again later.",
+  pilot_invite_only:
+    "FleetTrust is in a limited pilot, and this email address isn't on the pilot list yet. Ask the person who invited you, or sign in with the email address they invited.",
 };
 
 /** One sentence explaining an API failure, safe to show to anyone (never raw server text). */

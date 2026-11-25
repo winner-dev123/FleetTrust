@@ -1,0 +1,114 @@
+# Cloud Run service template for the FleetTrust worker (same image as the API, APP_ROLE=worker):
+# outbox relay, emergency dispatcher and retention jobs. Internal only, always one instance warm,
+# CPU always allocated so its loops keep running between requests. Several instances are safe
+# (FOR UPDATE SKIP LOCKED). Deployed by deploy/cloudrun/deploy.sh after the API is promoted.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: fleettrust-worker
+  labels:
+    app: fleettrust
+    role: worker
+  annotations:
+    run.googleapis.com/ingress: internal
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    metadata:
+      # Unique per release attempt, so traffic can be moved between named revisions.
+      name: ${REVISION}
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "2"
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/cloudsql-instances: ${CLOUDSQL_CONNECTION_NAME}
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/startup-cpu-boost: "true"
+        # Direct VPC egress: Redis (Memorystore) and the ClamAV VM have private addresses only.
+        run.googleapis.com/network-interfaces: '[{"network":"${VPC_NETWORK}","subnetwork":"${VPC_SUBNET}"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+        # Start the app after the collector sidecar is ready.
+        run.googleapis.com/container-dependencies: '{"api":["otel-collector"]}'
+    spec:
+      serviceAccountName: ${RUNTIME_SERVICE_ACCOUNT}
+      # Serves only health probes; the work happens in background loops.
+      containerConcurrency: 10
+      timeoutSeconds: 300
+      containers:
+        - name: api
+          image: ${API_IMAGE}
+          ports:
+            - containerPort: 8080
+          env:
+            - { name: APP_ENV, value: "${APP_ENV}" }
+            - { name: APP_ROLE, value: worker }
+            - { name: APP_VERSION, value: "${APP_VERSION}" }
+            - { name: LOG_LEVEL, value: info }
+            - { name: GOOGLE_CLOUD_PROJECT, value: "${GCP_PROJECT_ID}" }
+            - { name: CORS_ORIGINS, value: "${CORS_ORIGINS}" }
+            - { name: DB_POOL_MAX, value: "5" }
+            - { name: OTEL_TRACES_EXPORTER, value: otlp }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://localhost:4318" }
+            - { name: OTEL_TRACES_SAMPLER_ARG, value: "${TRACE_SAMPLE_RATIO}" }
+            - { name: FIREBASE_PROJECT_ID, value: "${FIREBASE_PROJECT_ID}" }
+            - { name: APP_CHECK_MODE, value: "${APP_CHECK_MODE}" }
+            # Cloud Run's front end appends exactly one X-Forwarded-For hop.
+            - { name: TRUST_PROXY_HOPS, value: "1" }
+            - { name: PUBLIC_API_URL, value: "${PUBLIC_API_URL}" }
+            # Verification documents (docs/operations/verification.md).
+            - { name: STORAGE_DRIVER, value: gcs }
+            - { name: STORAGE_QUARANTINE_BUCKET, value: "${STORAGE_QUARANTINE_BUCKET}" }
+            - { name: STORAGE_SENSITIVE_BUCKET, value: "${STORAGE_SENSITIVE_BUCKET}" }
+            - { name: STORAGE_PUBLIC_MEDIA_BUCKET, value: "${STORAGE_PUBLIC_MEDIA_BUCKET}" }
+            - { name: DOCUMENT_KEY_PROVIDER, value: kms }
+            - { name: DOCUMENT_KMS_KEY, value: "${DOCUMENT_KMS_KEY}" }
+            - { name: MALWARE_SCANNER, value: clamav }
+            - { name: CLAMAV_HOST, value: "${CLAMAV_HOST}" }
+            # Map adapter (docs/architecture/search.md). Vendor pending (OQ-13); production needs MAP_TILE_URL.
+            - { name: MAP_PROVIDER, value: stub }
+            # Routing vendor pending (OQ-13): route search degrades to point search around stops.
+            - { name: ROUTING_PROVIDER, value: none }
+            # Push notifications through Firebase Cloud Messaging (docs/architecture/messaging.md).
+            - { name: PUSH_PROVIDER, value: fcm }
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: fleettrust-database-url, key: latest }
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef: { name: fleettrust-redis-url, key: latest }
+          resources:
+            limits: { cpu: "1", memory: 512Mi }
+          startupProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 30
+        - name: otel-collector
+          # OpenTelemetry Collector sidecar → Cloud Trace (https://cloud.google.com/run/docs/tutorials/custom-metrics-opentelemetry-sidecar)
+          image: ${OTEL_COLLECTOR_IMAGE}
+          args: ["--config=env:OTEL_COLLECTOR_CONFIG"]
+          env:
+            - name: OTEL_COLLECTOR_CONFIG
+              value: |
+                receivers:
+                  otlp:
+                    protocols:
+                      http: { endpoint: "localhost:4318" }
+                processors:
+                  batch: {}
+                  memory_limiter: { check_interval: 1s, limit_percentage: 65, spike_limit_percentage: 20 }
+                  resourcedetection: { detectors: [env, gcp], timeout: 2s }
+                exporters:
+                  googlecloud: {}
+                extensions:
+                  health_check: { endpoint: "0.0.0.0:13133" }
+                service:
+                  extensions: [health_check]
+                  pipelines:
+                    traces: { receivers: [otlp], processors: [memory_limiter, resourcedetection, batch], exporters: [googlecloud] }
+          resources:
+            limits: { cpu: 250m, memory: 256Mi }
+          startupProbe:
+            httpGet: { path: /, port: 13133 }
