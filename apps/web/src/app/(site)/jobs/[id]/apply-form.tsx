@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import Link from "next/link";
 import { type SubmitEvent, useState } from "react";
 
@@ -22,19 +23,18 @@ export function ApplyForm({ jobId }: { jobId: string }) {
   if (status !== "signed-in") {
     return (
       <section className="card card--muted">
-        <h2 className="card__title">Apply</h2>
+        <h2 className="card__title">{copy.web.apply.title}</h2>
         <p style={{ margin: 0 }}>
-          <Link href="/sign-in">Sign in</Link> to apply. It&apos;s free.
+          <Link href="/sign-in">{copy.web.apply.signIn}</Link> {copy.web.apply.signInToApply}
         </p>
       </section>
     );
   }
   if (done) {
     return (
-      <Notice tone="success" live="polite" title="Application sent">
+      <Notice tone="success" live="polite" title={copy.web.apply.sentTitle}>
         <p>
-          The employer will contact you using the details you shared. Track it in{" "}
-          <Link href="/app">your dashboard</Link>.
+          {copy.web.apply.sentBody} <Link href="/app">{copy.web.apply.sentLink}</Link>.
         </p>
       </Notice>
     );
@@ -43,11 +43,11 @@ export function ApplyForm({ jobId }: { jobId: string }) {
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (message.trim().length < 20) {
-      setError("Write at least 20 characters about yourself and your experience.");
+      setError(copy.web.apply.messageTooShort);
       return;
     }
     if (phone.trim() === "" && email.trim() === "") {
-      setError("Share a phone number or an email address so the employer can reach you.");
+      setError(copy.web.apply.needContact);
       return;
     }
     setBusy(true);
@@ -68,10 +68,10 @@ export function ApplyForm({ jobId }: { jobId: string }) {
 
   return (
     <form className="card stack" onSubmit={(event) => void submit(event)} noValidate>
-      <h2 className="card__title">Apply</h2>
+      <h2 className="card__title">{copy.web.apply.title}</h2>
       <TextArea
-        label="Message to the employer"
-        hint="Your experience, licence and when you can start (at least 20 characters)."
+        label={copy.web.apply.messageLabel}
+        hint={copy.web.apply.messageHint}
         required
         maxLength={3000}
         value={message}
@@ -80,7 +80,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
         }}
       />
       <TextField
-        label="Phone"
+        label={copy.web.apply.phone}
         type="tel"
         autoComplete="tel"
         value={phone}
@@ -89,7 +89,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
         }}
       />
       <TextField
-        label="Email"
+        label={copy.web.apply.email}
         type="email"
         autoComplete="email"
         value={email}
@@ -97,7 +97,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
           setEmail(event.target.value);
         }}
       />
-      <p className="small muted">Only this employer sees the details you share here.</p>
+      <p className="small muted">{copy.web.apply.privacy}</p>
       {error ? (
         <Notice tone="danger" live="assertive">
           <p>{error}</p>
@@ -105,7 +105,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       ) : null}
       <div>
         <Button type="submit" busy={busy}>
-          Send application
+          {copy.web.apply.send}
         </Button>
       </div>
     </form>

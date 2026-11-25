@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { VEHICLE_TYPE_LABELS, type VehicleDto } from "@fleettrust/types";
 import Link from "next/link";
 
@@ -13,7 +14,7 @@ export function vehicleName(vehicle: VehicleDto): string {
 
 /** Vehicles as cards with maintenance status in words. */
 export function VehicleList({ vehicles }: { vehicles: readonly VehicleDto[] }) {
-  if (vehicles.length === 0) return <EmptyState title="No vehicles yet" />;
+  if (vehicles.length === 0) return <EmptyState title={copy.web.vehicles.empty} />;
   return (
     <ul className="grid list-plain">
       {vehicles.map((vehicle) => (
@@ -28,14 +29,21 @@ export function VehicleList({ vehicles }: { vehicles: readonly VehicleDto[] }) {
           </p>
           <p style={{ margin: 0 }}>
             {vehicle.maintenance.overdue > 0 ? (
-              <Badge tone="danger">{vehicle.maintenance.overdue} overdue</Badge>
+              <Badge tone="danger">
+                {fill(copy.web.vehicles.overdue, { count: vehicle.maintenance.overdue })}
+              </Badge>
             ) : vehicle.maintenance.dueSoon > 0 ? (
-              <Badge tone="caution">{vehicle.maintenance.dueSoon} due soon</Badge>
+              <Badge tone="caution">
+                {fill(copy.web.vehicles.dueSoon, { count: vehicle.maintenance.dueSoon })}
+              </Badge>
             ) : (
-              <Badge tone="neutral">No maintenance due</Badge>
+              <Badge tone="neutral">{copy.web.vehicles.noneDue}</Badge>
             )}
             {vehicle.driver ? (
-              <span className="small"> · Driver: {vehicle.driver.displayName}</span>
+              <span className="small">
+                {" · "}
+                {fill(copy.web.vehicles.driver, { name: vehicle.driver.displayName })}
+              </span>
             ) : null}
           </p>
         </li>

@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { REPORT_REASONS, type ReportTargetType } from "@fleettrust/types";
 import Link from "next/link";
 import { type SubmitEvent, useState } from "react";
@@ -33,7 +34,8 @@ export function ReportButton({
   if (status !== "signed-in") {
     return (
       <p className="small muted">
-        <Link href="/sign-in">Sign in</Link> to report this {what}.
+        <Link href="/sign-in">{copy.web.report.signIn}</Link>{" "}
+        {fill(copy.web.report.signInToReport, { what })}
       </p>
     );
   }
@@ -55,7 +57,7 @@ export function ReportButton({
         reason,
         details: details.trim() === "" ? null : details.trim(),
       });
-      setResult({ ok: true, message: "Thanks. A moderator will review your report." });
+      setResult({ ok: true, message: copy.web.report.thanks });
     } catch (error) {
       setResult({ ok: false, message: errorMessage(error) });
     } finally {
@@ -66,7 +68,7 @@ export function ReportButton({
   return open ? (
     <form className="card stack" onSubmit={(event) => void submit(event)}>
       <SelectField
-        label={`Why are you reporting this ${what}?`}
+        label={fill(copy.web.report.why, { what })}
         required
         value={reason}
         onChange={(event) => {
@@ -77,7 +79,7 @@ export function ReportButton({
         options={REPORT_REASONS.map((value) => ({ value, label: titleCase(value) }))}
       />
       <TextArea
-        label="Details"
+        label={copy.web.report.details}
         maxLength={1000}
         value={details}
         onChange={(event) => {
@@ -91,7 +93,7 @@ export function ReportButton({
       ) : null}
       <div className="cluster">
         <Button type="submit" busy={busy}>
-          Send report
+          {copy.web.report.send}
         </Button>
         <Button
           variant="ghost"
@@ -99,7 +101,7 @@ export function ReportButton({
             setOpen(false);
           }}
         >
-          Cancel
+          {copy.common.cancel}
         </Button>
       </div>
     </form>
@@ -110,7 +112,7 @@ export function ReportButton({
         setOpen(true);
       }}
     >
-      Report this {what}
+      {fill(copy.web.report.open, { what })}
     </Button>
   );
 }

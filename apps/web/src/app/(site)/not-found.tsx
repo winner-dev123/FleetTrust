@@ -1,13 +1,14 @@
+import { copy } from "@fleettrust/copy";
 import Link from "next/link";
 
 export default function NotFound() {
   return (
     <div className="container container--readable stack">
-      <h1>Page not found</h1>
-      <p>This page doesn&apos;t exist, or it&apos;s no longer published.</p>
+      <h1>{copy.web.errors.pageNotFound}</h1>
+      <p>{copy.web.errors.pageGone}</p>
       <p>
-        <Link href="/search">Find vehicle services</Link> or go to the{" "}
-        <Link href="/">home page</Link>.
+        <Link href="/search">{copy.web.errors.findServices}</Link> {copy.web.errors.orGoToThe}{" "}
+        <Link href="/">{copy.web.errors.homePage}</Link>.
       </p>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill, plural } from "@fleettrust/copy";
 import {
   CATEGORY_LABELS,
   type GeocodeResult,
@@ -60,13 +61,23 @@ function ResultCard({
         <Link href={`/providers/${result.slug}`}>{result.tradingName}</Link>
       </h3>
       <p className="muted small">
-        {result.branchName}
-        {result.locality ? ` · ${result.locality}` : ""} ·{" "}
-        {result.location.approximate ? "about " : ""}
-        {formatDistance(result.distanceKm * 1000)} away
+        {[
+          result.branchName,
+          result.locality,
+          fill(
+            result.location.approximate
+              ? copy.web.search.distanceApproximate
+              : copy.web.search.distance,
+            {
+              distance: formatDistance(result.distanceKm * 1000),
+            },
+          ),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       </p>
       <p>{openingStatusLabel(result.hours)}</p>
-      <ul className="cluster list-plain" aria-label="Verification">
+      <ul className="cluster list-plain" aria-label={copy.web.search.verification}>
         {result.verification.map((badge) => (
           <li key={badge.badgeType} style={{ marginTop: 0 }}>
             <Badge tone={badge.status === "verified" ? "verified" : "caution"}>
@@ -77,13 +88,13 @@ function ResultCard({
       </ul>
       <p className="small">
         {result.categories.map((category) => CATEGORY_LABELS[category]).join(", ")}
-        {result.coversSearchLocation ? " · Travels to your location" : ""}
+        {result.coversSearchLocation ? ` · ${copy.web.search.travelsToYou}` : ""}
       </p>
       {result.priceHighlights.length > 0 ? (
         <ul className="small">
           {result.priceHighlights.map((price) => (
             <li key={price.name}>
-              {price.name}: {price.label}
+              {fill(copy.web.search.priceLine, { name: price.name, price: price.label })}
             </li>
           ))}
         </ul>
@@ -149,7 +160,7 @@ export function SearchView() {
         if (!active) return;
         const [first] = found;
         if (!first) {
-          setFormError(`We couldn't find "${where}". Try a nearby town.`);
+          setFormError(fill(copy.web.search.placeNotFound, { place: where }));
           return;
         }
         setPlaces(found.slice(1));
@@ -194,14 +205,14 @@ export function SearchView() {
       return;
     }
     if (where.length < 2) {
-      setFormError("Enter a town or area, or use your current location.");
+      setFormError(copy.web.search.whereMissing);
       return;
     }
     try {
       const found = await api.geocode(where);
       const [first] = found;
       if (!first) {
-        setFormError(`We couldn't find "${where}". Try a nearby town.`);
+        setFormError(fill(copy.web.search.placeNotFound, { place: where }));
         return;
       }
       setPlaces(found.slice(1));
@@ -213,7 +224,7 @@ export function SearchView() {
 
   function useMyLocation() {
     if (!("geolocation" in navigator)) {
-      setFormError("Your browser can't share a location. Type a town instead.");
+      setFormError(copy.web.search.browserCannot);
       return;
     }
     setLocating(true);
@@ -222,14 +233,14 @@ export function SearchView() {
         setLocating(false);
         navigate({
           ...draft,
-          where: "Your location",
+          where: copy.web.search.yourLocation,
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
       },
       () => {
         setLocating(false);
-        setFormError("Location wasn't shared. Type a town or area instead.");
+        setFormError(copy.web.search.notShared);
       },
       { maximumAge: 300_000, timeout: 15_000 },
     );
@@ -258,18 +269,15 @@ export function SearchView() {
   return (
     <div className="container stack stack--lg">
       <header>
-        <h1>Find vehicle services</h1>
-        <p className="muted">
-          Workshops, towing, tyres, parts and more. Results are sorted by relevance (text match,
-          distance, service area and opening hours). Plans never change the order.
-        </p>
+        <h1>{copy.web.search.title}</h1>
+        <p className="muted">{copy.web.search.intro}</p>
       </header>
 
       <form className="card stack" onSubmit={(event) => void submit(event)} role="search">
         <div className="grid">
           <TextField
-            label="What do you need?"
-            hint="For example: brakes, tyre repair, towing"
+            label={copy.web.search.whatLabel}
+            hint={copy.web.search.whatHint}
             value={draft.q}
             maxLength={100}
             onChange={(event) => {
@@ -277,8 +285,8 @@ export function SearchView() {
             }}
           />
           <TextField
-            label="Where?"
-            hint="Town, suburb or area"
+            label={copy.web.search.whereLabel}
+            hint={copy.web.search.whereHint}
             required
             value={draft.where}
             maxLength={100}
@@ -291,7 +299,7 @@ export function SearchView() {
         </div>
         <div className="grid">
           <SelectField
-            label="Category"
+            label={copy.web.search.category}
             value={draft.category ?? ""}
             onChange={(event) => {
               const value = event.target.value;
@@ -301,7 +309,7 @@ export function SearchView() {
               });
             }}
             options={[
-              { value: "", label: "Any category" },
+              { value: "", label: copy.web.search.anyCategory },
               ...PROVIDER_CATEGORIES.map((category) => ({
                 value: category,
                 label: CATEGORY_LABELS[category],
@@ -309,7 +317,7 @@ export function SearchView() {
             ]}
           />
           <SelectField
-            label="Distance"
+            label={copy.web.search.distanceLabel}
             required
             value={String(draft.radiusKm)}
             onChange={(event) => {
@@ -317,20 +325,20 @@ export function SearchView() {
             }}
             options={RADIUS_OPTIONS.map((km) => ({
               value: String(km),
-              label: `Within ${String(km)} km`,
+              label: fill(copy.web.search.within, { km }),
             }))}
           />
         </div>
         <div className="cluster">
           <Checkbox
-            label="Open now"
+            label={copy.web.search.openNow}
             checked={draft.openNow}
             onChange={(event) => {
               setDraft({ ...draft, openNow: event.target.checked });
             }}
           />
           <Checkbox
-            label="Business registration verified"
+            label={copy.web.search.verifiedOnly}
             checked={draft.verifiedOnly}
             onChange={(event) => {
               setDraft({ ...draft, verifiedOnly: event.target.checked });
@@ -338,19 +346,17 @@ export function SearchView() {
           />
         </div>
         <div className="cluster">
-          <Button type="submit">Search</Button>
+          <Button type="submit">{copy.web.search.search}</Button>
           <Button variant="ghost" onClick={useMyLocation} busy={locating}>
-            {locating ? "Finding you…" : "Use my location"}
+            {locating ? copy.web.search.finding : copy.web.search.useLocation}
           </Button>
         </div>
-        <p className="small muted">
-          Your location is used for this search only. FleetTrust doesn&apos;t store it.
-        </p>
+        <p className="small muted">{copy.web.search.locationNote}</p>
       </form>
 
       {places.length > 0 ? (
-        <nav aria-label="Other places with that name" className="cluster">
-          <span className="small">Did you mean:</span>
+        <nav aria-label={copy.web.search.otherPlaces} className="cluster">
+          <span className="small">{copy.web.search.didYouMean}</span>
           {places.map((place) => (
             <button
               key={`${place.label}-${String(place.location.lat)}`}
@@ -375,7 +381,11 @@ export function SearchView() {
       <section aria-labelledby="results-heading" className="stack">
         <div className="cluster cluster--between">
           <h2 id="results-heading">
-            {state.lat === null ? "Results" : `Results near ${state.where || "the chosen point"}`}
+            {state.lat === null
+              ? copy.web.search.results
+              : fill(copy.web.search.resultsNear, {
+                  place: state.where || copy.web.search.chosenPoint,
+                })}
           </h2>
           {state.lat !== null ? (
             <Button
@@ -385,26 +395,29 @@ export function SearchView() {
                 navigate({ ...state, view: state.view === "map" ? "list" : "map" });
               }}
             >
-              {state.view === "map" ? "Hide map" : "Show map"}
+              {state.view === "map" ? copy.web.search.hideMap : copy.web.search.showMap}
             </Button>
           ) : null}
         </div>
 
         <p role="status" aria-live="polite" className="small muted">
           {results.status === "ready"
-            ? `${String(resultCount)} ${resultCount === 1 ? "result" : "results"}${results.nextCursor ? " so far" : ""}.`
+            ? plural(
+                resultCount,
+                results.nextCursor ? copy.web.search.resultCountSoFar : copy.web.search.resultCount,
+              )
             : ""}
         </p>
 
         {results.status === "idle" && state.lat === null && state.where && !formError ? (
-          <Loading label="Finding that place…" />
+          <Loading label={copy.web.search.findingPlace} />
         ) : null}
         {results.status === "idle" && (state.lat === null ? !state.where || formError : false) ? (
-          <EmptyState title="Tell us where to look">
-            <p>Type a town or use your location to see providers nearby.</p>
+          <EmptyState title={copy.web.search.whereTitle}>
+            <p>{copy.web.search.whereBody}</p>
           </EmptyState>
         ) : null}
-        {results.status === "loading" ? <Loading label="Searching…" /> : null}
+        {results.status === "loading" ? <Loading label={copy.web.search.searching} /> : null}
         {results.status === "error" ? <ErrorNotice error={results.error} /> : null}
         {results.status === "ready" ? (
           <>
@@ -412,17 +425,18 @@ export function SearchView() {
               <p className="small">{results.disclaimer}</p>
               {!signedIn ? (
                 <p className="small">
-                  Locations are approximate until you <Link href="/sign-in">sign in</Link>.
+                  {copy.web.search.approximateBefore}{" "}
+                  <Link href="/sign-in">{copy.web.search.approximateLink}</Link>.
                 </p>
               ) : null}
             </Notice>
             {results.items.length === 0 ? (
-              <EmptyState title="No providers match">
-                <p>Try a larger distance, another category or fewer filters.</p>
+              <EmptyState title={copy.web.search.noneTitle}>
+                <p>{copy.web.search.noneBody}</p>
               </EmptyState>
             ) : (
               <div className={state.view === "map" ? "search-layout" : undefined}>
-                <ol className="list-plain" aria-label="Providers">
+                <ol className="list-plain" aria-label={copy.web.search.providers}>
                   {results.items.map((result, index) => (
                     <li key={result.branchId}>
                       <ResultCard
@@ -447,7 +461,10 @@ export function SearchView() {
                     pins={results.items.map((result, index) => ({
                       id: result.branchId,
                       number: index + 1,
-                      label: `${result.tradingName}, ${formatDistance(result.distanceKm * 1000)}`,
+                      label: fill(copy.web.search.pinLabel, {
+                        name: result.tradingName,
+                        distance: formatDistance(result.distanceKm * 1000),
+                      }),
                       location: result.location,
                     }))}
                   />
@@ -460,7 +477,7 @@ export function SearchView() {
                 busy={results.loadingMore}
                 onClick={() => void loadMore()}
               >
-                {results.loadingMore ? "Loading…" : "Show more results"}
+                {results.loadingMore ? copy.web.search.loading : copy.web.search.showMore}
               </Button>
             ) : null}
           </>

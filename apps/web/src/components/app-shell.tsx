@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import { ApiError } from "@fleettrust/sdk";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -25,15 +26,15 @@ function TopBar() {
     <header className="site-header">
       <div className="site-header__inner">
         <Link className="brand" href="/app">
-          FleetTrust
+          {copy.web.site.brand}
         </Link>
         <div className="cluster">
           <Link className="nav__link" href="/search">
-            Find services
+            {copy.web.shell.findServices}
           </Link>
           {status === "signed-in" ? (
             <button type="button" className="btn btn--ghost" onClick={() => void signOut()}>
-              Sign out
+              {copy.web.shell.signOut}
             </button>
           ) : null}
         </div>
@@ -66,7 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   let body: ReactNode;
   let nav: ReactNode = null;
   if (session.status !== "signed-in" || account.status === "loading") {
-    body = <Loading label="Loading your account…" />;
+    body = <Loading label={copy.web.shell.loadingAccount} />;
   } else if (account.status === "error") {
     const suspended =
       account.error instanceof ApiError && account.error.reason === "account_suspended";
@@ -74,13 +75,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       suspended && pathname.startsWith(SUSPENDED_ALLOWED) ? (
         children
       ) : suspended ? (
-        <Notice tone="danger" title="Your account is suspended" live="assertive">
+        <Notice tone="danger" title={copy.web.shell.suspendedTitle} live="assertive">
+          <p>{copy.web.shell.suspendedBody}</p>
           <p>
-            While suspended you can&apos;t use FleetTrust, but you can see why and appeal the
-            decision.
-          </p>
-          <p>
-            <Link href={SUSPENDED_ALLOWED}>See your sanctions and appeal</Link>
+            <Link href={SUSPENDED_ALLOWED}>{copy.web.shell.suspendedLink}</Link>
           </p>
         </Notice>
       ) : (
@@ -91,7 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     nav = (
       <aside className="app-nav">
         <NavMenu
-          label="Your areas"
+          label={copy.web.shell.yourAreas}
           sections={appNavigation(account.organizations, { isStaff: account.isStaff })}
         />
       </aside>

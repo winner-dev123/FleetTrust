@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import { isSignInWithEmailLink, signInWithEmailLink } from "@firebase/auth";
 import { useRouter } from "next/navigation";
 import { type SubmitEvent, Suspense, use, useEffect, useState } from "react";
@@ -31,7 +32,7 @@ function initialState(): State {
 
 /** Browser-only: it reads the one-time link from the URL and the email from localStorage. */
 function FinishSignIn() {
-  use(browser("The sign-in link and the remembered email exist only in the browser."));
+  use(browser("The sign-in link and the remembered email exist only in the browser.")); // copy-allow: developer message, never shown
   const router = useRouter();
   const [state, setState] = useState<State>(initialState);
   const [email, setEmail] = useState("");
@@ -85,13 +86,13 @@ function FinishSignIn() {
         />
       );
     case "signing-in":
-      return <Loading label="Signing you in…" />;
+      return <Loading label={copy.web.signIn.signingIn} />;
     case "need-email":
       return (
         <form className="stack" onSubmit={submit}>
-          <p>For your security, confirm the email address this link was sent to.</p>
+          <p>{copy.web.signIn.confirmEmail}</p>
           <TextField
-            label="Email address"
+            label={copy.web.signIn.emailLabel}
             type="email"
             autoComplete="email"
             required
@@ -101,7 +102,7 @@ function FinishSignIn() {
             }}
           />
           <div>
-            <Button type="submit">Continue</Button>
+            <Button type="submit">{copy.web.signIn.continue}</Button>
           </div>
         </form>
       );
@@ -109,8 +110,7 @@ function FinishSignIn() {
       return (
         <Notice tone="danger" live="assertive">
           <p>
-            This sign-in link is invalid or has already been used.{" "}
-            <a href="/sign-in">Request a new one</a>.
+            {copy.web.signIn.invalidLink} <a href="/sign-in">{copy.web.signIn.requestNew}</a>.
           </p>
         </Notice>
       );
@@ -118,8 +118,7 @@ function FinishSignIn() {
       return (
         <Notice tone="danger" live="assertive">
           <p>
-            We couldn&apos;t sign you in with this link. It may have expired.{" "}
-            <a href="/sign-in">Try again</a>.
+            {copy.web.signIn.failedLink} <a href="/sign-in">{copy.web.signIn.tryAgain}</a>.
           </p>
         </Notice>
       );
@@ -130,9 +129,9 @@ function FinishSignIn() {
 export default function FinishSignInPage() {
   return (
     <div className="container stack" style={{ maxWidth: 460 }}>
-      <title>Signing in · FleetTrust</title>
-      <h1>Signing you in</h1>
-      <Suspense fallback={<Loading label="One moment…" />}>
+      <title>{copy.web.signIn.finishPageTitle}</title>
+      <h1>{copy.web.signIn.finishTitle}</h1>
+      <Suspense fallback={<Loading label={copy.web.signIn.oneMoment} />}>
         <FinishSignIn />
       </Suspense>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import {
   type AuthProvider,
   GoogleAuthProvider,
@@ -40,7 +41,7 @@ export default function SignInPage() {
     event.preventDefault();
     const address = normaliseEmail(email);
     if (!address) {
-      setStatus({ kind: "error", message: "Enter a valid email address." });
+      setStatus({ kind: "error", message: copy.web.signIn.emailInvalid });
       return;
     }
     setStatus({ kind: "sending" });
@@ -55,7 +56,7 @@ export default function SignInPage() {
     } catch {
       setStatus({
         kind: "error",
-        message: "We couldn't send the link. Please try again in a moment.",
+        message: copy.web.signIn.sendFailed,
       });
     }
   }
@@ -75,15 +76,15 @@ export default function SignInPage() {
         setStatus({ kind: "mfa", pending: pendingMfa(error) });
         return;
       }
-      setStatus({ kind: "error", message: "Sign-in was cancelled or failed. Please try again." });
+      setStatus({ kind: "error", message: copy.web.signIn.popupFailed });
     }
   }
 
   if (status.kind === "mfa") {
     return (
       <div className="container stack" style={{ maxWidth: 460 }}>
-        <title>Two-step sign-in · FleetTrust</title>
-        <h1>Sign in to FleetTrust</h1>
+        <title>{copy.web.signIn.mfaPageTitle}</title>
+        <h1>{copy.web.signIn.title}</h1>
         <MfaChallenge
           available={status.pending.available}
           resolve={async (code) => {
@@ -100,20 +101,21 @@ export default function SignInPage() {
 
   return (
     <div className="container stack" style={{ maxWidth: 460 }}>
-      <title>Sign in · FleetTrust</title>
-      <h1>Sign in to FleetTrust</h1>
-      <p className="muted">No password needed. New here? Signing in creates your free account.</p>
+      <title>{copy.web.signIn.pageTitle}</title>
+      <h1>{copy.web.signIn.title}</h1>
+      <p className="muted">{copy.web.signIn.intro}</p>
 
       {status.kind === "sent" ? (
-        <Notice tone="success" live="polite" title="Check your inbox">
+        <Notice tone="success" live="polite" title={copy.web.signIn.sentTitle}>
           <p>
-            We sent a sign-in link to <strong>{status.email}</strong>. Open it on this device.
+            {copy.web.signIn.sentBefore} <strong>{status.email}</strong>.{" "}
+            {copy.web.signIn.sentAfter}
           </p>
         </Notice>
       ) : (
         <form className="stack" onSubmit={(event) => void sendLink(event)} noValidate>
           <TextField
-            label="Email address"
+            label={copy.web.signIn.emailLabel}
             type="email"
             autoComplete="email"
             required
@@ -124,23 +126,20 @@ export default function SignInPage() {
             }}
           />
           <Button type="submit" block busy={status.kind === "sending"}>
-            {status.kind === "sending" ? "Sending…" : "Email me a sign-in link"}
+            {status.kind === "sending" ? copy.web.signIn.sending : copy.web.signIn.sendLink}
           </Button>
         </form>
       )}
 
       <div className="stack" style={{ marginTop: 16 }}>
         <Button variant="secondary" block onClick={() => void signInWith(new GoogleAuthProvider())}>
-          Continue with Google
+          {copy.web.signIn.google}
         </Button>
         <Button variant="secondary" block onClick={() => void signInWith(apple)}>
-          Continue with Apple
+          {copy.web.signIn.apple}
         </Button>
       </div>
-      <p className="small muted">
-        By continuing you agree to use FleetTrust responsibly. We only ask for what an account
-        needs: no documents, no payment details.
-      </p>
+      <p className="small muted">{copy.web.signIn.responsible}</p>
     </div>
   );
 }

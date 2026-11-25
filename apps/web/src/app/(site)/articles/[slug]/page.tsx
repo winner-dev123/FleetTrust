@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { ApiError } from "@fleettrust/sdk";
 import type { PublicArticle } from "@fleettrust/types";
 import type { Metadata } from "next";
@@ -37,19 +38,28 @@ export default async function ArticlePage(props: PageProps<"/articles/[slug]">) 
     <article className="container container--readable stack stack--lg">
       <header className="stack" style={{ gap: 8 }}>
         <p className="small">
-          <Link href="/articles">Knowledge hub</Link> · {titleCase(article.category)}
+          <Link href="/articles">{copy.web.article.hub}</Link> · {titleCase(article.category)}
         </p>
         <h1>{article.title}</h1>
         <p className="muted">
-          By {article.author.displayName}
-          {article.author.organization ? ` (${article.author.organization.name})` : ""} ·{" "}
-          {formatDate(article.publishedAt)}
-          {article.editedAt ? ` · edited ${formatDate(article.editedAt)}` : ""}
+          {[
+            article.author.organization
+              ? fill(copy.web.article.byOrg, {
+                  name: article.author.displayName,
+                  organization: article.author.organization.name,
+                })
+              : fill(copy.web.article.by, { name: article.author.displayName }),
+            formatDate(article.publishedAt),
+            article.editedAt
+              ? fill(copy.web.article.edited, { date: formatDate(article.editedAt) })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
         <Notice tone="caution">
           <p className="small">
-            <strong>{article.label}.</strong> This is the author&apos;s experience, not advice
-            checked by FleetTrust and not a rating of any provider.
+            <strong>{article.label}.</strong> {copy.web.article.disclaimer}
           </p>
         </Notice>
       </header>
@@ -57,22 +67,26 @@ export default async function ArticlePage(props: PageProps<"/articles/[slug]">) 
       {/* Rendered by the API from a validated document: every value escaped, links nofollow. */}
       <div className="article-body" dangerouslySetInnerHTML={{ __html: article.html }} />
 
-      <ReportButton targetType="article" targetId={article.id} what="article" />
+      <ReportButton targetType="article" targetId={article.id} what={copy.web.reportWhat.article} />
 
       <section aria-labelledby="comments-heading" className="stack">
-        <h2 id="comments-heading">Comments ({comments.items.length})</h2>
-        {comments.items.length === 0 ? <p className="muted">No comments yet.</p> : null}
+        <h2 id="comments-heading">
+          {fill(copy.web.article.commentsTitle, { count: comments.items.length })}
+        </h2>
+        {comments.items.length === 0 ? (
+          <p className="muted">{copy.web.article.noComments}</p>
+        ) : null}
         <ul className="list-plain">
           {comments.items.map((comment) => (
             <li key={comment.id} className="card">
               {comment.body === null ? (
                 <p className="muted" style={{ margin: 0 }}>
-                  This comment was removed.
+                  {copy.web.article.commentRemoved}
                 </p>
               ) : (
                 <>
                   <p className="small muted">
-                    {comment.author?.displayName ?? "Former member"} ·{" "}
+                    {comment.author?.displayName ?? copy.web.article.formerMember} ·{" "}
                     <time dateTime={comment.createdAt}>{formatDateTime(comment.createdAt)}</time>
                   </p>
                   <p style={{ whiteSpace: "pre-line" }}>{comment.body}</p>
@@ -84,7 +98,7 @@ export default async function ArticlePage(props: PageProps<"/articles/[slug]">) 
         {article.commentsEnabled ? (
           <CommentForm articleId={article.id} />
         ) : (
-          <p className="muted">Comments are closed.</p>
+          <p className="muted">{copy.web.article.commentsClosed}</p>
         )}
       </section>
     </article>

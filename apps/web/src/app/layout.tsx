@@ -7,10 +7,11 @@ import { SkipLink } from "@/components/site-chrome";
 import { FirebaseSessionProvider } from "@/lib/session";
 
 import { themeCss } from "./theme";
+import { copy } from "@fleettrust/copy";
 
 export const metadata: Metadata = {
-  title: { default: "FleetTrust", template: "%s · FleetTrust" },
-  description: "Find trusted vehicle services, request quotes and get help on the road.",
+  title: { default: copy.web.site.brand, template: copy.web.site.titleTemplate },
+  description: copy.web.site.description,
 };
 
 /** Zoom stays enabled (WCAG 1.4.4): no maximum-scale or user-scalable=no. */

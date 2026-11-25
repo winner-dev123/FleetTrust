@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import {
   type IndicativePrice,
   indicativePriceSchema,
@@ -25,10 +26,10 @@ export const EMPTY_PRICE: PriceDraft = {
 };
 
 export const PRICE_TYPE_LABELS: Record<IndicativePrice["type"], string> = {
-  fixed: "Fixed price",
-  from: "From (starting price)",
-  range: "Price range",
-  quote_required: "Quote required (no price shown)",
+  fixed: copy.web.price.typeFixed,
+  from: copy.web.price.typeFrom,
+  range: copy.web.price.typeRange,
+  quote_required: copy.web.price.typeQuote,
 };
 
 export const isPriceUnit = (value: string): value is PriceUnit =>
@@ -57,9 +58,9 @@ export function priceFromDraft(
   const field = issue?.path[0];
   const where =
     field === "currency"
-      ? "Currency: use a three-letter code such as ZAR"
+      ? copy.web.price.errorCurrency
       : field === "max"
-        ? "Maximum price: must be more than the minimum"
-        : "Price: enter an amount such as 450 or 450.50";
+        ? copy.web.price.errorMax
+        : copy.web.price.errorAmount;
   return { ok: false, error: where };
 }
