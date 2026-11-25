@@ -45,14 +45,22 @@ The design decision is [ADR-0034](../adr/0034-security-and-privacy-hardening.md)
 - saved lists;
 - conversation state, notifications, push devices and preferences;
 - Power User status and appeals;
-- staff availability;
-- organization memberships.
+- staff availability and time off;
+- organization memberships and platform staff roles;
+- images they uploaded for articles (public files deleted).
 
 **Withdrawn:** articles (unpublished, content erased) and comments (marked deleted).
 
 **Kept, anonymised:** messages sent, service requests (location note removed), sanctions history and the audit log. See [data retention](data-retention.md).
 
-**Audit:** recorded as `user.account_deleted`.
+**Every reference is classified.** [user-data-map.ts](../../apps/api/src/modules/privacy/user-data-map.ts) lists every database column that points to a person (111 today) as `erased`, `withdrawn` or `kept`, each with a reason. Two tests enforce it:
+
+- The list must match the foreign keys in the migrated database exactly, so a new column referencing `users` fails CI until someone decides how erasure treats it.
+- After a deletion, no `erased` column may still reference the person.
+
+Writing the map found two gaps, both fixed: article images stayed publicly reachable after deletion, and staff roles stayed attached to the tombstone.
+
+**Audit:** recorded as `user.account_deleted`, with counts and any staff roles removed.
 
 **After deletion:** the same email can sign up again as a new account.
 

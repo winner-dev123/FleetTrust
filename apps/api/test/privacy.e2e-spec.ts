@@ -1,5 +1,6 @@
 import {
   articleComments,
+  articleImages,
   articles,
   auditEvents,
   consents,
@@ -8,6 +9,7 @@ import {
   friendships,
   notifications,
   outboxEvents,
+  platformStaff,
   serviceRequestAttachments,
   trustedContacts,
   users,
@@ -23,8 +25,13 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { RetentionService } from "../src/modules/privacy/index.js";
+import { USER_REFERENCES } from "../src/modules/privacy/user-data-map.js";
 import { securityHeaders } from "../src/platform/security-headers/index.js";
-import { OBJECT_STORAGE, type ObjectStorage } from "../src/platform/storage/index.js";
+import {
+  type MemoryObjectStorage,
+  OBJECT_STORAGE,
+  type ObjectStorage,
+} from "../src/platform/storage/index.js";
 import { samplePng } from "./support/images.js";
 import { createTestApp, type TestApp } from "./support/test-app.js";
 
@@ -249,6 +256,19 @@ describe("account deletion", () => {
     await t.db.db.execute(
       `INSERT INTO memberships (organization_id, organization_kind, user_id, role) VALUES ('${fleet.organization.id}', 'fleet', '${p.id}', 'owner')`,
     );
+    // A public article image they uploaded, and a staff role they held.
+    const storage = t.app.get<MemoryObjectStorage>(OBJECT_STORAGE);
+    await storage.write("public_media", "article-images/del-1.png", samplePng(), "image/png");
+    await t.db.db.insert(articleImages).values({
+      uploadedBy: p.id,
+      status: "available",
+      declaredContentType: "image/png",
+      declaredSize: samplePng().length,
+      quarantineKey: "article-images/q/del-1",
+      storageKey: "article-images/del-1.png",
+      contentType: "image/png",
+    });
+    await t.db.db.insert(platformStaff).values({ userId: p.id, role: "support_agent" });
 
     await p.as().del("/v1/me", "account.delete").expect(204);
 
@@ -293,11 +313,51 @@ describe("account deletion", () => {
     // The co-owned fleet keeps its other owner.
     await friend.as().get(`/v1/orgs/${fleet.organization.id}`).expect(200);
 
+    // The image is gone from public storage, and the staff role with the account.
+    expect(storage.raw("public_media", "article-images/del-1.png")).toBeUndefined();
+    expect(
+      await t.db.db.select().from(articleImages).where(eq(articleImages.uploadedBy, p.id)),
+    ).toEqual([]);
+    expect(
+      await t.db.db.select().from(platformStaff).where(eq(platformStaff.userId, p.id)),
+    ).toEqual([]);
+
+    // Every column classified "erased" holds nothing of theirs any more.
+    const erased = Object.entries(USER_REFERENCES).filter(([, r]) => r.handling === "erased");
+    const leftovers: string[] = [];
+    for (const [column] of erased) {
+      const [table, field] = column.split(".");
+      const result = await t.db.client.query<{ n: number }>(
+        `SELECT count(*)::int AS n FROM "${table ?? ""}" WHERE "${field ?? ""}" = $1`,
+        [p.id],
+      );
+      if ((result.rows[0]?.n ?? 0) > 0) leftovers.push(column);
+    }
+    expect(leftovers).toEqual([]);
+
     const audit = await t.db.db.select().from(auditEvents).where(eq(auditEvents.targetId, p.id));
     expect(audit.map((a) => a.action)).toContain("user.account_deleted");
+    expect(audit.find((a) => a.action === "user.account_deleted")?.metadata).toMatchObject({
+      articleImages: 1,
+      staffRolesRemoved: ["support_agent"],
+    });
     // The same email can sign up again as a brand-new account.
     const again = (await client("del-1-new").get("/v1/me").expect(200)).body as { id: string };
     expect(again.id).not.toBe(p.id);
+  });
+
+  it("decides on purpose what happens to every column that references a person", async () => {
+    const { rows } = await t.db.client.query<{ ref: string }>(
+      `SELECT c.conrelid::regclass::text || '.' || a.attname AS ref
+         FROM pg_constraint c
+         JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+        WHERE c.contype = 'f' AND c.confrelid = 'users'::regclass`,
+    );
+    const inDatabase = rows.map((r) => r.ref).sort();
+    const classified = Object.keys(USER_REFERENCES).sort();
+    // A new column pointing at users must be added to user-data-map.ts (erased, withdrawn or kept).
+    expect(inDatabase.filter((ref) => !classified.includes(ref))).toEqual([]);
+    expect(classified.filter((ref) => !inDatabase.includes(ref))).toEqual([]);
   });
 });
 
