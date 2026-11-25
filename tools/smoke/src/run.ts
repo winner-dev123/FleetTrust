@@ -8,7 +8,8 @@ import { runChecks } from "./checks.ts";
  *   API_URL=https://api.staging.example.com WEB_URL=https://staging.example.com \
  *   EXPECT_VERSION=<git sha> ALLOWED_ORIGIN=https://staging.example.com node src/run.ts
  *
- * Optional: SMOKE_ID_TOKEN (a smoke-test account's Firebase ID token) for a signed-in call.
+ * Optional: SMOKE_ID_TOKEN (a smoke-test account's Firebase ID token) for a signed-in call;
+ * SMOKE_SKIP (comma-separated parts of check names) when rehearsing a release older than a check.
  * Writes a Markdown table to GITHUB_STEP_SUMMARY when set.
  */
 
@@ -46,6 +47,10 @@ const webUrl = optional("WEB_URL")?.replace(/\/+$/, "");
 const expectVersion = optional("EXPECT_VERSION");
 const allowedOrigin = optional("ALLOWED_ORIGIN");
 const idToken = optional("SMOKE_ID_TOKEN");
+const skip = optional("SMOKE_SKIP")
+  ?.split(",")
+  .map((part) => part.trim())
+  .filter((part) => part !== "");
 const results = await runChecks({
   apiUrl,
   expectHttps: apiUrl.startsWith("https://"),
@@ -55,6 +60,7 @@ const results = await runChecks({
   ...(expectVersion ? { expectVersion } : {}),
   ...(allowedOrigin ? { allowedOrigin } : {}),
   ...(idToken ? { idToken } : {}),
+  ...(skip ? { skip } : {}),
 });
 
 const icon = { pass: "PASS", fail: "FAIL", skip: "skip" } as const;

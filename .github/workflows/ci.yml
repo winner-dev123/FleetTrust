@@ -233,7 +233,7 @@ jobs:
             git /repo --config /repo/.gitleaks.toml --redact --no-banner --exit-code 1
 
   infrastructure:
-    name: Infrastructure as code (Terraform)
+    name: Infrastructure as code (Terraform, workflows, deploy scripts)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -252,3 +252,12 @@ jobs:
             terraform -chdir="infra/terraform/environments/$env" init -backend=false -input=false
             terraform -chdir="infra/terraform/environments/$env" validate
           done
+      # The release workflows can't run until the cloud projects exist, so lint them now:
+      # actionlint checks workflow syntax, expressions and every run: script (with shellcheck).
+      - name: Workflows (actionlint) and deploy scripts (shellcheck)
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+          docker run --rm -v "$PWD:/mnt" -w /mnt \
+            koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d \
+            deploy/cloudrun/deploy.sh tools/smoke/rehearsal.sh

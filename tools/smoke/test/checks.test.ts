@@ -98,4 +98,19 @@ describe("smoke checks", () => {
       "Realtime refuses unauthenticated sockets",
     ]);
   });
+
+  it("skip a check on request, by part of its name", async () => {
+    const noHeaders = fakeEnvironment({
+      "GET /health": () =>
+        new Response(JSON.stringify({ status: "ok", version: "abc123" }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+    });
+    const results = await runChecks(ctx(noHeaders, { skip: ["Security Headers"] }));
+    expect(results.filter((r) => r.status === "fail")).toEqual([]);
+    expect(results.find((r) => r.name === "API sends the security headers")).toMatchObject({
+      status: "skip",
+      detail: "skipped on request",
+    });
+  });
 });

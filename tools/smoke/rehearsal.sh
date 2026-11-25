@@ -4,7 +4,7 @@
 #
 #   rehearsal.sh migrate <image-tag>             apply that release's migrations
 #   rehearsal.sh start   <image-tag> <version>   start that release on :8080 and wait for /health
-#   rehearsal.sh smoke   <version> [web-url]     run tools/smoke against it
+#   rehearsal.sh smoke   <version> [web-url] [skip]  run tools/smoke against it (skip: SMOKE_SKIP)
 #   rehearsal.sh stop    <label>                 keep its log as api-<label>.log and remove it
 set -euo pipefail
 
@@ -30,7 +30,7 @@ case "$cmd" in
     ;;
   smoke)
     API_URL=http://127.0.0.1:8080 EXPECT_VERSION="$1" ALLOWED_ORIGIN=http://localhost:3000 \
-      WEB_URL="${2:-}" node tools/smoke/src/run.ts
+      WEB_URL="${2:-}" SMOKE_SKIP="${3:-}" node tools/smoke/src/run.ts
     ;;
   stop)
     docker logs api > "api-$1.log" 2>&1 || true

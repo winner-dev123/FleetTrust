@@ -19,6 +19,11 @@ export interface SmokeContext {
   fetch: typeof fetch;
   /** Opens a WebSocket, sends one frame, resolves with the close code (or "open" on timeout). */
   socketCloseCode?: (url: string, frame: string) => Promise<number | "open">;
+  /**
+   * Checks to skip, matched as case-insensitive substrings of their names. Only for rehearsing
+   * old releases that predate a check (e.g. "security headers" before Prompt 27).
+   */
+  skip?: string[];
 }
 
 export interface SmokeCheck {
@@ -197,7 +202,13 @@ export async function runChecks(
   checks: SmokeCheck[] = CHECKS,
 ): Promise<SmokeResult[]> {
   const results: SmokeResult[] = [];
+  const skipped = (name: string) =>
+    (ctx.skip ?? []).some((part) => name.toLowerCase().includes(part.toLowerCase()));
   for (const check of checks) {
+    if (skipped(check.name)) {
+      results.push({ name: check.name, status: "skip", detail: "skipped on request", ms: 0 });
+      continue;
+    }
     if (check.applies && !check.applies(ctx)) {
       results.push({ name: check.name, status: "skip", detail: "not configured", ms: 0 });
       continue;

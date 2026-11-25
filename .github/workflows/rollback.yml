@@ -1,0 +1,104 @@
+name: Roll back
+
+# Puts a previous release back in seconds by moving traffic (docs/operations/release-and-rollback.md).
+# Nothing is rebuilt and the database isn't touched: migrations are expand-only, so the previous
+# release runs on the current schema (rehearsed on every pull request by "Release rehearsal").
+# Production rollbacks need the same approval as production releases.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to roll back
+        required: true
+        type: choice
+        options: [staging, production]
+      revision:
+        description: API revision to restore (empty = the one before the current release)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Roll back ${{ inputs.environment }}
+    if: >-
+      (inputs.environment == 'staging' && vars.STAGING_ENABLED == 'true') ||
+      (inputs.environment == 'production' && vars.PRODUCTION_ENABLED == 'true')
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      TARGET: ${{ inputs.revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Choose the revision to restore
+        run: |
+          current=$(gcloud run services describe fleettrust-api --region "$GCP_REGION" --format=json \
+            | jq -r '[.status.traffic[] | select(.percent > 0)] | max_by(.percent) | .revisionName')
+          if [ -z "$TARGET" ]; then
+            # Newest ready revision that is older than the one serving now.
+            TARGET=$(gcloud run revisions list --service fleettrust-api --region "$GCP_REGION" \
+              --sort-by='~metadata.creationTimestamp' --format=json \
+              | jq -r --arg current "$current" '
+                  [.[] | select(.status.conditions[]? | select(.type == "Ready" and .status == "True"))]
+                  | (map(.metadata.name) | index($current)) as $i
+                  | .[($i // -1) + 1].metadata.name // empty')
+          fi
+          [ -n "$TARGET" ] || { echo "::error::no earlier revision to restore"; exit 1; }
+          [ "$TARGET" != "$current" ] || { echo "::error::$TARGET is already serving"; exit 1; }
+          version=$(gcloud run revisions describe "$TARGET" --region "$GCP_REGION" --format=json \
+            | jq -r '.spec.containers[] | select(.name == "api") | .env[] | select(.name == "APP_VERSION") | .value')
+          echo "CURRENT=$current" >> "$GITHUB_ENV"
+          echo "TARGET=$TARGET" >> "$GITHUB_ENV"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "Rolling back fleettrust-api from $current to $TARGET (release $version)"
+
+      - name: Move all API traffic to it
+        run: bash deploy/cloudrun/deploy.sh promote fleettrust-api "$TARGET" 100
+
+      - name: Put the matching worker revision back
+        run: |
+          worker=$(gcloud run revisions list --service fleettrust-worker --region "$GCP_REGION" --format=json \
+            | jq -r --arg v "$VERSION" '
+                [.[] | select(any(.spec.containers[].env[]?; .name == "APP_VERSION" and .value == $v))]
+                | sort_by(.metadata.creationTimestamp) | last | .metadata.name // empty')
+          if [ -n "$worker" ]; then
+            bash deploy/cloudrun/deploy.sh promote fleettrust-worker "$worker" 100
+          else
+            echo "::warning::no worker revision for release $VERSION; the current worker keeps running (it is compatible: expand-only schema)"
+          fi
+
+      - name: Smoke test the restored release
+        env:
+          WEB_URL: ${{ vars.WEB_URL }}
+          ALLOWED_ORIGIN: ${{ vars.WEB_URL }}
+          PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+        run: API_URL="$PUBLIC_API_URL" EXPECT_VERSION="$VERSION" node tools/smoke/src/run.ts
+
+      - name: Summary
+        run: |
+          {
+            echo "### Rolled back ${{ inputs.environment }}"
+            echo ""
+            echo "- API: \`$CURRENT\` → \`$TARGET\` (release \`$VERSION\`)"
+            echo "- The website is rolled back separately in App Hosting if needed (docs/operations/release-and-rollback.md)."
+            echo "- To return to the newer release: run this workflow with revision \`$CURRENT\`."
+          } >> "$GITHUB_STEP_SUMMARY"

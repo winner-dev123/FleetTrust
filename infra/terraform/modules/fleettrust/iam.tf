@@ -83,6 +83,7 @@ resource "google_project_iam_member" "deployer" {
   for_each = toset([
     "roles/run.admin",                # deploy services and jobs, shift traffic, roll back
     "roles/firebaseapphosting.admin", # web rollouts
+    "roles/logging.viewer",           # read the canary revision's request logs
   ])
   project = var.project_id
   role    = each.value

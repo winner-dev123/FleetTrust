@@ -8,6 +8,11 @@ name: Release rehearsal
 #   4. roll forward again to the new image.
 # Step 3 is what makes "rollback = redeploy the previous image" safe; the rollback guard in
 # tools/repo-guards keeps migrations expand-only so it stays true.
+#
+# Two rehearsals run side by side: from the release this change replaces, and from the Prompt 26
+# release, whose schema stops at migration 0040, so the rollback crosses a real schema change
+# (0041: privacy columns, consents table, stricter checks). That release predates the security
+# headers (Prompt 27), so its own smoke tests skip only that check.
 
 on:
   pull_request:
@@ -30,7 +35,17 @@ env:
 
 jobs:
   rehearsal:
-    name: Release rehearsal (deploy, smoke, roll back)
+    name: Release rehearsal from ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: the previous release
+            previous: base
+            skip: ""
+          - label: an older release, across a schema change
+            previous: c5338d688e8ee5a109168751b2ae94f7c2afce66
+            skip: security headers
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -48,7 +63,8 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       DATABASE_URL: postgresql://ci:ci-${{ github.run_id }}-${{ github.run_attempt }}@127.0.0.1:5432/fleettrust_release
-      PREVIOUS_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      PREVIOUS_SHA: ${{ matrix.previous == 'base' && (github.event.pull_request.base.sha || github.event.before) || matrix.previous }}
+      PREVIOUS_SKIP: ${{ matrix.skip }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -78,7 +94,7 @@ jobs:
         run: |
           bash tools/smoke/rehearsal.sh migrate previous
           bash tools/smoke/rehearsal.sh start previous "$PREVIOUS"
-          bash tools/smoke/rehearsal.sh smoke "$PREVIOUS"
+          bash tools/smoke/rehearsal.sh smoke "$PREVIOUS" "" "$PREVIOUS_SKIP"
           bash tools/smoke/rehearsal.sh stop previous
 
       - name: 2. New release (migrations, API and website)
@@ -99,7 +115,7 @@ jobs:
       - name: 3. Roll back to the previous release on the migrated schema
         run: |
           bash tools/smoke/rehearsal.sh start previous "$PREVIOUS"
-          bash tools/smoke/rehearsal.sh smoke "$PREVIOUS"
+          bash tools/smoke/rehearsal.sh smoke "$PREVIOUS" "" "$PREVIOUS_SKIP"
           bash tools/smoke/rehearsal.sh stop rollback
 
       - name: 4. Roll forward again

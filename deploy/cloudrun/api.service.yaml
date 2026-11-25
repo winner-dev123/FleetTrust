@@ -1,7 +1,7 @@
-# Cloud Run service template for the FleetTrust API (rendered with envsubst by
-# .github/workflows/deploy-staging.yml, then applied with `gcloud run services replace`).
-# The same image runs the worker: copy this file with APP_ROLE=worker and ingress internal, and
-# add run.googleapis.com/cpu-throttling: "false" so the outbox relay loop keeps running between requests.
+# Cloud Run service template for the FleetTrust API. deploy/cloudrun/deploy.sh renders it with
+# envsubst, appends the traffic split (new revision tagged "candidate" with no traffic until
+# smoke tests pass) and applies it with `gcloud run services replace`.
+# Release process: docs/operations/release-and-rollback.md. The worker: worker.service.yaml.
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -15,16 +15,21 @@ metadata:
 spec:
   template:
     metadata:
+      # Unique per release attempt, so traffic can be moved between named revisions.
+      name: ${REVISION}
       annotations:
         autoscaling.knative.dev/minScale: "${API_MIN_INSTANCES}"
         autoscaling.knative.dev/maxScale: "${API_MAX_INSTANCES}"
         run.googleapis.com/cloudsql-instances: ${CLOUDSQL_CONNECTION_NAME}
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/startup-cpu-boost: "true"
+        # Direct VPC egress: Redis (Memorystore) and the ClamAV VM have private addresses only.
+        run.googleapis.com/network-interfaces: '[{"network":"${VPC_NETWORK}","subnetwork":"${VPC_SUBNET}"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
         # Start the app after the collector sidecar is ready.
         run.googleapis.com/container-dependencies: '{"api":["otel-collector"]}'
     spec:
-      serviceAccountName: ${API_SERVICE_ACCOUNT}
+      serviceAccountName: ${RUNTIME_SERVICE_ACCOUNT}
       containerConcurrency: 40
       # Upper bound for one request, and for one WebSocket (/v1/realtime): clients reconnect and
       # replay from their cursor, so the 60-minute maximum is enough.
@@ -107,6 +112,3 @@ spec:
             limits: { cpu: 250m, memory: 256Mi }
           startupProbe:
             httpGet: { path: /, port: 13133 }
-  traffic:
-    - percent: 100
-      latestRevision: true

@@ -1,7 +1,14 @@
-name: Deploy API to staging
+name: Deploy to staging
 
-# Manual until a staging project exists (OQ-19). Setup: docs/operations/staging-deployment.md.
+# Every merge to main goes to staging (docs/operations/release-and-rollback.md):
+# build once → migrate (expand-only) → new API revision with no traffic → smoke test it on its
+# own URL → move traffic → worker → smoke test the public URLs → website rollout.
+# Off until staging exists: set the repository variable STAGING_ENABLED=true and the "staging"
+# environment variables (docs/operations/environments.md).
+
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -12,88 +19,119 @@ concurrency:
   group: deploy-staging
   cancel-in-progress: false
 
-env:
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  GCP_REGION: ${{ vars.GCP_REGION }}
-  REGISTRY: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/fleettrust
-  OTEL_COLLECTOR_IMAGE: otel/opentelemetry-collector-contrib:0.165.0@sha256:e40d61f10c9a617cca1ffd1be4d7e2b3a4b0f0001798ff07e58cabe82e618cea
-
 jobs:
   deploy:
+    name: Deploy to staging
+    if: vars.STAGING_ENABLED == 'true'
+    environment: staging
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      REGISTRY: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/fleettrust
+      RELEASE: ${{ github.sha }}
+      # Template variables (deploy/cloudrun/*.service.yaml)
+      APP_ENV: staging
+      APP_VERSION: ${{ github.sha }}
+      RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+      CLOUDSQL_CONNECTION_NAME: ${{ vars.CLOUDSQL_CONNECTION_NAME }}
+      VPC_NETWORK: ${{ vars.VPC_NETWORK }}
+      VPC_SUBNET: ${{ vars.VPC_SUBNET }}
+      CORS_ORIGINS: ${{ vars.WEB_URL }}
+      PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+      API_MIN_INSTANCES: "0"
+      API_MAX_INSTANCES: "4"
+      TRACE_SAMPLE_RATIO: "1"
+      FIREBASE_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      # Staging logs App Check failures without blocking; production must use "enforce".
+      APP_CHECK_MODE: monitor
+      STORAGE_QUARANTINE_BUCKET: ${{ vars.QUARANTINE_BUCKET }}
+      STORAGE_SENSITIVE_BUCKET: ${{ vars.SENSITIVE_BUCKET }}
+      STORAGE_PUBLIC_MEDIA_BUCKET: ${{ vars.PUBLIC_MEDIA_BUCKET }}
+      DOCUMENT_KMS_KEY: ${{ vars.DOCUMENT_KMS_KEY }}
+      CLAMAV_HOST: ${{ vars.CLAMAV_HOST }}
+      OTEL_COLLECTOR_IMAGE: otel/opentelemetry-collector-contrib:0.165.0@sha256:e40d61f10c9a617cca1ffd1be4d7e2b3a4b0f0001798ff07e58cabe82e618cea
     steps:
-      - name: Check required repository variables
+      - name: Check the staging environment variables
         env:
           WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           DEPLOYER: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
-          RUNTIME_SA: ${{ vars.GCP_API_SERVICE_ACCOUNT }}
-          CLOUDSQL: ${{ vars.GCP_CLOUDSQL_CONNECTION_NAME }}
+          WEB_URL: ${{ vars.WEB_URL }}
         run: |
           missing=""
-          for name in GCP_PROJECT_ID GCP_REGION WIF_PROVIDER DEPLOYER RUNTIME_SA CLOUDSQL; do
+          for name in GCP_PROJECT_ID GCP_REGION WIF_PROVIDER DEPLOYER RUNTIME_SERVICE_ACCOUNT \
+            CLOUDSQL_CONNECTION_NAME VPC_NETWORK VPC_SUBNET PUBLIC_API_URL WEB_URL \
+            STORAGE_QUARANTINE_BUCKET STORAGE_SENSITIVE_BUCKET STORAGE_PUBLIC_MEDIA_BUCKET \
+            DOCUMENT_KMS_KEY CLAMAV_HOST; do
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
-            echo "::error::Staging is not configured (missing:$missing). See docs/operations/staging-deployment.md."
+            echo "::error::Staging is not fully configured (missing:$missing). See docs/operations/environments.md."
             exit 1
           fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
-
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
-
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      - name: Build and push the image (tagged with the commit SHA)
+      - name: Build and push the image (tagged with the commit, deployed by digest)
         run: |
           gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
-          docker buildx build -f apps/api/Dockerfile -t "${REGISTRY}/api:${GITHUB_SHA}" --push .
+          docker buildx build -f apps/api/Dockerfile -t "${REGISTRY}/api:${RELEASE}" \
+            --metadata-file /tmp/build.json --push .
+          digest=$(jq -r '."containerimage.digest"' /tmp/build.json)
+          echo "API_IMAGE=${REGISTRY}/api@${digest}" >> "$GITHUB_ENV"
 
-      - name: Run database migrations (Cloud Run job, before the new revision serves traffic)
+      - name: Migrate the database (expand-only; the serving release keeps working)
         run: |
-          gcloud run jobs deploy fleettrust-migrate \
-            --region "$GCP_REGION" \
-            --image "${REGISTRY}/api:${GITHUB_SHA}" \
-            --service-account "${{ vars.GCP_API_SERVICE_ACCOUNT }}" \
-            --set-cloudsql-instances "${{ vars.GCP_CLOUDSQL_CONNECTION_NAME }}" \
+          gcloud run jobs deploy fleettrust-migrate --region "$GCP_REGION" --image "$API_IMAGE" \
+            --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+            --set-cloudsql-instances "$CLOUDSQL_CONNECTION_NAME" \
             --set-secrets DATABASE_URL=fleettrust-database-url:latest \
             --command node --args node_modules/@fleettrust/db/dist/cli/migrate.js \
             --max-retries 0 --task-timeout 600 --quiet
           gcloud run jobs execute fleettrust-migrate --region "$GCP_REGION" --wait
 
-      - name: Deploy the API service
+      - name: Deploy the new API revision with no traffic
         env:
-          APP_ENV: staging
-          APP_VERSION: ${{ github.sha }}
-          API_IMAGE: ${{ env.REGISTRY }}/api:${{ github.sha }}
-          API_SERVICE_ACCOUNT: ${{ vars.GCP_API_SERVICE_ACCOUNT }}
-          CLOUDSQL_CONNECTION_NAME: ${{ vars.GCP_CLOUDSQL_CONNECTION_NAME }}
-          CORS_ORIGINS: ${{ vars.STAGING_CORS_ORIGINS }}
-          API_MIN_INSTANCES: "0"
-          API_MAX_INSTANCES: "4"
-          TRACE_SAMPLE_RATIO: "1"
-          FIREBASE_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-          # Staging logs App Check failures without blocking; production must use "enforce".
-          APP_CHECK_MODE: monitor
-          PUBLIC_API_URL: ${{ vars.STAGING_PUBLIC_API_URL }}
-          STORAGE_QUARANTINE_BUCKET: ${{ vars.STAGING_QUARANTINE_BUCKET }}
-          STORAGE_SENSITIVE_BUCKET: ${{ vars.STAGING_SENSITIVE_BUCKET }}
-          STORAGE_PUBLIC_MEDIA_BUCKET: ${{ vars.STAGING_PUBLIC_MEDIA_BUCKET }}
-          DOCUMENT_KMS_KEY: ${{ vars.STAGING_DOCUMENT_KMS_KEY }}
-          CLAMAV_HOST: ${{ vars.STAGING_CLAMAV_HOST }}
-        run: |
-          envsubst < deploy/cloudrun/api.service.yaml > /tmp/api.service.yaml
-          gcloud run services replace /tmp/api.service.yaml --region "$GCP_REGION" --quiet
+          REVISION: fleettrust-api-${{ github.run_number }}-${{ github.run_attempt }}
+        run: bash deploy/cloudrun/deploy.sh candidate deploy/cloudrun/api.service.yaml fleettrust-api
 
-      - name: Smoke test the new revision
+      - name: Smoke test the new revision on its own URL
+        env:
+          ALLOWED_ORIGIN: ${{ vars.WEB_URL }}
+        run: API_URL="$CANDIDATE_URL" EXPECT_VERSION="$RELEASE" node tools/smoke/src/run.ts
+
+      - name: Move all traffic to the new revision
+        run: bash deploy/cloudrun/deploy.sh promote fleettrust-api "$NEW_REVISION" 100
+
+      - name: Deploy the worker
+        env:
+          REVISION: fleettrust-worker-${{ github.run_number }}-${{ github.run_attempt }}
+        run: bash deploy/cloudrun/deploy.sh direct deploy/cloudrun/worker.service.yaml fleettrust-worker
+
+      - name: Roll the website out (App Hosting)
+        if: vars.APP_HOSTING_BACKEND != ''
         run: |
-          url=$(gcloud run services describe fleettrust-api --region "$GCP_REGION" --format 'value(status.url)')
-          curl -sf "$url/health" | grep -q '"status":"ok"'
-          curl -sf "$url/health/ready" | grep -q '"status":"ready"'
-          echo "Staging API healthy at $url"
+          corepack enable
+          pnpm install --frozen-lockfile --filter fleettrust
+          pnpm exec firebase apphosting:rollouts:create "${{ vars.APP_HOSTING_BACKEND }}" \
+            --git-commit "$RELEASE" --project "$GCP_PROJECT_ID" --force
+
+      - name: Smoke test the public URLs
+        env:
+          WEB_URL: ${{ vars.WEB_URL }}
+          ALLOWED_ORIGIN: ${{ vars.WEB_URL }}
+        run: API_URL="$PUBLIC_API_URL" EXPECT_VERSION="$RELEASE" node tools/smoke/src/run.ts
+
+      - name: If the release failed after traffic moved, put the previous revision back
+        if: failure() && env.PREVIOUS_REVISION != ''
+        run: bash deploy/cloudrun/deploy.sh promote fleettrust-api "$PREVIOUS_REVISION" 100
