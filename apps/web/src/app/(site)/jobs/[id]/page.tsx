@@ -7,7 +7,7 @@ import { cache } from "react";
 
 import { Badge, Notice } from "@/components/feedback";
 import { ReportButton } from "@/components/report-button";
-import { formatDate, titleCase } from "@/lib/format";
+import { formatDate, titleCase } from "@fleettrust/types";
 import { publicApi } from "@/lib/public-api";
 
 import { ApplyForm } from "./apply-form";

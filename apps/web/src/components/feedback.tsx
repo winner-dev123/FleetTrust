@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { errorMessage } from "@/lib/errors";
+import { errorMessage } from "@fleettrust/sdk";
 
 export type Tone = "info" | "caution" | "danger" | "success";
 

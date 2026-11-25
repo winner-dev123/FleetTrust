@@ -16,7 +16,7 @@ import { Checkbox, SelectField, TextArea, TextField } from "@/components/field";
 import { EmptyState, ErrorNotice, Loading, Notice } from "@/components/feedback";
 import { Card, PageHeader } from "@/components/layout";
 import { PriceFields } from "@/components/price-fields";
-import { errorMessage } from "@/lib/errors";
+import { errorMessage } from "@fleettrust/sdk";
 import { EMPTY_PRICE, priceFromDraft } from "@/lib/price";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";

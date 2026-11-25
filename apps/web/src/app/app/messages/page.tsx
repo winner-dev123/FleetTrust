@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { Badge, EmptyState, ErrorNotice, Loading } from "@/components/feedback";
 import { PageHeader } from "@/components/layout";
-import { formatDateTime, titleCase } from "@/lib/format";
+import { formatDateTime, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 

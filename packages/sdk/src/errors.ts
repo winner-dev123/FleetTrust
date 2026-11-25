@@ -1,4 +1,4 @@
-import { ApiError, type ApiErrorReason } from "@fleettrust/sdk";
+import { ApiError, type ApiErrorReason } from "./client.js";
 
 /** Plain-language messages for the error reasons people meet most often. */
 const REASON_MESSAGES: Partial<Record<ApiErrorReason, string>> = {
@@ -52,4 +52,9 @@ export function errorMessage(error: unknown): string {
 
 export function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
+}
+
+/** True when the request never reached FleetTrust (offline, DNS, timeout), so a retry may work. */
+export function isOffline(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "network_error";
 }

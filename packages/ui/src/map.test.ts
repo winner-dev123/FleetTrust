@@ -9,7 +9,7 @@ import {
   unproject,
   viewportBbox,
   visibleTiles,
-} from "./map";
+} from "./map.js";
 
 const capeTown = { lng: 18.4241, lat: -33.9249 };
 
@@ -56,6 +56,8 @@ describe("tiles", () => {
     );
     expect(tileUrl("http://tiles.example.com/{z}/{x}/{y}.png", { z: 1, x: 0, y: 0 })).toBeNull();
     expect(tileUrl("javascript:alert(1)//{z}", { z: 1, x: 0, y: 0 })).toBeNull();
+    expect(tileUrl("https://user@tiles.example.com/{z}/{x}/{y}", { z: 1, x: 0, y: 0 })).toBeNull();
+    expect(tileUrl("http://localhost.evil.com/{z}/{x}/{y}", { z: 1, x: 0, y: 0 })).toBeNull();
   });
 });
 

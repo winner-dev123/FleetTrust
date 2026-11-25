@@ -1,5 +1,5 @@
 /**
- * Web Mercator helpers for the built-in tile map (ADR-0031). The map vendor (OQ-13) is
+ * Web Mercator helpers for the built-in tile map on web and mobile (ADR-0031, ADR-0032). The map vendor (OQ-13) is
  * configured by the API (`GET /v1/geo/map-config`); this code only places XYZ tiles and pins.
  */
 
@@ -131,20 +131,16 @@ export function viewportBbox(view: Viewport): [number, number, number, number] {
 
 /**
  * Fills an XYZ template. Only https templates are used (plus http on localhost for
- * development), so a misconfigured value can't load mixed or script content.
+ * development), so a misconfigured value can't load mixed or script content. Checked with a
+ * pattern rather than `URL`, which React Native implements only partly.
  */
 export function tileUrl(
   template: string,
   tile: { z: number; x: number; y: number },
 ): string | null {
-  let url: URL;
-  try {
-    url = new URL(template.replace(/[{}]/g, (brace) => (brace === "{" ? "%7B" : "%7D")));
-  } catch {
-    return null;
-  }
-  const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
-  if (url.protocol !== "https:" && !(local && url.protocol === "http:")) return null;
+  const secure = /^https:\/\/[a-z0-9.-]+(?::\d+)?\//i.test(template);
+  const local = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\//i.test(template);
+  if (!secure && !local) return null;
   return template
     .replace("{z}", String(tile.z))
     .replace("{x}", String(tile.x))

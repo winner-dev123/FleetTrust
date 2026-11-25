@@ -7,3 +7,4 @@ export type {
   GroupQueryParams,
   SearchQueryParams,
 } from "./client.js";
+export { errorMessage, isNotFound, isOffline } from "./errors.js";

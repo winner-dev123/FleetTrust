@@ -7,7 +7,7 @@ import { type SubmitEvent, useState } from "react";
 import { Button } from "@/components/button";
 import { TextArea } from "@/components/field";
 import { Notice } from "@/components/feedback";
-import { errorMessage } from "@/lib/errors";
+import { errorMessage } from "@fleettrust/sdk";
 import { useSession } from "@/lib/session";
 
 export function CommentForm({ articleId }: { articleId: string }) {

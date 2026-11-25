@@ -12,7 +12,7 @@ import {
   tileUrl,
   toScreen,
   visibleTiles,
-} from "@/lib/map";
+} from "@fleettrust/ui";
 
 export interface MapPin {
   id: string;

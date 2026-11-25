@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { usageLabel } from "@/lib/format";
+import { usageLabel } from "@fleettrust/types";
 
 /** Page heading. Also sets the document title (WCAG 2.4.2), hoisted into <head> by React. */
 export function PageHeader({

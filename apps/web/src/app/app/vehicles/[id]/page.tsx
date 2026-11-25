@@ -6,7 +6,7 @@ import { use } from "react";
 import { Badge, EmptyState, ErrorNotice, Loading, Notice } from "@/components/feedback";
 import { Card, PageHeader } from "@/components/layout";
 import { vehicleName } from "@/components/vehicle-list";
-import { formatDate, titleCase } from "@/lib/format";
+import { formatDate, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
