@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fleettrust.invalid/rfcs/events/TransactionAccountRemoved.schema.json",
+  "title": "TransactionAccountRemoved",
+  "description": "A moderator removed an account for a policy reason. PROPOSED in RFC-0003: specification only (ADR-0011), not emitted by any code.",
+  "x-fleettrust": {
+    "status": "proposed",
+    "rfc": "RFC-0003",
+    "module": "accounts",
+    "aggregateType": "service_request",
+    "transport": "transactional outbox (ADR-0007)",
+    "delivery": "at least once; consumers are idempotent on the outbox event ID"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["accountId", "requestId", "moderationCaseId", "policyReason", "occurredAt"],
+  "properties": {
+    "accountId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "moderationCaseId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "policyReason": {
+      "type": "string",
+      "enum": ["abuse", "personal_data", "off_topic", "conflict_of_interest", "legal"]
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -140,3 +140,42 @@ describe("payment SDKs", () => {
     ).toEqual(["dependencies: stripe", "devDependencies: @stripe/stripe-js"]);
   });
 });
+
+describe("SDKs of the other excluded modules", () => {
+  it("flags AI model SDKs, i18n frameworks and telematics SDKs", () => {
+    const content = JSON.stringify({
+      dependencies: { openai: "4", "@anthropic-ai/sdk": "1", ai: "5", zod: "4", "next-intl": "3" },
+      devDependencies: { "@langchain/core": "1", i18next: "23", "@samsarahq/api": "1" },
+    });
+    expect(
+      checkDependencies({ path: "apps/web/package.json", content }).map(
+        (v) => `${v.rule} ${v.detail}`,
+      ),
+    ).toEqual([
+      "ai-sdk dependencies: openai",
+      "ai-sdk dependencies: @anthropic-ai/sdk",
+      "ai-sdk dependencies: ai",
+      "i18n-framework dependencies: next-intl",
+      "ai-sdk devDependencies: @langchain/core",
+      "i18n-framework devDependencies: i18next",
+      "telematics-sdk devDependencies: @samsarahq/api",
+    ]);
+  });
+
+  it.each([
+    'CREATE TABLE "telematics_readings" (',
+    'CREATE TABLE "vehicle_geofences" (',
+    'CREATE TABLE "article_translations" (',
+    'ALTER TABLE "articles" ADD COLUMN "embedding" vector(768);',
+    'CREATE TABLE "llm_prompts" (',
+  ])("flags tables and columns of AI, telematics and translation modules: %s", (line) => {
+    expect(sql(line)).toHaveLength(1);
+  });
+
+  it.each(['CREATE TABLE "vehicles" (', '  "odometer_km" integer,', '  "locale_note" text,'])(
+    "doesn't flag today's columns: %s",
+    (line) => {
+      expect(sql(line)).toEqual([]);
+    },
+  );
+});

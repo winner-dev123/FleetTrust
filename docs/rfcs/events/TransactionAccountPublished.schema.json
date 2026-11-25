@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fleettrust.invalid/rfcs/events/TransactionAccountPublished.schema.json",
+  "title": "TransactionAccountPublished",
+  "description": "A transaction-backed account (review) was published. Text only: no score field exists by design. PROPOSED in RFC-0003: specification only (ADR-0011), not emitted by any code.",
+  "x-fleettrust": {
+    "status": "proposed",
+    "rfc": "RFC-0003",
+    "module": "accounts",
+    "aggregateType": "service_request",
+    "transport": "transactional outbox (ADR-0007)",
+    "delivery": "at least once; consumers are idempotent on the outbox event ID"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "accountId",
+    "requestId",
+    "providerOrganizationId",
+    "priceMatchedQuote",
+    "doneWhenAgreed",
+    "completedAt",
+    "occurredAt"
+  ],
+  "properties": {
+    "accountId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "providerOrganizationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "priceMatchedQuote": {
+      "type": ["boolean", "null"]
+    },
+    "doneWhenAgreed": {
+      "type": ["boolean", "null"]
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the underlying service request was completed (the proof of transaction)"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

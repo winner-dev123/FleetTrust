@@ -36,3 +36,10 @@ Half-built versions behind feature flags tend to leak through configuration mist
 ## Alternatives considered
 
 - **Feature-flagged stubs**: rejected by the business rule.
+
+## Update (Prompt 30, 2026-11-25)
+
+- The RFCs exist: [docs/rfcs](../rfcs/README.md), RFC-0001 to RFC-0006, all Draft. Each defines integration seams on existing events, proposed event schemas ([docs/rfcs/events](../rfcs/events/)), a migration path and exit criteria.
+- The guard now also covers AI (model SDKs, `llm`, `embedding`), telematics (SDKs, `telematics`, `geofence`) and translated content (i18n frameworks, `translation`).
+- New tests keep the RFCs honest: every consumed event must exist in the API, and no proposed event or future table may appear in code or migrations ([architecture review](../rfcs/architecture-review.md)).
+- Accepting an RFC means a new ADR superseding this one for that module only, with the guard change in the same pull request.

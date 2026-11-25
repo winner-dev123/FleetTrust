@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fleettrust.invalid/rfcs/events/TelematicsReadingReceived.schema.json",
+  "title": "TelematicsReadingReceived",
+  "description": "A validated reading was stored for a linked fleet vehicle. Phase 1: no positions. PROPOSED in RFC-0005: specification only (ADR-0011), not emitted by any code.",
+  "x-fleettrust": {
+    "status": "proposed",
+    "rfc": "RFC-0005",
+    "module": "telematics",
+    "aggregateType": "vehicle",
+    "transport": "transactional outbox (ADR-0007)",
+    "delivery": "at least once; consumers are idempotent on the outbox event ID"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["vehicleId", "organizationId", "odometerKm", "engineHours", "readAt", "occurredAt"],
+  "properties": {
+    "vehicleId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "organizationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "odometerKm": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "engineHours": {
+      "type": ["number", "null"],
+      "minimum": 0
+    },
+    "readAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
