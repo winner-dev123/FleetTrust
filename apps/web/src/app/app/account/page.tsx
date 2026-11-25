@@ -7,6 +7,7 @@ import { Button } from "@/components/button";
 import { TextField } from "@/components/field";
 import { Badge, ErrorNotice, Loading, Notice } from "@/components/feedback";
 import { Card, PageHeader } from "@/components/layout";
+import { PrivacyPanel } from "@/components/privacy-panel";
 import { UsagePanel } from "@/components/usage-panel";
 import { useAccount } from "@/lib/account";
 import { errorMessage } from "@fleettrust/sdk";
@@ -173,6 +174,8 @@ export default function AccountPage() {
           </Button>
         </div>
       </Card>
+
+      <PrivacyPanel />
     </>
   );
 }

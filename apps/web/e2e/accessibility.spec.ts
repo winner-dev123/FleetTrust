@@ -126,3 +126,12 @@ test("admin console pages are accessible and fit the screen", async ({ page }) =
     await expectNoHorizontalScroll(page, path);
   }
 });
+
+test("legal pages are accessible", async ({ page }) => {
+  for (const path of ["/legal/privacy", "/legal/terms"]) {
+    await page.goto(path);
+    await expect(page.locator("h1").first()).toBeVisible();
+    await expectAccessible(page, path);
+    await expectNoHorizontalScroll(page, path);
+  }
+});

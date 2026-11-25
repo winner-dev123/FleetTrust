@@ -127,6 +127,11 @@ export const messageAttachments = pgTable(
     contentType: text("content_type"),
     size: integer("size"),
     rejectionReason: text("rejection_reason"),
+    /** Envelope encryption (Prompt 27): per-file data key, wrapped by Cloud KMS when deployed. */
+    wrappedKey: text("wrapped_key"),
+    iv: text("iv"),
+    authTag: text("auth_tag"),
+    keyId: text("key_id"),
     ...timestamps(),
   },
   (t) => [

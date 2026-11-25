@@ -71,6 +71,7 @@ describe("migrations on a fresh database", () => {
       "0038_trust_and_safety_triggers",
       "0039_admin_console",
       "0040_admin_console_triggers",
+      "0041_privacy_and_hardening",
     ]);
   });
 
@@ -107,6 +108,7 @@ describe("migrations on a fresh database", () => {
       "branches",
       "community_group_members",
       "community_groups",
+      "consents",
       "content_reports",
       "conversation_states",
       "conversations",

@@ -127,6 +127,8 @@ export class AuthGuard implements CanActivate {
       if (error instanceof SignupsPausedError) deny("signups_paused", 403);
       throw error;
     }
+    // An erased account can't come back (its Firebase account is deleted too).
+    if (user.status === "deleted") deny("user_disabled");
     if (user.status === "suspended") {
       // A suspension that has ended reactivates the account on the next request.
       user = await this.usersService.reactivateIfSuspensionEnded(user);

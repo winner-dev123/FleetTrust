@@ -10,6 +10,7 @@ import { IdentityModule } from "./modules/identity/index.js";
 import { ListsModule } from "./modules/lists/index.js";
 import { CrmModule } from "./modules/crm/index.js";
 import { PartsModule } from "./modules/parts/index.js";
+import { PrivacyModule } from "./modules/privacy/index.js";
 import { FleetModule } from "./modules/fleet/index.js";
 import { JobsModule } from "./modules/jobs/index.js";
 import { PowerUserModule } from "./modules/power-user/index.js";
@@ -30,6 +31,7 @@ import { ObservabilityModule } from "./observability/observability.module.js";
 import { ClockModule } from "./platform/clock/index.js";
 import { MapsModule } from "./platform/maps/index.js";
 import { RateLimitModule } from "./platform/rate-limit/index.js";
+import { SecurityHeadersModule } from "./platform/security-headers/index.js";
 import { SettingsModule } from "./platform/settings/index.js";
 import { EmailModule } from "./platform/email/index.js";
 import { PushModule } from "./platform/push/index.js";
@@ -60,6 +62,8 @@ export class AppModule {
       imports: [
         ObservabilityModule.forRoot(options.logger ?? createAppLogger(env)),
         ApiConfigModule.forRoot(env),
+        // Strict security headers on every response (Prompt 27).
+        SecurityHeadersModule.forRoot(env),
         DatabaseModule.forRoot(env),
         RateLimitModule.forRoot(env),
         // Object storage, document encryption and malware scanning (ADR-0006).
@@ -105,6 +109,8 @@ export class AppModule {
         PowerUserModule,
         // Admin console API: staff roles, settings, categories, audit search, support.
         AdminModule,
+        // Consent, data export, account deletion and retention.
+        PrivacyModule,
         HealthModule,
       ],
     };

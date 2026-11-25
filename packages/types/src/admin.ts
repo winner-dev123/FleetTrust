@@ -104,6 +104,8 @@ export const IRREVERSIBLE_ACTIONS = [
   "staff.grant",
   "staff.revoke",
   "support.revoke_sessions",
+  /** A person deleting their own account (Prompt 27). */
+  "account.delete",
 ] as const;
 export type IrreversibleAction = (typeof IRREVERSIBLE_ACTIONS)[number];
 
@@ -287,7 +289,7 @@ export const supportAccountSchema = z.object({
   email: z.string().nullable(),
   emailVerified: z.boolean(),
   displayName: z.string().nullable(),
-  status: z.enum(["active", "suspended"]),
+  status: z.enum(["active", "suspended", "deleted"]),
   createdAt: z.iso.datetime(),
   lastSeenAt: z.iso.datetime().nullable(),
   lastSignInProvider: z.string().nullable(),

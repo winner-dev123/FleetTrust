@@ -69,6 +69,11 @@ import {
   type TrustedContactDto,
   type VehicleDto,
   adminMeSchema,
+  CONSENT_PURPOSES,
+  consentStateSchema,
+  CURRENT_CONSENT_VERSIONS,
+  dataExportSchema,
+  REQUIRED_CONSENTS,
   type AuditEntryDto,
   auditPageSchema,
   defaultServiceCategory,
@@ -306,6 +311,12 @@ interface UserState {
   incidents: IncidentDto[];
   contacts: TrustedContactDto[];
   vehicles: VehicleDto[];
+  consents: {
+    purpose: (typeof CONSENT_PURPOSES)[number];
+    version: string;
+    granted: boolean;
+    recordedAt: string;
+  }[];
 }
 
 const users = new Map<string, UserState>();
@@ -343,6 +354,15 @@ function userFor(req: IncomingMessage): UserState | null {
       },
     ],
     vehicles: [],
+    // Test users have accepted the current terms, except "fresh-…" accounts (consent journey).
+    consents: (claims.data.email ?? "").startsWith("fresh-")
+      ? []
+      : REQUIRED_CONSENTS.map((purpose) => ({
+          purpose,
+          version: CURRENT_CONSENT_VERSIONS[purpose],
+          granted: true,
+          recordedAt: NOW,
+        })),
   };
   users.set(claims.data.user_id, state);
   return state;
@@ -707,6 +727,73 @@ route("POST", "/v1/orgs", true, ({ user, body }) => {
   return { status: 201, schema: myOrganizationSchema, body: created };
 });
 route("GET", "/v1/trust-safety/dashboard", true, () => notFound);
+
+// --- Privacy (Prompt 27) --------------------------------------------------------------------
+
+function consentStates(user: UserState) {
+  return CONSENT_PURPOSES.map((purpose) => {
+    const latest = user.consents.filter((c) => c.purpose === purpose).at(-1);
+    const required = REQUIRED_CONSENTS.includes(purpose);
+    const currentVersion = CURRENT_CONSENT_VERSIONS[purpose];
+    return {
+      purpose,
+      required,
+      currentVersion,
+      granted: latest?.granted ?? null,
+      version: latest?.version ?? null,
+      recordedAt: latest?.recordedAt ?? null,
+      needsAnswer: required && !(latest?.granted === true && latest.version === currentVersion),
+    };
+  });
+}
+
+route("GET", "/v1/me/consents", true, ({ user }) =>
+  user ? { schema: z.array(consentStateSchema), body: consentStates(user) } : notFound,
+);
+route("POST", "/v1/me/consents", true, ({ user, body }) => {
+  if (!user) return notFound;
+  const purpose = CONSENT_PURPOSES.find((p) => p === body["purpose"]);
+  if (!purpose) return { status: 400, body: { statusCode: 400 } };
+  if (body["version"] !== CURRENT_CONSENT_VERSIONS[purpose]) {
+    return { status: 409, body: { statusCode: 409, reason: "stale_consent_version" } };
+  }
+  if (body["granted"] !== true && REQUIRED_CONSENTS.includes(purpose)) {
+    return { status: 409, body: { statusCode: 409, reason: "required_consent" } };
+  }
+  user.consents.push({
+    purpose,
+    version: CURRENT_CONSENT_VERSIONS[purpose],
+    granted: body["granted"] === true,
+    recordedAt: new Date().toISOString(),
+  });
+  return { schema: z.array(consentStateSchema), body: consentStates(user) };
+});
+route("GET", "/v1/me/export", true, ({ user }) => {
+  if (!user) return notFound;
+  return {
+    schema: dataExportSchema,
+    body: {
+      format: "fleettrust-export-v1",
+      generatedAt: new Date().toISOString(),
+      userId: user.id,
+      sections: {
+        profile: me(user),
+        consents: user.consents,
+        vehicles: user.vehicles,
+        serviceRequests: user.requests,
+      },
+    },
+  };
+});
+route("DELETE", "/v1/me", true, ({ user, req }) => {
+  if (!user) return notFound;
+  if (req.headers["x-confirm-action"] !== "account.delete") {
+    return { status: 428, body: { statusCode: 428, reason: "confirmation_required" } };
+  }
+  for (const [uid, state] of users) if (state === user) users.delete(uid);
+  return { status: 204 };
+});
+
 // --- Admin console (Prompt 26) --------------------------------------------------------------
 // Test staff are picked by email: "admin-…" is a super admin whose sign-in used two-step
 // verification; "nomfa-…" is a super admin who hasn't set it up yet.

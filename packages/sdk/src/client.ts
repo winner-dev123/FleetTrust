@@ -1,4 +1,11 @@
 import {
+  type ConsentStateDto,
+  consentStateSchema,
+  type DataExport,
+  dataExportSchema,
+  type PrivacyErrorReason,
+  type RecordConsent,
+  recordConsentSchema,
   type AdminErrorReason,
   type AdminMe,
   adminMeSchema,
@@ -455,6 +462,7 @@ export type ApiErrorReason =
   | JobErrorReason
   | TrustErrorReason
   | AdminErrorReason
+  | PrivacyErrorReason
   | "quota_exceeded";
 
 /** Raised for non-2xx responses, network failures and responses that don't match the contract. */
@@ -1162,6 +1170,18 @@ export interface ApiClient {
   // --- Admin console (Prompt 26). Staff routes need MFA; non-staff get 404. -----------------
   // Irreversible actions take the action name as `confirm`. Pass it only after the person
   // confirmed; without it the API answers 428 confirmation_required.
+
+  // --- Privacy (Prompt 27) ---------------------------------------------------------------
+  /** The person's consent choices and which required ones need an answer. */
+  consents(): Promise<ConsentStateDto[]>;
+  recordConsent(choice: RecordConsent): Promise<ConsentStateDto[]>;
+  /** Everything FleetTrust holds about the signed-in person (rate limited: 5 a day). */
+  exportMyData(): Promise<DataExport>;
+  /**
+   * Erases the account. Needs a sign-in from the last 10 minutes; pass "account.delete" only
+   * after the person confirmed. 409 sole_owner while they're the only owner of an organization.
+   */
+  deleteAccount(confirm: "account.delete"): Promise<void>;
 
   /** Public site configuration (e.g. the site notice). */
   publicConfig(): Promise<PublicConfig>;
@@ -3669,6 +3689,25 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         body: acceptInvitationRequestSchema.parse({ token }),
         authenticated: true,
       }),
+    consents: () =>
+      send({
+        method: "GET",
+        path: "/v1/me/consents",
+        schema: z.array(consentStateSchema),
+        authenticated: true,
+      }),
+    recordConsent: async (choice) =>
+      send({
+        method: "POST",
+        path: "/v1/me/consents",
+        schema: z.array(consentStateSchema),
+        body: recordConsentSchema.parse(choice),
+        authenticated: true,
+      }),
+    exportMyData: () =>
+      send({ method: "GET", path: "/v1/me/export", schema: dataExportSchema, authenticated: true }),
+    deleteAccount: (confirm) =>
+      send({ method: "DELETE", path: "/v1/me", schema: undefined, authenticated: true, confirm }),
     publicConfig: () =>
       send({ method: "GET", path: "/v1/config", schema: publicConfigSchema, authenticated: false }),
     taxonomy: () =>

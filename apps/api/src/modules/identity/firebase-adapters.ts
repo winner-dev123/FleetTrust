@@ -41,7 +41,7 @@ export class FirebaseAuthVerifier implements AuthVerifier {
   constructor(
     private readonly auth: Pick<
       Auth,
-      "verifyIdToken" | "revokeRefreshTokens" | "generateSignInWithEmailLink"
+      "verifyIdToken" | "revokeRefreshTokens" | "generateSignInWithEmailLink" | "deleteUser"
     >,
   ) {}
 
@@ -71,6 +71,16 @@ export class FirebaseAuthVerifier implements AuthVerifier {
 
   async revokeSessions(uid: string): Promise<void> {
     await this.auth.revokeRefreshTokens(uid);
+  }
+
+  async deleteAccount(uid: string): Promise<void> {
+    try {
+      await this.auth.deleteUser(uid);
+    } catch (error) {
+      // Already gone (for example a retry after a partial failure) is fine.
+      if ((error as { code?: string }).code === "auth/user-not-found") return;
+      throw error;
+    }
   }
 
   signInLink(email: string, continueUrl: string): Promise<string> {
