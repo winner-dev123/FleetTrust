@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import { PRICE_UNITS } from "@fleettrust/types";
 
 import { isPriceUnit, PRICE_TYPE_LABELS, type PriceDraft } from "@/lib/price";
@@ -32,10 +33,10 @@ export function PriceFields({
   };
   return (
     <fieldset className="field">
-      <legend className="field__label">Indicative price</legend>
+      <legend className="field__label">{copy.web.price.legend}</legend>
       <div className="grid">
         <SelectField
-          label="Price type"
+          label={copy.web.price.type}
           required
           value={value.type}
           onChange={(event) => {
@@ -49,8 +50,8 @@ export function PriceFields({
         {value.type !== "quote_required" ? (
           <>
             <TextField
-              label="Currency"
-              hint="e.g. ZAR"
+              label={copy.web.price.currency}
+              hint={copy.web.price.currencyHint}
               required
               maxLength={3}
               value={value.currency}
@@ -61,7 +62,7 @@ export function PriceFields({
             {value.type === "range" ? (
               <>
                 <TextField
-                  label="Minimum"
+                  label={copy.web.price.minimum}
                   required
                   inputMode="decimal"
                   value={value.min}
@@ -70,7 +71,7 @@ export function PriceFields({
                   }}
                 />
                 <TextField
-                  label="Maximum"
+                  label={copy.web.price.maximum}
                   required
                   inputMode="decimal"
                   value={value.max}
@@ -81,7 +82,7 @@ export function PriceFields({
               </>
             ) : (
               <TextField
-                label="Amount"
+                label={copy.web.price.amount}
                 required
                 inputMode="decimal"
                 value={value.amount}
@@ -91,7 +92,7 @@ export function PriceFields({
               />
             )}
             <SelectField
-              label="Unit"
+              label={copy.web.price.unit}
               required
               value={value.unit}
               onChange={(event) => {

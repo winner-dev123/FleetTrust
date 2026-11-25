@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import { type CreateVehicle, VEHICLE_TYPE_LABELS, VEHICLE_TYPES } from "@fleettrust/types";
 import { type SubmitEvent, useState } from "react";
 
@@ -29,7 +30,7 @@ export function VehicleForm({ onSubmit }: { onSubmit: (vehicle: CreateVehicle) =
       yearNumber !== null &&
       (!Number.isInteger(yearNumber) || yearNumber < 1900 || yearNumber > 2100)
     ) {
-      setError("Enter a year between 1900 and 2100.");
+      setError(copy.web.vehicles.yearInvalid);
       return;
     }
     setBusy(true);
@@ -59,7 +60,7 @@ export function VehicleForm({ onSubmit }: { onSubmit: (vehicle: CreateVehicle) =
     <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
       <div className="grid">
         <SelectField
-          label="Vehicle type"
+          label={copy.web.vehicles.type}
           required
           value={vehicleType}
           onChange={(event) => {
@@ -68,7 +69,7 @@ export function VehicleForm({ onSubmit }: { onSubmit: (vehicle: CreateVehicle) =
           options={VEHICLE_TYPES.map((value) => ({ value, label: VEHICLE_TYPE_LABELS[value] }))}
         />
         <TextField
-          label="Nickname"
+          label={copy.web.vehicles.nickname}
           maxLength={60}
           value={nickname}
           onChange={(event) => {
@@ -76,7 +77,7 @@ export function VehicleForm({ onSubmit }: { onSubmit: (vehicle: CreateVehicle) =
           }}
         />
         <TextField
-          label="Make"
+          label={copy.web.vehicles.make}
           maxLength={60}
           value={make}
           onChange={(event) => {
@@ -84,7 +85,7 @@ export function VehicleForm({ onSubmit }: { onSubmit: (vehicle: CreateVehicle) =
           }}
         />
         <TextField
-          label="Model"
+          label={copy.web.vehicles.model}
           maxLength={60}
           value={model}
           onChange={(event) => {
@@ -92,7 +93,7 @@ export function VehicleForm({ onSubmit }: { onSubmit: (vehicle: CreateVehicle) =
           }}
         />
         <TextField
-          label="Year"
+          label={copy.web.vehicles.year}
           inputMode="numeric"
           maxLength={4}
           value={year}
@@ -101,7 +102,7 @@ export function VehicleForm({ onSubmit }: { onSubmit: (vehicle: CreateVehicle) =
           }}
         />
         <TextField
-          label="Registration"
+          label={copy.web.vehicles.registration}
           maxLength={15}
           value={registration}
           onChange={(event) => {
@@ -116,7 +117,7 @@ export function VehicleForm({ onSubmit }: { onSubmit: (vehicle: CreateVehicle) =
       ) : null}
       <div>
         <Button type="submit" busy={busy}>
-          Add vehicle
+          {copy.web.vehicles.add}
         </Button>
       </div>
     </form>

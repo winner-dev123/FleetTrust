@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { type SubmitEvent, useId, useState } from "react";
 
@@ -69,13 +70,13 @@ export function ConfirmAction({
       onSubmit={(event) => void confirm(event)}
     >
       <h3 id={headingId} className="card__title">
-        {label}?
+        {fill(copy.web.controls.confirmQuestion, { label })}
       </h3>
       <p style={{ margin: 0 }}>
-        {consequence} <strong>This can&apos;t be undone.</strong>
+        {consequence} <strong>{copy.web.controls.cannotBeUndone}</strong>
       </p>
       <TextField
-        label={`Type ${phrase} to confirm`}
+        label={fill(copy.web.controls.typeToConfirm, { phrase })}
         required
         autoComplete="off"
         value={typed}
@@ -101,7 +102,7 @@ export function ConfirmAction({
             setError(null);
           }}
         >
-          Cancel
+          {copy.common.cancel}
         </Button>
       </div>
     </form>

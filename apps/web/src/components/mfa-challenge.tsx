@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import { type SubmitEvent, useState } from "react";
 
 import { Button } from "./button";
@@ -24,11 +25,8 @@ export function MfaChallenge({
 
   if (!available) {
     return (
-      <Notice tone="danger" live="assertive" title="Two-step sign-in">
-        <p>
-          This account uses a second step this site can&apos;t ask for. Contact a FleetTrust super
-          admin.
-        </p>
+      <Notice tone="danger" live="assertive" title={copy.web.mfa.title}>
+        <p>{copy.web.mfa.unavailable}</p>
       </Notice>
     );
   }
@@ -36,7 +34,7 @@ export function MfaChallenge({
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!/^\d{6}$/.test(code.trim())) {
-      setError("Enter the 6-digit code from your authenticator app.");
+      setError(copy.web.mfa.codeInvalid);
       return;
     }
     setBusy(true);
@@ -44,7 +42,7 @@ export function MfaChallenge({
     try {
       await resolve(code.trim());
     } catch {
-      setError("That code didn't work. Codes change every 30 seconds; try the current one.");
+      setError(copy.web.mfa.codeRejected);
     } finally {
       setBusy(false);
     }
@@ -52,10 +50,10 @@ export function MfaChallenge({
 
   return (
     <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
-      <h2>Two-step sign-in</h2>
-      <p>Open your authenticator app and enter the code for FleetTrust.</p>
+      <h2>{copy.web.mfa.title}</h2>
+      <p>{copy.web.mfa.intro}</p>
       <TextField
-        label="6-digit code"
+        label={copy.web.mfa.codeLabel}
         required
         inputMode="numeric"
         autoComplete="one-time-code"
@@ -68,7 +66,7 @@ export function MfaChallenge({
       />
       <div>
         <Button type="submit" busy={busy}>
-          Verify
+          {copy.web.mfa.verify}
         </Button>
       </div>
     </form>

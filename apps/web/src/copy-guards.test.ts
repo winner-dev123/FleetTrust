@@ -52,7 +52,8 @@ describe("product copy guards", () => {
     expect(boxes.length).toBeGreaterThanOrEqual(6);
     for (const box of boxes) {
       expect(box.attributes, box.path).toMatch(
-        /tabIndex=\{0\}\s+role="region"\s+aria-label="[^"]+"/,
+        // The name is a literal or comes from the text catalog (@fleettrust/copy).
+        /tabIndex=\{0\}\s+role="region"\s+aria-label=(?:"[^"]+"|\{[^}]+\})/,
       );
     }
   });

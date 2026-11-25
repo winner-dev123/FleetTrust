@@ -15,7 +15,7 @@ import ts from "typescript";
 
 const root = join(__dirname, "..");
 /** Starts with a capitalised word (FleetTrust included), has a space and a lowercase letter. */
-const SENTENCE = /^[A-Z][A-Za-z']+ [\s\S]*[a-z]/;
+const SENTENCE = /^[A-Z][A-Za-z']+[.,!?:]? [\s\S]*[a-z]/;
 const TEXT_PROPS = new Set([
   "label",
   "title",
@@ -56,10 +56,10 @@ function inlineText(path: string): Finding[] {
     if (ts.isJsxText(node) && /[A-Za-z]{2,}/.test(node.text)) report(node, node.text.trim());
     if (
       ts.isJsxAttribute(node) &&
-      TEXT_PROPS.has(node.name.getText()) &&
       node.initializer &&
       ts.isStringLiteral(node.initializer) &&
-      /[A-Za-z]{2,}/.test(node.initializer.text)
+      ((TEXT_PROPS.has(node.name.getText()) && /[A-Za-z]{2,}/.test(node.initializer.text)) ||
+        SENTENCE.test(node.initializer.text))
     ) {
       report(node, node.initializer.text);
     }
@@ -82,7 +82,7 @@ function inlineText(path: string): Finding[] {
     ) {
       report(node, node.initializer.text);
     }
-    if (ts.isTemplateExpression(node) && /[A-Za-z]{3,} [a-z]/.test(node.head.text)) {
+    if (ts.isTemplateExpression(node) && /^[A-Z][A-Za-z']* /.test(node.head.text)) {
       report(node, node.getText());
     }
     ts.forEachChild(node, visit);

@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { useState } from "react";
 
 import { errorMessage } from "@fleettrust/sdk";
@@ -37,7 +38,7 @@ export function LocationPicker({
 
   function useDevice() {
     if (!("geolocation" in navigator)) {
-      setError("This browser can't share a location. Type a place instead.");
+      setError(copy.web.location.browserCannot);
       return;
     }
     setBusy("gps");
@@ -48,13 +49,13 @@ export function LocationPicker({
         onChange({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
-          label: "Your current location",
+          label: copy.web.location.current,
           accuracyM: Math.round(position.coords.accuracy),
         });
       },
       () => {
         setBusy(null);
-        setError("Location wasn't shared. Type a place instead.");
+        setError(copy.web.location.notShared);
       },
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
     );
@@ -62,7 +63,7 @@ export function LocationPicker({
 
   async function findPlace() {
     if (place.trim().length < 2) {
-      setError("Type a town, suburb or landmark.");
+      setError(copy.web.location.placeTooShort);
       return;
     }
     setBusy("place");
@@ -77,7 +78,7 @@ export function LocationPicker({
           accuracyM: null,
         });
       } else {
-        setError(`We couldn't find "${place.trim()}".`);
+        setError(fill(copy.web.location.placeNotFound, { place: place.trim() }));
       }
     } catch (failure) {
       setError(errorMessage(failure));
@@ -93,7 +94,7 @@ export function LocationPicker({
       {value ? (
         <p role="status" className="cluster">
           <span>
-            Using: <strong>{value.label}</strong>
+            {copy.web.location.using} <strong>{value.label}</strong>
           </span>
           <Button
             variant="ghost"
@@ -101,20 +102,20 @@ export function LocationPicker({
               onChange(null);
             }}
           >
-            Change
+            {copy.web.location.change}
           </Button>
         </p>
       ) : (
         <div className="stack">
           <div>
             <Button variant="secondary" onClick={useDevice} busy={busy === "gps"}>
-              {busy === "gps" ? "Finding you…" : "Use my current location"}
+              {busy === "gps" ? copy.web.location.finding : copy.web.location.useCurrent}
             </Button>
           </div>
           <div className="cluster" style={{ alignItems: "flex-end" }}>
             <div style={{ flex: "1 1 220px" }}>
               <TextField
-                label="Or type a place"
+                label={copy.web.location.typePlace}
                 value={place}
                 maxLength={100}
                 error={error}
@@ -130,7 +131,7 @@ export function LocationPicker({
               />
             </div>
             <Button variant="ghost" onClick={() => void findPlace()} busy={busy === "place"}>
-              Find place
+              {copy.web.location.findPlace}
             </Button>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { CAPABILITIES, type EntitlementsResponse } from "@fleettrust/types";
 
 import { formatDate } from "@fleettrust/types";
@@ -19,28 +20,31 @@ export function UsagePanel({ usage }: { usage: EntitlementsResponse }) {
     <div className="stack stack--lg">
       <section className="card stack" aria-labelledby="plan-heading">
         <h2 id="plan-heading" className="card__title">
-          Plan: {usage.plan.name}
+          {fill(copy.web.usage.plan, { name: usage.plan.name })}
         </h2>
         <p style={{ margin: 0 }}>
           {usage.plan.source === "default"
-            ? "You're on the free plan."
+            ? copy.web.usage.free
             : usage.plan.activatedAt
-              ? `Activated by FleetTrust staff on ${formatDate(usage.plan.activatedAt)}.`
-              : "Assigned by FleetTrust staff."}
-          {usage.plan.endsAt ? ` Ends ${formatDate(usage.plan.endsAt)}.` : ""}
+              ? fill(copy.web.usage.activatedOn, { date: formatDate(usage.plan.activatedAt) })
+              : copy.web.usage.assigned}
+          {usage.plan.endsAt
+            ? ` ${fill(copy.web.usage.endsOn, { date: formatDate(usage.plan.endsAt) })}`
+            : ""}
         </p>
         <p className="small muted" style={{ margin: 0 }}>
-          Plans change limits only. They never buy verification, Power User status or a higher place
-          in search, and emergency alerts are never limited. To change your plan, contact
-          FleetTrust: billing happens outside the app.
+          {copy.web.usage.plansNote}
         </p>
       </section>
 
       {overLimit.length > 0 ? (
-        <Notice tone="caution" title="Over a limit after a plan change">
+        <Notice tone="caution" title={copy.web.usage.overLimitTitle}>
           <p>
-            Your existing data is kept, but you can&apos;t add more of:{" "}
-            {overLimit.map((entry) => CAPABILITIES[entry.key].label.toLowerCase()).join(", ")}.
+            {fill(copy.web.usage.overLimitBody, {
+              items: overLimit
+                .map((entry) => CAPABILITIES[entry.key].label.toLowerCase())
+                .join(", "),
+            })}
           </p>
         </Notice>
       ) : null}
@@ -48,10 +52,10 @@ export function UsagePanel({ usage }: { usage: EntitlementsResponse }) {
       {daily.length > 0 ? (
         <section className="card stack" aria-labelledby="daily-heading">
           <h2 id="daily-heading" className="card__title">
-            Today ({usage.period})
+            {fill(copy.web.usage.today, { period: usage.period })}
           </h2>
           <p className="small muted" style={{ margin: 0 }}>
-            Daily limits reset at midnight, {usage.timeZone} time.
+            {fill(copy.web.usage.resets, { timeZone: usage.timeZone })}
           </p>
           {daily.map((entry) => (
             <UsageMeter
@@ -61,9 +65,9 @@ export function UsagePanel({ usage }: { usage: EntitlementsResponse }) {
               limit={entry.limit}
               note={
                 entry.source === "override"
-                  ? "Limit set by FleetTrust staff"
+                  ? copy.web.usage.setByStaff
                   : entry.source === "grace" && entry.graceUntil
-                    ? `Previous limit until ${formatDate(entry.graceUntil)}`
+                    ? fill(copy.web.usage.previousUntil, { date: formatDate(entry.graceUntil) })
                     : undefined
               }
             />
@@ -74,7 +78,7 @@ export function UsagePanel({ usage }: { usage: EntitlementsResponse }) {
       {capacity.length > 0 ? (
         <section className="card stack" aria-labelledby="capacity-heading">
           <h2 id="capacity-heading" className="card__title">
-            Totals
+            {copy.web.usage.totals}
           </h2>
           {capacity.map((entry) => (
             <UsageMeter

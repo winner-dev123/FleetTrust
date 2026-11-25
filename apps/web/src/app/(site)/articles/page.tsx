@@ -1,3 +1,4 @@
+import { copy, plural } from "@fleettrust/copy";
 import { ARTICLE_CATEGORIES, type ArticleCategory } from "@fleettrust/types";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -9,8 +10,8 @@ import { publicApi } from "@/lib/public-api";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Knowledge hub",
-  description: "Practical articles from drivers, fleets and providers.",
+  title: copy.web.articles.title,
+  description: copy.web.articles.description,
 };
 
 const isCategory = (value: unknown): value is ArticleCategory =>
@@ -36,25 +37,24 @@ export default async function ArticlesPage(props: PageProps<"/articles">) {
   return (
     <div className="container stack stack--lg">
       <header>
-        <h1>Knowledge hub</h1>
-        <p className="muted">Practical tips from drivers, fleets and providers.</p>
+        <h1>{copy.web.articles.title}</h1>
+        <p className="muted">{copy.web.articles.intro}</p>
       </header>
       <Notice tone="caution">
         <p>
-          <strong>{page.label}.</strong> Articles share personal experience. They are not checked by
-          FleetTrust and are not ratings of any provider.
+          <strong>{page.label}.</strong> {copy.web.articles.disclaimer}
         </p>
       </Notice>
       <form className="card cluster" role="search" action="/articles" method="get">
         <div className="field" style={{ flex: "1 1 220px" }}>
           <label className="field__label" htmlFor="article-q">
-            Search articles
+            {copy.web.articles.searchLabel}
           </label>
           <input id="article-q" name="q" className="input" defaultValue={q} maxLength={200} />
         </div>
         <div className="field" style={{ flex: "1 1 180px" }}>
           <label className="field__label" htmlFor="article-category">
-            Topic
+            {copy.web.articles.topic}
           </label>
           <select
             id="article-category"
@@ -62,7 +62,7 @@ export default async function ArticlesPage(props: PageProps<"/articles">) {
             className="input"
             defaultValue={category ?? ""}
           >
-            <option value="">All topics</option>
+            <option value="">{copy.web.articles.allTopics}</option>
             {ARTICLE_CATEGORIES.map((value) => (
               <option key={value} value={value}>
                 {titleCase(value)}
@@ -71,13 +71,13 @@ export default async function ArticlesPage(props: PageProps<"/articles">) {
           </select>
         </div>
         <button type="submit" className="btn btn--primary" style={{ alignSelf: "flex-end" }}>
-          Search
+          {copy.web.articles.search}
         </button>
       </form>
 
       {page.items.length === 0 ? (
-        <EmptyState title="No articles found">
-          <p>Try other words or another topic.</p>
+        <EmptyState title={copy.web.articles.emptyTitle}>
+          <p>{copy.web.articles.emptyBody}</p>
         </EmptyState>
       ) : (
         <ul className="list-plain">
@@ -94,7 +94,7 @@ export default async function ArticlesPage(props: PageProps<"/articles">) {
                     : ""} · {formatDate(article.publishedAt)} · {titleCase(article.category)}
                 </p>
                 <p>{article.summary ?? article.excerpt}</p>
-                <Badge>{article.commentCount} comments</Badge>
+                <Badge>{plural(article.commentCount, copy.web.articles.comments)}</Badge>
               </article>
             </li>
           ))}
@@ -103,7 +103,7 @@ export default async function ArticlesPage(props: PageProps<"/articles">) {
       {page.nextCursor ? (
         <p>
           <Link className="btn btn--secondary" href={`/articles?${next.toString()}`}>
-            More articles
+            {copy.web.articles.more}
           </Link>
         </p>
       ) : null}

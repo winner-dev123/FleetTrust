@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { ApiError } from "@fleettrust/sdk";
 import type { MyOrganization } from "@fleettrust/types";
 import { onAuthStateChanged } from "@firebase/auth";
@@ -22,15 +23,14 @@ type State =
   | { kind: "failed"; message: string };
 
 const MESSAGES: Record<string, string> = {
-  invitation_expired: "This invitation has expired. Ask for a new one.",
-  invitation_revoked: "This invitation was withdrawn or replaced by a newer one.",
-  invitation_used: "This invitation has already been used.",
-  invitation_not_found: "We couldn't find this invitation. Check that you opened the whole link.",
-  invitation_email_mismatch:
-    "This invitation was sent to a different email address. Sign in with that address to accept it.",
-  email_not_verified: "Verify your email address, then open the invitation again.",
-  already_member: "You're already a member of this organization.",
-  organization_suspended: "This organization is currently suspended.",
+  invitation_expired: copy.web.invitation.expired,
+  invitation_revoked: copy.web.invitation.revoked,
+  invitation_used: copy.web.invitation.used,
+  invitation_not_found: copy.web.invitation.notFound,
+  invitation_email_mismatch: copy.web.invitation.emailMismatch,
+  email_not_verified: copy.web.invitation.emailNotVerified,
+  already_member: copy.web.invitation.alreadyMember,
+  organization_suspended: copy.web.invitation.organizationSuspended,
 };
 
 /** Opened from an invitation link: `/invitations/accept#token=…`. */
@@ -49,7 +49,7 @@ export default function AcceptInvitationPage() {
     return onAuthStateChanged(firebaseAuth(), (user) => {
       const token = pendingInvitation();
       if (!token) {
-        setState({ kind: "failed", message: "This invitation link is incomplete." });
+        setState({ kind: "failed", message: copy.web.invitation.incomplete });
         return;
       }
       if (!user) {
@@ -70,8 +70,7 @@ export default function AcceptInvitationPage() {
           }
           setState({
             kind: "failed",
-            message:
-              (reason && MESSAGES[reason]) ?? "Something went wrong. Please try the link again.",
+            message: (reason && MESSAGES[reason]) ?? copy.web.invitation.failed,
           });
         });
     });
@@ -79,17 +78,17 @@ export default function AcceptInvitationPage() {
 
   return (
     <div className="container container--readable stack">
-      <title>Invitation · FleetTrust</title>
-      <h1>Invitation</h1>
-      {state.kind === "working" && <Loading label="Checking your invitation…" />}
+      <title>{copy.web.invitation.pageTitle}</title>
+      <h1>{copy.web.invitation.title}</h1>
+      {state.kind === "working" && <Loading label={copy.web.invitation.checking} />}
       {state.kind === "joined" && (
         <Notice tone="success" live="polite">
           <p>
-            You joined <strong>{state.membership.organization.name}</strong> as{" "}
-            {state.membership.role}.
+            {copy.web.invitation.joinedBefore} <strong>{state.membership.organization.name}</strong>{" "}
+            {fill(copy.web.invitation.joinedAs, { role: state.membership.role })}
           </p>
           <ButtonLink href={`/app/o/${state.membership.organization.id}`}>
-            Open {state.membership.organization.name}
+            {fill(copy.web.invitation.open, { name: state.membership.organization.name })}
           </ButtonLink>
         </Notice>
       )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { CONSENT_LABELS, type ConsentStateDto } from "@fleettrust/types";
 import Link from "next/link";
@@ -34,7 +35,7 @@ export function ConsentGate({ children }: { children: ReactNode }) {
   async function accept(event: SubmitEvent<HTMLFormElement>, needed: ConsentStateDto[]) {
     event.preventDefault();
     if (!agreed) {
-      setError("Tick the box to continue.");
+      setError(copy.web.consent.agreeFirst);
       return;
     }
     setBusy(true);
@@ -60,8 +61,8 @@ export function ConsentGate({ children }: { children: ReactNode }) {
   return (
     <>
       <PageHeader
-        title={updated ? "Our terms have changed" : "Before you start"}
-        description="Please read and accept these to use FleetTrust."
+        title={updated ? copy.web.consent.termsChanged : copy.web.consent.beforeYouStart}
+        description={copy.web.consent.intro}
       />
       <form className="stack" onSubmit={(event) => void accept(event, missing)}>
         <ul>
@@ -73,12 +74,14 @@ export function ConsentGate({ children }: { children: ReactNode }) {
               >
                 {CONSENT_LABELS[c.purpose]}
               </Link>{" "}
-              <span className="small muted">(version {c.currentVersion})</span>
+              <span className="small muted">
+                {fill(copy.web.consent.version, { version: c.currentVersion })}
+              </span>
             </li>
           ))}
         </ul>
         <Checkbox
-          label="I agree to the terms of service and have read the privacy notice"
+          label={copy.web.consent.agree}
           checked={agreed}
           onChange={(event) => {
             setAgreed(event.target.checked);
@@ -91,7 +94,7 @@ export function ConsentGate({ children }: { children: ReactNode }) {
         ) : null}
         <div>
           <Button type="submit" busy={busy}>
-            Continue
+            {copy.web.consent.continue}
           </Button>
         </div>
       </form>

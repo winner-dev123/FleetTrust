@@ -7,6 +7,8 @@
  * implies help is certain on emergency screens (ADR-0010), no checkout or payment claims
  * (ADR-0008), and verification wording as defined in SRS §8.1.
  */
+import { web } from "./web.js";
+
 export const en = {
   common: {
     search: "Search",
@@ -480,6 +482,8 @@ export const en = {
     body: "That link doesn't lead anywhere in the app.",
     goToSearch: "Go to search",
   },
+
+  web,
 } as const;
 
 export type Catalog = typeof en;

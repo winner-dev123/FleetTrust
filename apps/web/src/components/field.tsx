@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import {
   type InputHTMLAttributes,
   type ReactNode,
@@ -46,7 +47,7 @@ function Frame({
     <div className="field">
       <label className="field__label" htmlFor={controlId}>
         {label}
-        {required ? null : <span className="muted small"> (optional)</span>}
+        {required ? null : <span className="muted small"> {copy.web.controls.optional}</span>}
       </label>
       {hint ? (
         <span className="field__hint" id={hintId}>

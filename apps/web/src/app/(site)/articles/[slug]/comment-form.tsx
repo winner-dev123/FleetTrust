@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type SubmitEvent, useState } from "react";
@@ -20,7 +21,7 @@ export function CommentForm({ articleId }: { articleId: string }) {
   if (status !== "signed-in") {
     return (
       <p>
-        <Link href="/sign-in">Sign in</Link> to comment.
+        <Link href="/sign-in">{copy.web.article.signIn}</Link> {copy.web.article.signInToComment}
       </p>
     );
   }
@@ -28,7 +29,7 @@ export function CommentForm({ articleId }: { articleId: string }) {
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (body.trim() === "") {
-      setError("Write a comment first.");
+      setError(copy.web.article.writeFirst);
       return;
     }
     setBusy(true);
@@ -47,8 +48,8 @@ export function CommentForm({ articleId }: { articleId: string }) {
   return (
     <form className="stack" onSubmit={(event) => void submit(event)}>
       <TextArea
-        label="Add a comment"
-        hint="Share experience, not ratings. Be kind: comments are moderated."
+        label={copy.web.article.addComment}
+        hint={copy.web.article.commentHint}
         required
         maxLength={2000}
         value={body}
@@ -59,10 +60,10 @@ export function CommentForm({ articleId }: { articleId: string }) {
       />
       <div>
         <Button type="submit" busy={busy}>
-          Post comment
+          {copy.web.article.postComment}
         </Button>
       </div>
-      {error === null && busy ? <Notice live="polite">Posting…</Notice> : null}
+      {error === null && busy ? <Notice live="polite">{copy.web.article.posting}</Notice> : null}
     </form>
   );
 }

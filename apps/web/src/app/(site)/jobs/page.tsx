@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { EMPLOYMENT_TYPES, JOB_ROLES } from "@fleettrust/types";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -9,8 +10,8 @@ import { publicApi } from "@/lib/public-api";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Jobs",
-  description: "Driving, mechanic and fleet jobs posted by fleets on FleetTrust.",
+  title: copy.web.jobs.title,
+  description: copy.web.jobs.description,
 };
 
 const pick = <T extends string>(values: readonly T[], value: unknown): T | undefined =>
@@ -42,29 +43,26 @@ export default async function JobsPage(props: PageProps<"/jobs">) {
   return (
     <div className="container stack stack--lg">
       <header>
-        <h1>Jobs</h1>
-        <p className="muted">Posted by fleets on FleetTrust. Applying is free.</p>
+        <h1>{copy.web.jobs.title}</h1>
+        <p className="muted">{copy.web.jobs.intro}</p>
       </header>
-      <Notice tone="caution" title="Stay safe when applying">
-        <p>
-          Real employers never ask you to pay to apply. Don&apos;t send money or ID documents before
-          an interview, and report listings that ask for a fee.
-        </p>
+      <Notice tone="caution" title={copy.web.jobs.safeTitle}>
+        <p>{copy.web.jobs.safeBody}</p>
       </Notice>
       <form className="card stack" role="search" action="/jobs" method="get">
         <div className="grid">
           <div className="field">
             <label className="field__label" htmlFor="job-q">
-              Keywords
+              {copy.web.jobs.keywords}
             </label>
             <input id="job-q" name="q" className="input" defaultValue={q} maxLength={100} />
           </div>
           <div className="field">
             <label className="field__label" htmlFor="job-role">
-              Role
+              {copy.web.jobs.role}
             </label>
             <select id="job-role" name="role" className="input" defaultValue={role ?? ""}>
-              <option value="">Any role</option>
+              <option value="">{copy.web.jobs.anyRole}</option>
               {JOB_ROLES.map((value) => (
                 <option key={value} value={value}>
                   {titleCase(value)}
@@ -74,7 +72,7 @@ export default async function JobsPage(props: PageProps<"/jobs">) {
           </div>
           <div className="field">
             <label className="field__label" htmlFor="job-type">
-              Type
+              {copy.web.jobs.type}
             </label>
             <select
               id="job-type"
@@ -82,7 +80,7 @@ export default async function JobsPage(props: PageProps<"/jobs">) {
               className="input"
               defaultValue={employmentType ?? ""}
             >
-              <option value="">Any type</option>
+              <option value="">{copy.web.jobs.anyType}</option>
               {EMPLOYMENT_TYPES.map((value) => (
                 <option key={value} value={value}>
                   {titleCase(value)}
@@ -99,18 +97,18 @@ export default async function JobsPage(props: PageProps<"/jobs">) {
             value="true"
             defaultChecked={verifiedOnly}
           />
-          <label htmlFor="job-verified">Only employers with a verified business</label>
+          <label htmlFor="job-verified">{copy.web.jobs.verifiedOnly}</label>
         </div>
         <div>
           <button type="submit" className="btn btn--primary">
-            Search jobs
+            {copy.web.jobs.search}
           </button>
         </div>
       </form>
 
       {page.items.length === 0 ? (
-        <EmptyState title="No jobs found">
-          <p>Try fewer filters or check back later.</p>
+        <EmptyState title={copy.web.jobs.emptyTitle}>
+          <p>{copy.web.jobs.emptyBody}</p>
         </EmptyState>
       ) : (
         <ul className="list-plain">
@@ -122,12 +120,17 @@ export default async function JobsPage(props: PageProps<"/jobs">) {
                 </h2>
                 <p className="small muted" style={{ margin: 0 }}>
                   {job.employer.name} · {job.locality}, {job.countryCode} ·{" "}
-                  {titleCase(job.employmentType)} · closes {formatDate(job.closesOn)}
+                  {titleCase(job.employmentType)} ·{" "}
+                  {fill(copy.web.jobs.closes, { date: formatDate(job.closesOn) })}
                 </p>
-                <p style={{ margin: 0 }}>{job.salary?.label ?? "Salary not advertised"}</p>
+                <p style={{ margin: 0 }}>
+                  {job.salary?.label ?? copy.web.jobs.salaryNotAdvertised}
+                </p>
                 <div>
                   <Badge tone={job.employer.verified ? "verified" : "caution"}>
-                    {job.employer.verified ? "Business verified" : "Business not verified"}
+                    {job.employer.verified
+                      ? copy.web.job.businessVerified
+                      : copy.web.job.businessNotVerified}
                   </Badge>
                 </div>
               </article>
@@ -138,7 +141,7 @@ export default async function JobsPage(props: PageProps<"/jobs">) {
       {page.nextOffset !== null ? (
         <p>
           <Link className="btn btn--secondary" href={`/jobs?${next.toString()}`}>
-            More jobs
+            {copy.web.jobs.more}
           </Link>
         </p>
       ) : null}

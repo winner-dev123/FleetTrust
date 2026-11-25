@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState } from "react";
@@ -52,7 +53,7 @@ export function NavMenu({
           setOpen((value) => !value);
         }}
       >
-        {open ? "Close menu" : "Menu"}
+        {open ? copy.web.site.menuClose : copy.web.site.menuOpen}
       </button>
       <ul className="nav__list" id={listId} data-open={open}>
         {sections

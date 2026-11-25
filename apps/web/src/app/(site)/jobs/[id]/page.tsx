@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import { ApiError } from "@fleettrust/sdk";
 import type { PublicJob } from "@fleettrust/types";
 import type { Metadata } from "next";
@@ -34,7 +35,7 @@ export default async function JobPage(props: PageProps<"/jobs/[id]">) {
     <div className="container container--readable stack stack--lg">
       <header className="stack" style={{ gap: 8 }}>
         <p className="small">
-          <Link href="/jobs">Jobs</Link>
+          <Link href="/jobs">{copy.web.job.jobs}</Link>
         </p>
         <h1>{job.title}</h1>
         <p className="muted" style={{ margin: 0 }}>
@@ -42,42 +43,44 @@ export default async function JobPage(props: PageProps<"/jobs/[id]">) {
         </p>
         <div>
           <Badge tone={job.employer.verified ? "verified" : "caution"}>
-            {job.employer.verified ? "Business verified" : "Business not verified"}
+            {job.employer.verified
+              ? copy.web.job.businessVerified
+              : copy.web.job.businessNotVerified}
           </Badge>
         </div>
       </header>
-      <Notice tone="caution" title="Stay safe">
+      <Notice tone="caution" title={copy.web.job.staySafe}>
         <p>{job.scamWarning}</p>
         {job.employerNotice ? <p>{job.employerNotice}</p> : null}
       </Notice>
       <dl className="card stack" style={{ gap: 8 }}>
         <div>
-          <dt className="small muted">Salary</dt>
-          <dd style={{ margin: 0 }}>{job.salary?.label ?? "Not advertised"}</dd>
+          <dt className="small muted">{copy.web.job.salary}</dt>
+          <dd style={{ margin: 0 }}>{job.salary?.label ?? copy.web.job.notAdvertised}</dd>
         </div>
         <div>
-          <dt className="small muted">Type</dt>
+          <dt className="small muted">{copy.web.job.type}</dt>
           <dd style={{ margin: 0 }}>
             {titleCase(job.employmentType)} · {titleCase(job.role)}
           </dd>
         </div>
         {job.licenceClasses.length > 0 ? (
           <div>
-            <dt className="small muted">Licence</dt>
+            <dt className="small muted">{copy.web.job.licence}</dt>
             <dd style={{ margin: 0 }}>{job.licenceClasses.join(", ")}</dd>
           </div>
         ) : null}
         <div>
-          <dt className="small muted">Closes</dt>
+          <dt className="small muted">{copy.web.job.closes}</dt>
           <dd style={{ margin: 0 }}>{formatDate(job.closesOn)}</dd>
         </div>
       </dl>
       <section aria-labelledby="description-heading">
-        <h2 id="description-heading">About the job</h2>
+        <h2 id="description-heading">{copy.web.job.about}</h2>
         <p style={{ whiteSpace: "pre-line" }}>{job.description}</p>
       </section>
       <ApplyForm jobId={job.id} />
-      <ReportButton targetType="job" targetId={job.id} what="job listing" />
+      <ReportButton targetType="job" targetId={job.id} what={copy.web.reportWhat.job} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import type { MapConfig } from "@fleettrust/types";
 import { type PointerEvent, useEffect, useRef, useState } from "react";
 
@@ -97,7 +98,7 @@ export function ProviderMap({
   const template = config?.tileUrl ?? null;
 
   return (
-    <section aria-label="Map of results" className="stack" style={{ gap: 4 }}>
+    <section aria-label={copy.web.map.label} className="stack" style={{ gap: 4 }}>
       <div
         ref={frame}
         className="map"
@@ -153,7 +154,7 @@ export function ProviderMap({
             onClick={() => {
               zoom(1);
             }}
-            aria-label="Zoom in"
+            aria-label={copy.web.map.zoomIn}
           >
             +
           </button>
@@ -163,7 +164,7 @@ export function ProviderMap({
             onClick={() => {
               zoom(-1);
             }}
-            aria-label="Zoom out"
+            aria-label={copy.web.map.zoomOut}
           >
             −
           </button>
@@ -172,7 +173,7 @@ export function ProviderMap({
           <span className="map__attribution">{config.attribution}</span>
         ) : null}
       </div>
-      <div className="cluster" role="group" aria-label="Move the map">
+      <div className="cluster" role="group" aria-label={copy.web.map.move}>
         <button
           type="button"
           className="btn btn--ghost"
@@ -180,7 +181,7 @@ export function ProviderMap({
             move(0, -PAN_STEP);
           }}
         >
-          North
+          {copy.web.map.north}
         </button>
         <button
           type="button"
@@ -189,7 +190,7 @@ export function ProviderMap({
             move(0, PAN_STEP);
           }}
         >
-          South
+          {copy.web.map.south}
         </button>
         <button
           type="button"
@@ -198,7 +199,7 @@ export function ProviderMap({
             move(-PAN_STEP, 0);
           }}
         >
-          West
+          {copy.web.map.west}
         </button>
         <button
           type="button"
@@ -207,7 +208,7 @@ export function ProviderMap({
             move(PAN_STEP, 0);
           }}
         >
-          East
+          {copy.web.map.east}
         </button>
         <button
           type="button"
@@ -216,14 +217,10 @@ export function ProviderMap({
             setView(null);
           }}
         >
-          Show all results
+          {copy.web.map.showAll}
         </button>
       </div>
-      {!template ? (
-        <p className="small muted">
-          Map background not configured in this environment. Pins show relative positions.
-        </p>
-      ) : null}
+      {!template ? <p className="small muted">{copy.web.map.noBackground}</p> : null}
     </section>
   );
 }

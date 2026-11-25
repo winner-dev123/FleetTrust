@@ -1,3 +1,4 @@
+import { copy, fill } from "@fleettrust/copy";
 import { ApiError } from "@fleettrust/sdk";
 import {
   CATEGORY_LABELS,
@@ -20,15 +21,7 @@ import { ContactDetails } from "./contact-details";
 export const dynamic = "force-dynamic";
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
-const DAY_NAMES: Record<(typeof DAYS)[number], string> = {
-  mon: "Monday",
-  tue: "Tuesday",
-  wed: "Wednesday",
-  thu: "Thursday",
-  fri: "Friday",
-  sat: "Saturday",
-  sun: "Sunday",
-};
+const DAY_NAMES: Record<(typeof DAYS)[number], string> = copy.web.provider.days;
 
 const loadProfile = cache(async (slug: string): Promise<PublicProviderProfile> => {
   try {
@@ -46,7 +39,9 @@ export async function generateMetadata(props: PageProps<"/providers/[slug]">): P
     title: profile.tradingName,
     description:
       profile.description?.slice(0, 160) ??
-      `${profile.categories.map((c) => CATEGORY_LABELS[c]).join(", ")} on FleetTrust`,
+      fill(copy.web.provider.descriptionFallback, {
+        categories: profile.categories.map((c) => CATEGORY_LABELS[c]).join(", "),
+      }),
   };
 }
 
@@ -80,7 +75,7 @@ export default async function ProviderPage(props: PageProps<"/providers/[slug]">
         </div>
         <section aria-labelledby="verification-heading" className="stack" style={{ gap: 8 }}>
           <h2 id="verification-heading" className="visually-hidden">
-            Verification
+            {copy.web.provider.verification}
           </h2>
           <ul className="cluster list-plain">
             {profile.verification.map((badge) => (
@@ -88,34 +83,33 @@ export default async function ProviderPage(props: PageProps<"/providers/[slug]">
                 <Badge tone={badge.status === "verified" ? "verified" : "caution"}>
                   {verificationLabel(badge.badgeType, badge.status)}
                   {badge.status === "verified" && badge.expiresAt
-                    ? ` (until ${formatDate(badge.expiresAt)})`
+                    ? ` ${fill(copy.web.provider.badgeUntil, { date: formatDate(badge.expiresAt) })}`
                     : ""}
                 </Badge>
               </li>
             ))}
           </ul>
-          <p className="small muted">
-            Verification means FleetTrust checked documents for that item. It isn&apos;t an
-            endorsement or a quality rating, and plans can&apos;t buy it.
-          </p>
+          <p className="small muted">{copy.web.provider.verificationNote}</p>
         </section>
         <div className="cluster">
           <ButtonLink href={`/app/requests/new?provider=${encodeURIComponent(profile.slug)}`}>
-            Request a quote
+            {copy.web.provider.requestQuote}
           </ButtonLink>
           <ButtonLink variant="secondary" href="/search">
-            Back to search
+            {copy.web.provider.backToSearch}
           </ButtonLink>
         </div>
       </header>
 
       {profile.description ? (
         <section aria-labelledby="about-heading">
-          <h2 id="about-heading">About</h2>
+          <h2 id="about-heading">{copy.web.provider.about}</h2>
           <p style={{ whiteSpace: "pre-line" }}>{profile.description}</p>
           {profile.vehicleTypes.length > 0 ? (
             <p className="small">
-              Vehicles: {profile.vehicleTypes.map((v) => VEHICLE_TYPE_LABELS[v]).join(", ")}
+              {fill(copy.web.provider.vehicles, {
+                types: profile.vehicleTypes.map((v) => VEHICLE_TYPE_LABELS[v]).join(", "),
+              })}
             </p>
           ) : null}
         </section>
@@ -124,25 +118,25 @@ export default async function ProviderPage(props: PageProps<"/providers/[slug]">
       <ContactDetails slug={profile.slug} />
 
       <section aria-labelledby="services-heading" className="stack">
-        <h2 id="services-heading">Services and indicative prices</h2>
+        <h2 id="services-heading">{copy.web.provider.services}</h2>
         <Notice>
           <p className="small">{profile.catalog.disclaimer}</p>
         </Notice>
         {profile.catalog.offerings.length === 0 ? (
-          <p className="muted">No services listed yet.</p>
+          <p className="muted">{copy.web.provider.noServices}</p>
         ) : (
           <div
             className="table-wrap"
             tabIndex={0}
             role="region"
-            aria-label="Services and indicative prices"
+            aria-label={copy.web.provider.services}
           >
             <table className="table">
-              <caption className="visually-hidden">Services and indicative prices</caption>
+              <caption className="visually-hidden">{copy.web.provider.services}</caption>
               <thead>
                 <tr>
-                  <th scope="col">Service</th>
-                  <th scope="col">Indicative price</th>
+                  <th scope="col">{copy.web.provider.service}</th>
+                  <th scope="col">{copy.web.provider.indicativePrice}</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,7 +160,7 @@ export default async function ProviderPage(props: PageProps<"/providers/[slug]">
       </section>
 
       <section aria-labelledby="branches-heading" className="stack">
-        <h2 id="branches-heading">Branches and opening hours</h2>
+        <h2 id="branches-heading">{copy.web.provider.branches}</h2>
         <div className="grid">
           {profile.branches.map((branch) => (
             <article key={branch.id} className="card stack" style={{ gap: 8 }}>
@@ -177,7 +171,7 @@ export default async function ProviderPage(props: PageProps<"/providers/[slug]">
                   .join(", ")}
                 {branch.location.approximate ? (
                   <span className="small muted" style={{ display: "block" }}>
-                    Street address shown after you sign in.
+                    {copy.web.provider.addressAfterSignIn}
                   </span>
                 ) : null}
               </p>
@@ -186,12 +180,12 @@ export default async function ProviderPage(props: PageProps<"/providers/[slug]">
               </p>
               {branch.serviceRadiusKm ? (
                 <p className="small" style={{ margin: 0 }}>
-                  Travels up to {branch.serviceRadiusKm} km
+                  {fill(copy.web.provider.travelsUpTo, { km: branch.serviceRadiusKm })}
                 </p>
               ) : null}
               {branch.hours.weekly ? (
                 <details>
-                  <summary>Weekly hours</summary>
+                  <summary>{copy.web.provider.weeklyHours}</summary>
                   <dl className="small">
                     {DAYS.map((day) => {
                       const intervals = branch.hours.weekly?.[day] ?? [];
@@ -200,14 +194,16 @@ export default async function ProviderPage(props: PageProps<"/providers/[slug]">
                           <dt>{DAY_NAMES[day]}</dt>
                           <dd style={{ margin: 0 }}>
                             {intervals.length === 0
-                              ? "Closed"
+                              ? copy.web.provider.closed
                               : intervals.map((i) => `${i.opens}–${i.closes}`).join(", ")}
                           </dd>
                         </div>
                       );
                     })}
                   </dl>
-                  <p className="small muted">Times are local ({branch.timeZone}).</p>
+                  <p className="small muted">
+                    {fill(copy.web.provider.localTimes, { timeZone: branch.timeZone })}
+                  </p>
                 </details>
               ) : null}
             </article>
@@ -215,7 +211,9 @@ export default async function ProviderPage(props: PageProps<"/providers/[slug]">
         </div>
       </section>
 
-      <p className="small muted">Profile published {formatDate(profile.publishedAt)}.</p>
+      <p className="small muted">
+        {fill(copy.web.provider.published, { date: formatDate(profile.publishedAt) })}
+      </p>
     </div>
   );
 }

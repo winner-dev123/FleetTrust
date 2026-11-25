@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { copy } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 
 export type Tone = "info" | "caution" | "danger" | "success";
@@ -35,7 +36,7 @@ export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () =
       {onRetry ? (
         <p>
           <button type="button" className="btn btn--ghost" onClick={onRetry}>
-            Try again
+            {copy.common.tryAgain}
           </button>
         </p>
       ) : null}

@@ -495,6 +495,9 @@ importers:
       '@firebase/auth':
         specifier: 1.13.10
         version: 1.13.10(@firebase/app@0.16.6)(@react-native-async-storage/async-storage@2.2.0(react-native@0.88.1(@babel/core@7.29.13(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.13(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1)))
+      '@fleettrust/copy':
+        specifier: workspace:*
+        version: link:../../packages/copy
       '@fleettrust/env':
         specifier: workspace:*
         version: link:../../packages/env
