@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import type { OrganizationKind } from "@fleettrust/types";
 import { useRouter } from "next/navigation";
 import { type SubmitEvent, useState } from "react";
@@ -12,23 +13,25 @@ import { useAccount } from "@/lib/account";
 import { errorMessage } from "@fleettrust/sdk";
 import { useSession } from "@/lib/session";
 
+const t = copy.web.app.onboarding;
+
 type Path = "personal" | OrganizationKind;
 
 const PATHS: { value: Path; title: string; text: string }[] = [
   {
     value: "personal",
-    title: "I drive or own a vehicle",
-    text: "Find services, request quotes, keep your vehicle's history and set up emergency contacts.",
+    title: t.personalTitle,
+    text: t.personalText,
   },
   {
     value: "provider",
-    title: "I run a vehicle service business",
-    text: "Workshop, towing, tyres, parts, parking or mobile mechanic: publish your services and answer quote requests.",
+    title: t.providerTitle,
+    text: t.providerText,
   },
   {
     value: "fleet",
-    title: "I manage a fleet",
-    text: "Track vehicles, drivers, incidents and costs, and post jobs.",
+    title: t.fleetTitle,
+    text: t.fleetText,
   },
 ];
 
@@ -47,11 +50,11 @@ export default function OnboardingPage() {
     event.preventDefault();
     const displayName = name.trim();
     if (displayName.length < 1 || displayName.length > 50) {
-      setError("Enter a display name of 1 to 50 characters.");
+      setError(t.nameInvalid);
       return;
     }
     if (path !== "personal" && orgName.trim().length < 2) {
-      setError("Enter your business or fleet name.");
+      setError(t.orgMissing);
       return;
     }
     setBusy(true);
@@ -73,15 +76,12 @@ export default function OnboardingPage() {
 
   return (
     <>
-      <PageHeader
-        title="Set up your account"
-        description="Two quick steps. You can add a business or fleet later too."
-      />
+      <PageHeader title={t.title} description={t.description} />
       <form className="stack stack--lg" onSubmit={(event) => void submit(event)} noValidate>
-        <Card title="1. Your display name">
+        <Card title={t.stepName}>
           <TextField
-            label="Display name"
-            hint="Shown when you post, comment, join groups or message. Not your legal name unless you want it to be."
+            label={t.displayName}
+            hint={t.displayNameHint}
             required
             maxLength={50}
             autoComplete="nickname"
@@ -91,9 +91,9 @@ export default function OnboardingPage() {
             }}
           />
         </Card>
-        <Card title="2. How will you use FleetTrust?">
+        <Card title={t.stepPath}>
           <fieldset className="field">
-            <legend className="visually-hidden">How will you use FleetTrust?</legend>
+            <legend className="visually-hidden">{t.pathLegend}</legend>
             <div className="stack">
               {PATHS.map((option) => (
                 <label key={option.value} className="card checkbox" style={{ cursor: "pointer" }}>
@@ -120,7 +120,7 @@ export default function OnboardingPage() {
           {path !== "personal" ? (
             <div style={{ marginTop: 16 }}>
               <TextField
-                label={path === "provider" ? "Business name" : "Fleet name"}
+                label={path === "provider" ? t.businessName : t.fleetName}
                 required
                 maxLength={100}
                 autoComplete="organization"
@@ -139,10 +139,10 @@ export default function OnboardingPage() {
         ) : null}
         <div className="cluster">
           <Button type="submit" busy={busy}>
-            {busy ? "Saving…" : "Continue"}
+            {busy ? t.saving : t.continue}
           </Button>
           <ButtonLink variant="ghost" href="/app">
-            Skip for now
+            {t.skip}
           </ButtonLink>
         </div>
       </form>

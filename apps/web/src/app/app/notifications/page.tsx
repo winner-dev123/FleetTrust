@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import Link from "next/link";
 
 import { Button } from "@/components/button";
@@ -10,6 +11,8 @@ import { notificationHref } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.app.notifications;
+
 export default function NotificationsPage() {
   const { api } = useSession();
   const inbox = useLoad(() => api.inbox(), "inbox");
@@ -17,14 +20,14 @@ export default function NotificationsPage() {
   return (
     <>
       <PageHeader
-        title="Notifications"
+        title={t.title}
         actions={
           inbox.status === "ready" && inbox.data.unreadNotifications > 0 ? (
             <Button
               variant="secondary"
               onClick={() => void api.markAllNotificationsRead().then(inbox.reload, inbox.reload)}
             >
-              Mark all as read
+              {t.markAllRead}
             </Button>
           ) : null
         }
@@ -33,7 +36,7 @@ export default function NotificationsPage() {
       {inbox.status === "error" ? <ErrorNotice error={inbox.error} onRetry={inbox.reload} /> : null}
       {inbox.status === "ready" ? (
         inbox.data.notifications.length === 0 ? (
-          <EmptyState title="Nothing new" />
+          <EmptyState title={t.empty} />
         ) : (
           <ul className="list-plain">
             {inbox.data.notifications.map((notification) => {
@@ -45,14 +48,14 @@ export default function NotificationsPage() {
                 >
                   <p style={{ margin: 0 }}>
                     <strong>{notification.title}</strong>
-                    {notification.readAt ? null : <span className="small"> · New</span>}
+                    {notification.readAt ? null : <span className="small"> · {t.newMark}</span>}
                   </p>
                   <p style={{ margin: 0 }}>{notification.body}</p>
                   <p className="small muted cluster" style={{ margin: 0 }}>
                     <time dateTime={notification.createdAt}>
                       {formatDateTime(notification.createdAt)}
                     </time>
-                    {href ? <Link href={href}>Open</Link> : null}
+                    {href ? <Link href={href}>{t.open}</Link> : null}
                     {notification.readAt ? null : (
                       <button
                         type="button"
@@ -63,7 +66,7 @@ export default function NotificationsPage() {
                             .then(inbox.reload, inbox.reload)
                         }
                       >
-                        Mark as read
+                        {t.markRead}
                       </button>
                     )}
                   </p>

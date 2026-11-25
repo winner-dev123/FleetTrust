@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import {
   ARTICLE_CATEGORIES,
   type ArticleCategory,
@@ -17,6 +18,8 @@ import { errorMessage } from "@fleettrust/sdk";
 import { titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 
+const t = copy.web.app.write;
+
 /** Write an article: saved as a draft, then published (new accounts go to moderation first). */
 export default function WriteArticlePage() {
   const { api } = useSession();
@@ -31,7 +34,7 @@ export default function WriteArticlePage() {
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (title.trim() === "" || body.trim() === "") {
-      setError("Add a title and some text.");
+      setError(t.missing);
       return;
     }
     setBusy(true);
@@ -55,21 +58,14 @@ export default function WriteArticlePage() {
 
   return (
     <>
-      <PageHeader
-        title="Write an article"
-        description="Share practical experience: maintenance tips, routes, safety, regulations."
-      />
+      <PageHeader title={t.title} description={t.description} />
       <Notice tone="caution">
-        <p className="small">
-          Articles are labelled “{COMMUNITY_CONTENT_LABEL}”. Don&apos;t rate or score providers:
-          articles that do are refused. New accounts&apos; articles are checked by a moderator
-          before they appear.
-        </p>
+        <p className="small">{fill(t.rules, { label: COMMUNITY_CONTENT_LABEL })}</p>
       </Notice>
       <Card>
         <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
           <TextField
-            label="Title"
+            label={t.titleLabel}
             required
             maxLength={150}
             value={title}
@@ -78,7 +74,7 @@ export default function WriteArticlePage() {
             }}
           />
           <TextField
-            label="Summary"
+            label={t.summary}
             maxLength={300}
             value={summary}
             onChange={(event) => {
@@ -86,7 +82,7 @@ export default function WriteArticlePage() {
             }}
           />
           <SelectField
-            label="Topic"
+            label={t.topic}
             required
             value={category}
             onChange={(event) => {
@@ -95,8 +91,8 @@ export default function WriteArticlePage() {
             options={ARTICLE_CATEGORIES.map((value) => ({ value, label: titleCase(value) }))}
           />
           <TextArea
-            label="Article"
-            hint="Leave a blank line between paragraphs."
+            label={t.article}
+            hint={t.articleHint}
             required
             rows={12}
             value={body}
@@ -111,7 +107,7 @@ export default function WriteArticlePage() {
           ) : null}
           <div>
             <Button type="submit" busy={busy}>
-              {busy ? "Publishing…" : "Publish"}
+              {busy ? t.publishing : t.publish}
             </Button>
           </div>
         </form>

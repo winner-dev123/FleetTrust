@@ -47,7 +47,7 @@ describe("catalog text", () => {
 describe("product rules (the same as the screen guards)", () => {
   it("emergency text never implies that help is certain (SRS J3, ADR-0010)", () => {
     const emergency = all.filter(([key]) =>
-      /^(web\.)?(emergency|incident|trustedContacts|tabs)\./.test(key),
+      /^(web\.)?(app\.)?(emergency|incident|trustedContacts|tabs)\./.test(key),
     );
     expect(emergency.length).toBeGreaterThan(50);
     expect(emergency.filter(([, text]) => FORBIDDEN_EMERGENCY_WORDING.test(text))).toEqual([]);

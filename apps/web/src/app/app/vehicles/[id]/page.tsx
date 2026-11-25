@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { VEHICLE_TYPE_LABELS } from "@fleettrust/types";
 import { use } from "react";
 
@@ -10,6 +11,8 @@ import { formatDate, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.app.vehicle;
+
 const STATUS_TONE = {
   ok: "verified",
   due_soon: "caution",
@@ -17,10 +20,10 @@ const STATUS_TONE = {
   unknown: "neutral",
 } as const;
 const STATUS_TEXT = {
-  ok: "OK",
-  due_soon: "Due soon",
-  overdue: "Overdue",
-  unknown: "Not enough data",
+  ok: t.statusOk,
+  due_soon: t.statusDueSoon,
+  overdue: t.statusOverdue,
+  unknown: t.statusUnknown,
 } as const;
 
 /** A vehicle: details, maintenance schedule and service history. */
@@ -43,21 +46,24 @@ export default function VehiclePage(props: PageProps<"/app/vehicles/[id]">) {
   return (
     <>
       <PageHeader title={vehicleName(vehicle)} />
-      <Card title="Details">
+      <Card title={t.details}>
         <dl className="grid" style={{ gap: 8 }}>
           {(
             [
-              ["Type", VEHICLE_TYPE_LABELS[vehicle.vehicleType]],
-              ["Make and model", [vehicle.make, vehicle.model].filter(Boolean).join(" ") || "—"],
-              ["Year", vehicle.year ? String(vehicle.year) : "—"],
-              ["Registration", vehicle.registration ?? "—"],
+              [t.type, VEHICLE_TYPE_LABELS[vehicle.vehicleType]],
+              [t.makeModel, [vehicle.make, vehicle.model].filter(Boolean).join(" ") || "—"],
+              [t.year, vehicle.year ? String(vehicle.year) : "—"],
+              [t.registration, vehicle.registration ?? "—"],
               [
-                "Odometer",
+                t.odometer,
                 vehicle.odometerKm !== null
-                  ? `${String(vehicle.odometerKm)} km (${formatDate(vehicle.odometerUpdatedAt)})`
+                  ? fill(t.odometerValue, {
+                      km: vehicle.odometerKm,
+                      date: formatDate(vehicle.odometerUpdatedAt),
+                    })
                   : "—",
               ],
-              ["Driver", vehicle.driver?.displayName ?? "—"],
+              [t.driver, vehicle.driver?.displayName ?? "—"],
             ] as const
           ).map(([label, value]) => (
             <div key={label}>
@@ -68,18 +74,18 @@ export default function VehiclePage(props: PageProps<"/app/vehicles/[id]">) {
         </dl>
       </Card>
 
-      <Card title="Maintenance">
+      <Card title={t.maintenance}>
         {schedules.length === 0 ? (
-          <EmptyState title="No reminders set" />
+          <EmptyState title={t.noReminders} />
         ) : (
-          <div className="table-wrap" tabIndex={0} role="region" aria-label="Maintenance schedule">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label={t.schedule}>
             <table className="table">
-              <caption className="visually-hidden">Maintenance schedule</caption>
+              <caption className="visually-hidden">{t.schedule}</caption>
               <thead>
                 <tr>
-                  <th scope="col">Item</th>
-                  <th scope="col">Next due</th>
-                  <th scope="col">Status</th>
+                  <th scope="col">{t.item}</th>
+                  <th scope="col">{t.nextDue}</th>
+                  <th scope="col">{t.status}</th>
                 </tr>
               </thead>
               <tbody>
@@ -89,10 +95,10 @@ export default function VehiclePage(props: PageProps<"/app/vehicles/[id]">) {
                     <td>
                       {[
                         schedule.nextDueOn ? formatDate(schedule.nextDueOn) : null,
-                        schedule.nextDueKm !== null ? `${String(schedule.nextDueKm)} km` : null,
+                        schedule.nextDueKm !== null ? fill(t.km, { km: schedule.nextDueKm }) : null,
                       ]
                         .filter(Boolean)
-                        .join(" or ") || "—"}
+                        .join(` ${t.or} `) || "—"}
                     </td>
                     <td>
                       <Badge tone={STATUS_TONE[schedule.status]}>
@@ -107,12 +113,12 @@ export default function VehiclePage(props: PageProps<"/app/vehicles/[id]">) {
         )}
       </Card>
 
-      <Card title="Service history">
+      <Card title={t.history}>
         <Notice>
           <p className="small">{history.notice}</p>
         </Notice>
         {history.items.length === 0 ? (
-          <p className="muted">No service records yet.</p>
+          <p className="muted">{t.noHistory}</p>
         ) : (
           <ul className="list-plain" style={{ marginTop: 12 }}>
             {history.items.map((record) => (
@@ -120,12 +126,12 @@ export default function VehiclePage(props: PageProps<"/app/vehicles/[id]">) {
                 <strong>{record.title}</strong>{" "}
                 <span className="small muted">
                   {formatDate(record.performedOn)} · {titleCase(record.category)}
-                  {record.odometerKm !== null ? ` · ${String(record.odometerKm)} km` : ""}
+                  {record.odometerKm !== null ? ` · ${fill(t.km, { km: record.odometerKm })}` : ""}
                 </span>
                 <span className="small" style={{ display: "block" }}>
                   {record.sourceLabel}
                   {record.cost
-                    ? ` · ${record.cost.currency} ${record.cost.amount} (as entered)`
+                    ? ` · ${fill(t.cost, { currency: record.cost.currency, amount: record.cost.amount })}`
                     : ""}
                 </span>
               </li>

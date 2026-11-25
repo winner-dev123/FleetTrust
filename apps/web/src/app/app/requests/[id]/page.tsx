@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { CATEGORY_LABELS, VEHICLE_TYPE_LABELS } from "@fleettrust/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,6 +14,8 @@ import { errorMessage } from "@fleettrust/sdk";
 import { formatDate, formatDateTime, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.app.request;
 
 /** One request: the quotes received, accepting one, messaging providers, closing it. */
 export default function RequestPage(props: PageProps<"/app/requests/[id]">) {
@@ -53,20 +56,23 @@ export default function RequestPage(props: PageProps<"/app/requests/[id]">) {
   function cancel(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (cancelReason.trim().length < 3) {
-      setMessage({ ok: false, text: "Give a short reason (at least 3 characters)." });
+      setMessage({ ok: false, text: t.reasonTooShort });
       return;
     }
     void act("cancel", async () => {
       request.setData(await api.cancelServiceRequest(id, cancelReason.trim()));
-      setMessage({ ok: true, text: "Request cancelled." });
+      setMessage({ ok: true, text: t.cancelled });
     });
   }
 
   return (
     <>
       <PageHeader
-        title={`${CATEGORY_LABELS[data.category]} request`}
-        description={`Sent ${formatDateTime(data.createdAt)} · quotes accepted until ${formatDate(data.expiresAt)}`}
+        title={fill(t.title, { category: CATEGORY_LABELS[data.category] })}
+        description={fill(t.description, {
+          sent: formatDateTime(data.createdAt),
+          until: formatDate(data.expiresAt),
+        })}
       />
       <p>
         <Badge tone={data.status === "open" ? "caution" : "neutral"}>
@@ -78,7 +84,7 @@ export default function RequestPage(props: PageProps<"/app/requests/[id]">) {
           <p>{message.text}</p>
         </Notice>
       ) : null}
-      <Card title="Details">
+      <Card title={t.details}>
         <p>{data.description}</p>
         <p className="small muted" style={{ margin: 0 }}>
           {vehicle} · {titleCase(data.urgency)}
@@ -86,15 +92,15 @@ export default function RequestPage(props: PageProps<"/app/requests/[id]">) {
       </Card>
 
       {data.agreement ? (
-        <Notice tone="success" title="Quote accepted">
-          <p>Agreed price (for your records): {data.agreement.priceLabel}</p>
+        <Notice tone="success" title={t.quoteAccepted}>
+          <p>{fill(t.agreedPrice, { price: data.agreement.priceLabel })}</p>
           <p className="small">{data.agreement.disclaimer}</p>
         </Notice>
       ) : null}
 
       <section aria-labelledby="quotes-heading" className="stack">
-        <h2 id="quotes-heading">Providers and quotes</h2>
-        {data.recipients.length === 0 ? <p className="muted">No providers matched yet.</p> : null}
+        <h2 id="quotes-heading">{t.providersAndQuotes}</h2>
+        {data.recipients.length === 0 ? <p className="muted">{t.noProviders}</p> : null}
         {data.recipients.map((recipient) => (
           <Card key={recipient.id} title={recipient.providerName} headingLevel={3}>
             <p className="small">
@@ -102,7 +108,7 @@ export default function RequestPage(props: PageProps<"/app/requests/[id]">) {
               {recipient.providerSlug ? (
                 <>
                   {" "}
-                  · <Link href={`/providers/${recipient.providerSlug}`}>View profile</Link>
+                  · <Link href={`/providers/${recipient.providerSlug}`}>{t.viewProfile}</Link>
                 </>
               ) : null}
             </p>
@@ -111,19 +117,19 @@ export default function RequestPage(props: PageProps<"/app/requests/[id]">) {
               .map((quote) => (
                 <div key={quote.id} className="card card--muted stack" style={{ gap: 8 }}>
                   <p style={{ margin: 0 }}>
-                    <strong>{quote.price.label}</strong> (indicative)
+                    <strong>{quote.price.label}</strong> {t.indicative}
                     {quote.status === "accepted" ? (
                       <>
                         {" "}
-                        <Badge tone="verified">Accepted</Badge>
+                        <Badge tone="verified">{t.accepted}</Badge>
                       </>
                     ) : null}
                   </p>
                   {quote.message ? <p style={{ margin: 0 }}>{quote.message}</p> : null}
                   <p className="small muted" style={{ margin: 0 }}>
-                    Valid until {formatDate(quote.validUntil)}
+                    {fill(t.validUntil, { date: formatDate(quote.validUntil) })}
                     {quote.availableFrom
-                      ? ` · can start ${formatDateTime(quote.availableFrom)}`
+                      ? ` · ${fill(t.canStart, { time: formatDateTime(quote.availableFrom) })}`
                       : ""}
                   </p>
                   <p className="small" style={{ margin: 0 }}>
@@ -138,12 +144,12 @@ export default function RequestPage(props: PageProps<"/app/requests/[id]">) {
                             request.setData(await api.acceptQuote(id, quote.id));
                             setMessage({
                               ok: true,
-                              text: `You accepted ${recipient.providerName}'s quote. Arrange payment directly with them.`,
+                              text: fill(t.youAccepted, { provider: recipient.providerName }),
                             });
                           })
                         }
                       >
-                        Accept this quote
+                        {t.acceptQuote}
                       </Button>
                     </div>
                   ) : null}
@@ -160,7 +166,7 @@ export default function RequestPage(props: PageProps<"/app/requests/[id]">) {
                   })
                 }
               >
-                Message {recipient.providerName}
+                {fill(t.messageProvider, { provider: recipient.providerName })}
               </Button>
             </div>
           </Card>
@@ -168,27 +174,27 @@ export default function RequestPage(props: PageProps<"/app/requests/[id]">) {
       </section>
 
       {data.status === "accepted" ? (
-        <Card title="Job done?">
+        <Card title={t.jobDone}>
           <Button
             busy={busy === "complete"}
             onClick={() =>
               void act("complete", async () => {
                 request.setData(await api.completeServiceRequest(id));
-                setMessage({ ok: true, text: "Marked as completed." });
+                setMessage({ ok: true, text: t.markedCompleted });
               })
             }
           >
-            Mark as completed
+            {t.markCompleted}
           </Button>
         </Card>
       ) : null}
 
       {data.status === "open" || data.status === "accepted" ? (
-        <Card title="Cancel this request">
+        <Card title={t.cancelTitle}>
           <form className="cluster" style={{ alignItems: "flex-end" }} onSubmit={cancel}>
             <div style={{ flex: "1 1 240px" }}>
               <TextField
-                label="Reason"
+                label={t.reason}
                 required
                 maxLength={500}
                 value={cancelReason}
@@ -198,7 +204,7 @@ export default function RequestPage(props: PageProps<"/app/requests/[id]">) {
               />
             </div>
             <Button type="submit" variant="ghost" busy={busy === "cancel"}>
-              Cancel request
+              {t.cancelRequest}
             </Button>
           </form>
         </Card>

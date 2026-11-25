@@ -1,5 +1,6 @@
 "use client";
 
+import { copy } from "@fleettrust/copy";
 import { type SubmitEvent, use, useEffect, useState } from "react";
 
 import { Button } from "@/components/button";
@@ -10,6 +11,8 @@ import { errorMessage } from "@fleettrust/sdk";
 import { formatDateTime } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.app.conversation;
 
 const REFRESH_MS = 10_000;
 
@@ -73,23 +76,23 @@ export default function ConversationPage(props: PageProps<"/app/messages/[id]">)
           <p>{conversation.warning}</p>
         </Notice>
       ) : null}
-      <ol className="message-list" aria-label="Messages" aria-live="polite">
-        {ordered.length === 0 ? <li className="muted">No messages yet.</li> : null}
+      <ol className="message-list" aria-label={t.messages} aria-live="polite">
+        {ordered.length === 0 ? <li className="muted">{t.empty}</li> : null}
         {ordered.map((message) => (
           <li
             key={message.id}
             className={message.sender.mine ? "message message--mine" : "message"}
           >
             <p className="small muted" style={{ margin: 0 }}>
-              {message.sender.mine ? "You" : message.sender.name} ·{" "}
+              {message.sender.mine ? t.you : message.sender.name} ·{" "}
               <time dateTime={message.createdAt}>{formatDateTime(message.createdAt)}</time>
             </p>
             <p style={{ margin: 0, whiteSpace: "pre-line" }}>
-              {message.body ?? <em className="muted">Message removed</em>}
+              {message.body ?? <em className="muted">{t.removed}</em>}
             </p>
             {message.warnings.includes("payment_request") ? (
               <p className="small" style={{ margin: 0, color: "var(--color-caution)" }}>
-                This message mentions a payment. Never pay to an account you can&apos;t verify.
+                {t.paymentWarning}
               </p>
             ) : null}
           </li>
@@ -98,7 +101,7 @@ export default function ConversationPage(props: PageProps<"/app/messages/[id]">)
       {conversation.canSend ? (
         <form className="stack" onSubmit={(event) => void send(event)}>
           <TextArea
-            label="Message"
+            label={t.message}
             required
             maxLength={4000}
             value={body}
@@ -109,12 +112,12 @@ export default function ConversationPage(props: PageProps<"/app/messages/[id]">)
           />
           <div>
             <Button type="submit" busy={busy}>
-              Send
+              {t.send}
             </Button>
           </div>
         </form>
       ) : (
-        <p className="muted">You can&apos;t send messages in this conversation.</p>
+        <p className="muted">{t.cannotSend}</p>
       )}
     </>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import Link from "next/link";
 import { type SubmitEvent, useState } from "react";
 
@@ -15,20 +16,22 @@ import { formatDate } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.app.account;
+
 function PowerUserCard() {
   const { api } = useSession();
   const status = useLoad(() => api.myPowerUser(), "power-user");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (status.status === "loading") return <Loading label="Loading Power User status…" />;
+  if (status.status === "loading") return <Loading label={t.powerUserLoading} />;
   if (status.status === "error") return <ErrorNotice error={status.error} />;
   const data = status.data;
   const criteria = [
-    ["Verified identity", data.eligibility.criteria.verifiedIdentity],
-    ["Account age", data.eligibility.criteria.accountAge],
-    ["Activity", data.eligibility.criteria.activity],
-    ["Good standing", data.eligibility.criteria.standing],
+    [t.verifiedIdentity, data.eligibility.criteria.verifiedIdentity],
+    [t.accountAge, data.eligibility.criteria.accountAge],
+    [t.activity, data.eligibility.criteria.activity],
+    [t.goodStanding, data.eligibility.criteria.standing],
   ] as const;
 
   async function claim() {
@@ -44,27 +47,29 @@ function PowerUserCard() {
   }
 
   return (
-    <Card title="Power User">
+    <Card title={t.powerUser}>
       <p>{data.meaning}</p>
       {data.status === "active" ? (
         <p>
-          <Badge tone="verified">Power User since {formatDate(data.since)}</Badge>{" "}
-          {data.shown ? "" : "(not shown publicly right now: your identity badge isn't current)"}
+          <Badge tone="verified">{fill(t.powerUserSince, { date: formatDate(data.since) })}</Badge>{" "}
+          {data.shown ? "" : t.notShown}
         </p>
       ) : null}
       {data.status === "revoked" ? (
         <Notice tone="caution">
           <p>
-            Removed on {formatDate(data.revokedAt)}: {data.revokeReason}
+            {data.revokeReason
+              ? fill(t.removedOn, { date: formatDate(data.revokedAt), reason: data.revokeReason })
+              : fill(t.removedOnNoReason, { date: formatDate(data.revokedAt) })}
           </p>
-          {data.appeal ? null : <Link href="/app/appeals">Appeal this decision</Link>}
+          {data.appeal ? null : <Link href="/app/appeals">{t.appealDecision}</Link>}
         </Notice>
       ) : null}
       <ul className="list-plain">
         {criteria.map(([label, criterion]) => (
           <li key={label}>
             <Badge tone={criterion.met ? "verified" : "neutral"}>
-              {criterion.met ? "Met" : "Not yet"}
+              {criterion.met ? t.met : t.notYet}
             </Badge>{" "}
             <strong>{label}</strong>
             <span className="small muted" style={{ display: "block" }}>
@@ -77,12 +82,12 @@ function PowerUserCard() {
         <div className="stack" style={{ marginTop: 12 }}>
           <div>
             <Button onClick={() => void claim()} disabled={!data.eligibility.eligible} busy={busy}>
-              Claim Power User
+              {t.claim}
             </Button>
           </div>
           {!data.eligibility.eligible ? (
             <p className="small muted" style={{ margin: 0 }}>
-              You can claim it once every rule is met.
+              {t.claimHint}
             </p>
           ) : null}
         </div>
@@ -109,7 +114,7 @@ export default function AccountPage() {
     try {
       await api.updateMe({ displayName: name.trim() === "" ? null : name.trim() });
       await refresh();
-      setMessage({ ok: true, text: "Saved." });
+      setMessage({ ok: true, text: t.saved });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
     }
@@ -125,12 +130,12 @@ export default function AccountPage() {
 
   return (
     <>
-      <PageHeader title="Account and usage" description={`Signed in as ${me.email ?? "you"}`} />
-      <Card title="Profile">
+      <PageHeader title={t.title} description={fill(t.signedInAs, { email: me.email ?? t.you })} />
+      <Card title={t.profile}>
         <form className="stack" onSubmit={(event) => void saveName(event)}>
           <TextField
-            label="Display name"
-            hint="Shown when you post, comment or join groups."
+            label={t.displayName}
+            hint={t.displayNameHint}
             maxLength={50}
             value={name}
             onChange={(event) => {
@@ -138,7 +143,7 @@ export default function AccountPage() {
             }}
           />
           <div>
-            <Button type="submit">Save</Button>
+            <Button type="submit">{t.save}</Button>
           </div>
           {message ? (
             <Notice tone={message.ok ? "success" : "danger"} live="polite">
@@ -149,7 +154,7 @@ export default function AccountPage() {
       </Card>
 
       <section aria-labelledby="usage-heading" className="stack">
-        <h2 id="usage-heading">Plan and usage</h2>
+        <h2 id="usage-heading">{t.planAndUsage}</h2>
         {usage.status === "loading" ? <Loading /> : null}
         {usage.status === "error" ? <ErrorNotice error={usage.error} /> : null}
         {usage.status === "ready" ? <UsagePanel usage={usage.data} /> : null}
@@ -157,20 +162,19 @@ export default function AccountPage() {
 
       <PowerUserCard />
 
-      <Card title="Moderation">
+      <Card title={t.moderation}>
         <p style={{ margin: 0 }}>
-          See warnings or suspensions and appeal decisions on{" "}
-          <Link href="/app/appeals">sanctions and appeals</Link>.
+          {t.moderationBefore} <Link href="/app/appeals">{t.moderationLink}</Link>.
         </p>
       </Card>
 
-      <Card title="Sessions">
+      <Card title={t.sessions}>
         <div className="cluster">
           <Button variant="ghost" onClick={() => void signOut()}>
-            Sign out
+            {t.signOut}
           </Button>
           <Button variant="ghost" onClick={() => void signOutEverywhere()}>
-            Sign out on all devices
+            {t.signOutEverywhere}
           </Button>
         </div>
       </Card>

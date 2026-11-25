@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill, plural } from "@fleettrust/copy";
 import {
   INCIDENT_CATEGORIES,
   INCIDENT_CATEGORY_LABELS,
@@ -18,6 +19,8 @@ import { errorMessage } from "@fleettrust/sdk";
 import { formatDateTime, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.app.emergency;
 
 type Category = (typeof INCIDENT_CATEGORIES)[number];
 
@@ -40,13 +43,11 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
   function review(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (shareLocation && !location) {
-      setError("Choose your location, or untick “Share my location”.");
+      setError(t.locationMissing);
       return;
     }
     if (active.length === 0 && !nearby) {
-      setError(
-        "You have no active trusted contacts. Tick “Also alert nearby providers”, or add a contact below.",
-      );
+      setError(t.noContactsError);
       return;
     }
     setError(null);
@@ -77,10 +78,10 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
 
   return (
     <section className="emergency-panel stack" aria-labelledby="raise-heading">
-      <h2 id="raise-heading">Send an alert</h2>
+      <h2 id="raise-heading">{t.sendAnAlert}</h2>
       <form className="stack" onSubmit={review} noValidate>
         <fieldset className="field">
-          <legend className="field__label">What&apos;s happening?</legend>
+          <legend className="field__label">{t.whatsHappening}</legend>
           <div className="grid" style={{ gap: 8 }}>
             {INCIDENT_CATEGORIES.map((value) => (
               <label key={value} className="checkbox card" style={{ padding: 8 }}>
@@ -100,8 +101,8 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
           </div>
         </fieldset>
         <TextArea
-          label="Short note"
-          hint="For example: flat tyre on the N1 northbound, near the bridge."
+          label={t.note}
+          hint={t.noteHint}
           maxLength={500}
           value={note}
           onChange={(event) => {
@@ -109,19 +110,19 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
           }}
         />
         <Checkbox
-          label="Share my location with this alert"
-          hint="Only for this alert. It's erased when the alert closes."
+          label={t.shareLocation}
+          hint={t.shareLocationHint}
           checked={shareLocation}
           onChange={(event) => {
             setShareLocation(event.target.checked);
           }}
         />
         {shareLocation ? (
-          <LocationPicker value={location} onChange={setLocation} label="Your location" />
+          <LocationPicker value={location} onChange={setLocation} label={t.yourLocation} />
         ) : null}
         <Checkbox
-          label="Also alert nearby providers who offer roadside assistance"
-          hint="They see the type of problem and an approximate area, not your name."
+          label={t.nearby}
+          hint={t.nearbyHint}
           checked={nearby}
           onChange={(event) => {
             setNearby(event.target.checked);
@@ -129,8 +130,10 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
         />
         <p className="small">
           {active.length === 0
-            ? "You have no active trusted contacts yet."
-            : `Alerts go to ${String(active.length)} trusted ${active.length === 1 ? "contact" : "contacts"}: ${active.map((c) => c.person.displayName).join(", ")}.`}
+            ? t.noContacts
+            : plural(active.length, t.alertsGoTo, {
+                names: active.map((c) => c.person.displayName).join(", "),
+              })}
         </p>
         {error ? (
           <Notice tone="danger" live="assertive">
@@ -140,16 +143,22 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
         {confirming ? (
           <div className="card stack" role="alertdialog" aria-labelledby="confirm-heading">
             <h3 id="confirm-heading" className="card__title">
-              Send this alert now?
+              {t.confirmTitle}
             </h3>
             <p style={{ margin: 0 }}>
-              {INCIDENT_CATEGORY_LABELS[category]}
-              {shareLocation && location ? ` · location: ${location.label}` : " · no location"}
-              {nearby ? " · nearby providers too" : ""}
+              {[
+                INCIDENT_CATEGORY_LABELS[category],
+                shareLocation && location
+                  ? fill(t.confirmLocation, { place: location.label })
+                  : t.confirmNoLocation,
+                nearby ? t.confirmNearby : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
             <div className="cluster">
               <Button variant="danger" large busy={busy} onClick={() => void send()} autoFocus>
-                {busy ? "Sending…" : "Yes, send alert"}
+                {busy ? t.sending : t.confirmSend}
               </Button>
               <Button
                 variant="ghost"
@@ -157,14 +166,14 @@ function RaiseAlert({ contacts }: { contacts: TrustedContactDto[] }) {
                   setConfirming(false);
                 }}
               >
-                Go back
+                {t.goBack}
               </Button>
             </div>
           </div>
         ) : (
           <div>
             <Button type="submit" variant="danger" large>
-              Send alert
+              {t.send}
             </Button>
           </div>
         )}
@@ -208,18 +217,15 @@ function TrustedContacts({
   }
 
   return (
-    <Card title="Trusted contacts">
-      <p>
-        People you trust to receive your alerts. They must accept before they can be alerted.
-        Primary contacts are alerted first; backups if nobody responds in time.
-      </p>
+    <Card title={t.contacts}>
+      <p>{t.contactsIntro}</p>
       {message ? (
         <Notice tone={message.ok ? "success" : "danger"} live="polite">
           <p>{message.text}</p>
         </Notice>
       ) : null}
       {mine.length === 0 ? (
-        <EmptyState title="No trusted contacts yet" />
+        <EmptyState title={t.noContactsTitle} />
       ) : (
         <ul className="list-plain">
           {mine.map((contact) => (
@@ -228,18 +234,16 @@ function TrustedContacts({
                 <strong>{contact.person.displayName}</strong>{" "}
                 <Badge tone={contact.status === "active" ? "verified" : "neutral"}>
                   {contact.status === "active" && contact.muted
-                    ? "Paused alerts"
+                    ? t.paused
                     : titleCase(contact.status)}
                 </Badge>{" "}
                 <span className="small muted">{titleCase(contact.priority)}</span>
               </span>
               <Button
                 variant="ghost"
-                onClick={() =>
-                  void act(() => api.removeTrustedContact(contact.id), "Contact removed.")
-                }
+                onClick={() => void act(() => api.removeTrustedContact(contact.id), t.removed)}
               >
-                Remove {contact.person.displayName}
+                {fill(t.remove, { name: contact.person.displayName })}
               </Button>
             </li>
           ))}
@@ -252,8 +256,8 @@ function TrustedContacts({
       >
         <div style={{ flex: "1 1 220px" }}>
           <TextField
-            label="Add a contact"
-            hint="Search by display name"
+            label={t.addContact}
+            hint={t.addContactHint}
             value={query}
             maxLength={50}
             onChange={(event) => {
@@ -262,14 +266,14 @@ function TrustedContacts({
           />
         </div>
         <Button type="submit" variant="secondary">
-          Search people
+          {t.searchPeople}
         </Button>
       </form>
       {people ? (
         people.length === 0 ? (
-          <p className="muted">Nobody found with that name.</p>
+          <p className="muted">{t.nobodyFound}</p>
         ) : (
-          <ul className="list-plain" aria-label="People found" style={{ marginTop: 12 }}>
+          <ul className="list-plain" aria-label={t.peopleFound} style={{ marginTop: 12 }}>
             {people.map((person) => (
               <li key={person.userId} className="cluster cluster--between">
                 <span>{person.displayName}</span>
@@ -278,11 +282,11 @@ function TrustedContacts({
                   onClick={() =>
                     void act(
                       () => api.inviteTrustedContact(person.userId),
-                      `Invitation sent to ${person.displayName}.`,
+                      fill(t.invitationSent, { name: person.displayName }),
                     )
                   }
                 >
-                  Invite {person.displayName}
+                  {fill(t.invite, { name: person.displayName })}
                 </Button>
               </li>
             ))}
@@ -291,7 +295,7 @@ function TrustedContacts({
       ) : null}
       {forOthers.length > 0 ? (
         <>
-          <h3 style={{ marginTop: 24 }}>You&apos;re a trusted contact for</h3>
+          <h3 style={{ marginTop: 24 }}>{t.contactFor}</h3>
           <ul className="list-plain">
             {forOthers.map((contact) => (
               <li key={contact.id} className="cluster cluster--between">
@@ -305,24 +309,21 @@ function TrustedContacts({
                   <span className="cluster">
                     <Button
                       onClick={() =>
-                        void act(
-                          () => api.respondToTrustedContact(contact.id, true),
-                          "You accepted.",
-                        )
+                        void act(() => api.respondToTrustedContact(contact.id, true), t.youAccepted)
                       }
                     >
-                      Accept
+                      {t.accept}
                     </Button>
                     <Button
                       variant="ghost"
                       onClick={() =>
                         void act(
                           () => api.respondToTrustedContact(contact.id, false),
-                          "You declined.",
+                          t.youDeclined,
                         )
                       }
                     >
-                      Decline
+                      {t.decline}
                     </Button>
                   </span>
                 ) : null}
@@ -352,12 +353,12 @@ export default function EmergencyPage() {
 
   return (
     <>
-      <PageHeader title="Emergency" />
+      <PageHeader title={t.title} />
       {data.status === "loading" ? <Loading /> : null}
       {data.status === "error" ? (
         <>
-          <Notice tone="danger" title="If anyone is in danger">
-            <p>Call your local emergency number now.</p>
+          <Notice tone="danger" title={t.dangerTitle}>
+            <p>{t.dangerBody}</p>
           </Notice>
           <ErrorNotice error={data.error} onRetry={data.reload} />
         </>
@@ -368,8 +369,8 @@ export default function EmergencyPage() {
             <p>
               {data.data.guidance.number ? (
                 <>
-                  Call <a href={`tel:${data.data.guidance.number}`}>{data.data.guidance.number}</a>
-                  .{" "}
+                  {t.call}{" "}
+                  <a href={`tel:${data.data.guidance.number}`}>{data.data.guidance.number}</a>.{" "}
                 </>
               ) : null}
               {data.data.guidance.text}
@@ -379,12 +380,15 @@ export default function EmergencyPage() {
           {data.data.incidents
             .filter((incident) => incident.status === "active")
             .map((incident) => (
-              <Notice key={incident.id} tone="danger" title="You have an active alert">
+              <Notice key={incident.id} tone="danger" title={t.activeAlert}>
                 <p>
-                  {incident.categoryLabel} · raised {formatDateTime(incident.createdAt)}
+                  {fill(t.raised, {
+                    category: incident.categoryLabel,
+                    time: formatDateTime(incident.createdAt),
+                  })}
                 </p>
                 <ButtonLink variant="danger" href={`/app/emergency/${incident.id}`}>
-                  Open alert
+                  {t.openAlert}
                 </ButtonLink>
               </Notice>
             ))}

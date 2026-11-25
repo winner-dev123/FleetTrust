@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, plural } from "@fleettrust/copy";
 import { CATEGORY_LABELS } from "@fleettrust/types";
 import Link from "next/link";
 
@@ -10,6 +11,8 @@ import { formatDate, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.app.requests;
+
 export default function RequestsPage() {
   const { api } = useSession();
   const requests = useLoad(() => api.serviceRequests(), "requests");
@@ -17,9 +20,9 @@ export default function RequestsPage() {
   return (
     <>
       <PageHeader
-        title="Service requests"
-        description="Ask providers for quotes. Quotes are indicative; you agree the final price and pay the provider directly."
-        actions={<ButtonLink href="/app/requests/new">New request</ButtonLink>}
+        title={t.title}
+        description={t.description}
+        actions={<ButtonLink href="/app/requests/new">{t.newRequest}</ButtonLink>}
       />
       {requests.status === "loading" ? <Loading /> : null}
       {requests.status === "error" ? (
@@ -27,9 +30,9 @@ export default function RequestsPage() {
       ) : null}
       {requests.status === "ready" ? (
         requests.data.length === 0 ? (
-          <EmptyState title="No requests yet">
-            <p>Describe what you need and nearby providers can send you quotes.</p>
-            <ButtonLink href="/app/requests/new">Request a quote</ButtonLink>
+          <EmptyState title={t.emptyTitle}>
+            <p>{t.emptyBody}</p>
+            <ButtonLink href="/app/requests/new">{t.requestQuote}</ButtonLink>
           </EmptyState>
         ) : (
           <ul className="list-plain">
@@ -49,8 +52,7 @@ export default function RequestsPage() {
                     <Badge tone={request.status === "open" ? "caution" : "neutral"}>
                       {titleCase(request.status)}
                     </Badge>{" "}
-                    {String(quotes)} active {quotes === 1 ? "quote" : "quotes"} · sent{" "}
-                    {formatDate(request.createdAt)}
+                    {plural(quotes, t.summary, { date: formatDate(request.createdAt) })}
                   </p>
                 </li>
               );

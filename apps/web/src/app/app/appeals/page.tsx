@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { MODERATION_APPEAL_WINDOW_DAYS, type SanctionDto } from "@fleettrust/types";
 import { type SubmitEvent, useState } from "react";
 
@@ -12,6 +13,8 @@ import { formatDate, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.app.appeals;
+
 function AppealForm({ sanction, onFiled }: { sanction: SanctionDto; onFiled: () => void }) {
   const { api } = useSession();
   const [statement, setStatement] = useState("");
@@ -21,7 +24,7 @@ function AppealForm({ sanction, onFiled }: { sanction: SanctionDto; onFiled: () 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (statement.trim().length < 20) {
-      setError("Explain in at least 20 characters why the decision should change.");
+      setError(t.tooShort);
       return;
     }
     setBusy(true);
@@ -43,8 +46,8 @@ function AppealForm({ sanction, onFiled }: { sanction: SanctionDto; onFiled: () 
   return (
     <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
       <TextArea
-        label="Your appeal"
-        hint="A different moderator will review it."
+        label={t.yourAppeal}
+        hint={t.yourAppealHint}
         required
         maxLength={2000}
         value={statement}
@@ -55,7 +58,7 @@ function AppealForm({ sanction, onFiled }: { sanction: SanctionDto; onFiled: () 
       />
       <div>
         <Button type="submit" busy={busy}>
-          Send appeal
+          {t.send}
         </Button>
       </div>
     </form>
@@ -77,12 +80,12 @@ export default function AppealsPage() {
   return (
     <>
       <PageHeader
-        title="Sanctions and appeals"
-        description={`You can appeal a decision within ${String(MODERATION_APPEAL_WINDOW_DAYS)} days. Each decision can be appealed once.`}
+        title={t.title}
+        description={fill(t.description, { days: MODERATION_APPEAL_WINDOW_DAYS })}
       />
       {filed ? (
         <Notice tone="success" live="polite">
-          <p>Your appeal was sent. You&apos;ll get a notification when it&apos;s decided.</p>
+          <p>{t.sent}</p>
         </Notice>
       ) : null}
       {data.status === "loading" ? <Loading /> : null}
@@ -90,9 +93,9 @@ export default function AppealsPage() {
       {data.status === "ready" ? (
         <>
           <section aria-labelledby="sanctions-heading" className="stack">
-            <h2 id="sanctions-heading">Sanctions</h2>
+            <h2 id="sanctions-heading">{t.sanctions}</h2>
             {data.data.sanctions.length === 0 ? (
-              <EmptyState title="No warnings or suspensions" />
+              <EmptyState title={t.noSanctions} />
             ) : (
               data.data.sanctions.map((sanction) => {
                 const appealed = data.data.appeals.some((a) => a.sanctionId === sanction.id);
@@ -103,20 +106,22 @@ export default function AppealsPage() {
                   <Card key={sanction.id} title={titleCase(sanction.kind)} headingLevel={3}>
                     <p>
                       {sanction.overturned ? (
-                        <Badge tone="verified">Overturned</Badge>
+                        <Badge tone="verified">{t.overturned}</Badge>
                       ) : sanction.kind === "suspension" && active ? (
-                        <Badge tone="danger">Active</Badge>
+                        <Badge tone="danger">{t.active}</Badge>
                       ) : (
-                        <Badge>Ended</Badge>
+                        <Badge>{t.ended}</Badge>
                       )}{" "}
-                      From {formatDate(sanction.startsAt)}
-                      {sanction.kind === "suspension"
-                        ? sanction.endsAt
-                          ? ` until ${formatDate(sanction.endsAt)}`
-                          : " until lifted"
-                        : ""}
+                      {sanction.kind !== "suspension"
+                        ? fill(t.from, { start: formatDate(sanction.startsAt) })
+                        : sanction.endsAt
+                          ? fill(t.fromUntil, {
+                              start: formatDate(sanction.startsAt),
+                              end: formatDate(sanction.endsAt),
+                            })
+                          : fill(t.fromUntilLifted, { start: formatDate(sanction.startsAt) })}
                     </p>
-                    <p>Reason: {sanction.reason}</p>
+                    <p>{fill(t.reason, { reason: sanction.reason })}</p>
                     {!appealed && !sanction.overturned ? (
                       <AppealForm
                         sanction={sanction}
@@ -132,9 +137,9 @@ export default function AppealsPage() {
             )}
           </section>
           <section aria-labelledby="appeals-heading" className="stack">
-            <h2 id="appeals-heading">Your appeals</h2>
+            <h2 id="appeals-heading">{t.yourAppeals}</h2>
             {data.data.appeals.length === 0 ? (
-              <EmptyState title="No appeals yet" />
+              <EmptyState title={t.noAppeals} />
             ) : (
               <ul className="list-plain">
                 {data.data.appeals.map((appeal) => (
@@ -151,11 +156,16 @@ export default function AppealsPage() {
                       >
                         {titleCase(appeal.status)}
                       </Badge>{" "}
-                      {titleCase(appeal.kind)} appeal · {formatDate(appeal.createdAt)}
+                      {fill(t.appealLine, {
+                        kind: titleCase(appeal.kind),
+                        date: formatDate(appeal.createdAt),
+                      })}
                     </p>
                     <p className="small">{appeal.statement}</p>
                     {appeal.decisionReason ? (
-                      <p className="small muted">Decision: {appeal.decisionReason}</p>
+                      <p className="small muted">
+                        {fill(t.decision, { reason: appeal.decisionReason })}
+                      </p>
                     ) : null}
                   </li>
                 ))}

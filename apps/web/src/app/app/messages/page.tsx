@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import Link from "next/link";
 
 import { Badge, EmptyState, ErrorNotice, Loading } from "@/components/feedback";
@@ -8,24 +9,23 @@ import { formatDateTime, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.app.messages;
+
 export default function MessagesPage() {
   const { api } = useSession();
   const conversations = useLoad(() => api.conversations(), "conversations");
 
   return (
     <>
-      <PageHeader
-        title="Messages"
-        description="Conversations with friends, groups and providers about your requests."
-      />
+      <PageHeader title={t.title} description={t.description} />
       {conversations.status === "loading" ? <Loading /> : null}
       {conversations.status === "error" ? (
         <ErrorNotice error={conversations.error} onRetry={conversations.reload} />
       ) : null}
       {conversations.status === "ready" ? (
         conversations.data.length === 0 ? (
-          <EmptyState title="No conversations yet">
-            <p>Message a provider from one of your requests, or a friend from Community.</p>
+          <EmptyState title={t.emptyTitle}>
+            <p>{t.emptyBody}</p>
           </EmptyState>
         ) : (
           <ul className="list-plain">
@@ -42,7 +42,7 @@ export default function MessagesPage() {
                   {conversation.unread > 0 ? (
                     <>
                       {" "}
-                      <Badge tone="caution">{conversation.unread} unread</Badge>
+                      <Badge tone="caution">{fill(t.unread, { count: conversation.unread })}</Badge>
                     </>
                   ) : null}
                 </p>
