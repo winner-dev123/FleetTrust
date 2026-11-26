@@ -47,8 +47,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.16",
-    "@electric-sql/pglite-postgis": "0.2.16",
+    "@electric-sql/pglite": "0.5.17",
+    "@electric-sql/pglite-postgis": "0.2.17",
     "@fleettrust/config": "workspace:*",
     "@nestjs/cli": "12.0.15",
     "@nestjs/testing": "12.6.2",

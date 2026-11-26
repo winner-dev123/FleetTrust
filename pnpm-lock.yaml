@@ -324,11 +324,11 @@ importers:
         version: 4.6.7
     devDependencies:
       '@electric-sql/pglite':
-        specifier: 0.5.16
-        version: 0.5.16
+        specifier: 0.5.17
+        version: 0.5.17
       '@electric-sql/pglite-postgis':
-        specifier: 0.2.16
-        version: 0.2.16(@electric-sql/pglite@0.5.16)
+        specifier: 0.2.17
+        version: 0.2.17(@electric-sql/pglite@0.5.17)
       '@fleettrust/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -611,7 +611,7 @@ importers:
     dependencies:
       drizzle-orm:
         specifier: 0.45.4
-        version: 0.45.4(@electric-sql/pglite@0.5.16)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(pg@8.23.1)
+        version: 0.45.4(@electric-sql/pglite@0.5.17)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(pg@8.23.1)
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -620,11 +620,11 @@ importers:
         version: 1.2.1
     devDependencies:
       '@electric-sql/pglite':
-        specifier: 0.5.16
-        version: 0.5.16
+        specifier: 0.5.17
+        version: 0.5.17
       '@electric-sql/pglite-postgis':
-        specifier: 0.2.16
-        version: 0.2.16(@electric-sql/pglite@0.5.16)
+        specifier: 0.2.17
+        version: 0.2.17(@electric-sql/pglite@0.5.17)
       '@fleettrust/config':
         specifier: workspace:*
         version: link:../config
@@ -1379,10 +1379,10 @@ packages:
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
 
-  '@electric-sql/pglite-postgis@0.2.16':
-    resolution: {integrity: sha512-1MiwGtFW8o0Jkwe3SVAbbm4Lqn9uelELktn/SfHMz4NT7a/m3xmFULqNwdfM3xmDHPf+YTq0XC+tELcRSsZq1A==}
+  '@electric-sql/pglite-postgis@0.2.17':
+    resolution: {integrity: sha512-+HJbgr38C7LPRl37hk+vAjys7ESVIf87WShMl5ypqrjpKs3sVbyS33Lz400MlmVqFHnILxjGiEfyKEXLwBrrWw==}
     peerDependencies:
-      '@electric-sql/pglite': 0.5.16
+      '@electric-sql/pglite': 0.5.17
 
   '@electric-sql/pglite-tools@0.2.21':
     resolution: {integrity: sha512-kv8Z7UmmBVECHud63VblgQLp4A+qSklNP7H22VQqFQGrWFTodc73bubcjgmBqThFsIIiEeAEQQYwWGaK2lSDtA==}
@@ -1395,8 +1395,8 @@ packages:
   '@electric-sql/pglite@0.3.16':
     resolution: {integrity: sha512-mZkZfOd9OqTMHsK+1cje8OSzfAQcpD7JmILXTl5ahdempjUDdmg4euf1biDex5/LfQIDJ3gvCu6qDgdnDxfJmA==}
 
-  '@electric-sql/pglite@0.5.16':
-    resolution: {integrity: sha512-Nj8KcIsJL748W408U2N8q4+9IlONdpRIU8MJypIAAINMJ5nqKyqpX7Mgg/5XKkXiAib3AoZGR6hnJFlrlLBrcg==}
+  '@electric-sql/pglite@0.5.17':
+    resolution: {integrity: sha512-8SvKjiUjaU+0O0dbxjOfN+jXz14TEqDWbwDkYOW1aQ11y/ph2JvFVI27ABBo5nfw+ZfSqy4hKCNlbnbB1TDE+g==}
 
   '@emnapi/core@2.0.0-beta.2':
     resolution: {integrity: sha512-MzCVoWtcg4Pm2B3je5mMvYMvj3MmBKw+fU7vbsJc9/iT8ip6/eYIHo/Dsm/mr+wsHB6SEyJDuxB09Yy6r/8+4A==}
@@ -9966,9 +9966,9 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
-  '@electric-sql/pglite-postgis@0.2.16(@electric-sql/pglite@0.5.16)':
+  '@electric-sql/pglite-postgis@0.2.17(@electric-sql/pglite@0.5.17)':
     dependencies:
-      '@electric-sql/pglite': 0.5.16
+      '@electric-sql/pglite': 0.5.17
 
   '@electric-sql/pglite-tools@0.2.21(@electric-sql/pglite@0.3.16)':
     dependencies:
@@ -9978,7 +9978,7 @@ snapshots:
 
   '@electric-sql/pglite@0.3.16': {}
 
-  '@electric-sql/pglite@0.5.16': {}
+  '@electric-sql/pglite@0.5.17': {}
 
   '@emnapi/core@2.0.0-beta.2':
     dependencies:
@@ -14018,9 +14018,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.4(@electric-sql/pglite@0.5.16)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(pg@8.23.1):
+  drizzle-orm@0.45.4(@electric-sql/pglite@0.5.17)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(pg@8.23.1):
     optionalDependencies:
-      '@electric-sql/pglite': 0.5.16
+      '@electric-sql/pglite': 0.5.17
       '@opentelemetry/api': 1.10.0
       '@types/pg': 8.23.1
       pg: 8.23.1
