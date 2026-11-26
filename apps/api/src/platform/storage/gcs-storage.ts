@@ -23,6 +23,12 @@ export function storageClient(emulatorProjectId: string): Storage {
 
 export class GcsObjectStorage implements ObjectStorage {
   private readonly buckets: Record<BucketClass, Bucket>;
+  /**
+   * Single-request (multipart) uploads, as in production. The Firebase Storage emulator can't
+   * parse client 9's multipart boundary (it contains "boundary=", and the emulator splits the
+   * header on that text), so against the emulator writes use a resumable upload instead.
+   */
+  private readonly singleRequestUploads = !process.env["STORAGE_EMULATOR_HOST"];
 
   constructor(
     private readonly names: Record<BucketClass, string>,
@@ -79,7 +85,7 @@ export class GcsObjectStorage implements ObjectStorage {
   async write(bucket: BucketClass, key: string, data: Buffer, contentType: string): Promise<void> {
     await this.buckets[bucket].file(key).save(data, {
       contentType,
-      resumable: false,
+      resumable: !this.singleRequestUploads,
       // Public media is immutable (new uploads get new keys); everything else is never cached.
       metadata: {
         cacheControl:

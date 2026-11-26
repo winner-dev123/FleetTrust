@@ -2,7 +2,8 @@ import { createHash, createVerify, generateKeyPairSync } from "node:crypto";
 import { createServer, type IncomingHttpHeaders } from "node:http";
 import type { AddressInfo } from "node:net";
 
-import { Storage } from "@google-cloud/storage";
+import { CRC32C, Storage } from "@google-cloud/storage";
+import { PassThroughClient } from "google-auth-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GcsObjectStorage, storageClient } from "./gcs-storage.js";
@@ -140,6 +141,112 @@ describe("storageClient against the emulator", () => {
       expect(await storage.head("sensitive", "missing")).toBeNull();
       expect(seen).toHaveLength(1);
       expect(seen[0]?.authorization).toBeUndefined();
+    } finally {
+      server.close();
+    }
+  });
+});
+
+/**
+ * How writes are uploaded. Production uses one multipart request (the client's default for small
+ * files). The Firebase Storage emulator can't parse client 9's multipart boundary, so against the
+ * emulator writes use a resumable upload. A stand-in server records what the client sends.
+ */
+describe("GcsObjectStorage writes", () => {
+  const data = Buffer.from([0, 1, 2, 3, 255, 254]);
+  const stored = {
+    name: "k",
+    bucket: "b",
+    size: String(data.length),
+    md5Hash: createHash("md5").update(data).digest("base64"),
+    crc32c: (() => {
+      const crc = new CRC32C();
+      crc.update(data);
+      return crc.toString();
+    })(),
+  };
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  /** Records each request; `respond` answers it. */
+  async function standIn(
+    respond: (
+      req: { method: string; url: string },
+      base: string,
+    ) => {
+      status: number;
+      headers?: Record<string, string>;
+      body?: unknown;
+    },
+  ) {
+    const requests: { method: string; url: string; contentType: string; body: Buffer }[] = [];
+    const server = createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (chunk: Buffer) => chunks.push(chunk));
+      req.on("end", () => {
+        const request = {
+          method: req.method ?? "",
+          url: req.url ?? "",
+          contentType: req.headers["content-type"] ?? "",
+          body: Buffer.concat(chunks),
+        };
+        requests.push(request);
+        const reply = respond(request, base);
+        res.writeHead(reply.status, { "content-type": "application/json", ...reply.headers });
+        res.end(JSON.stringify(reply.body ?? {}));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const base = `http://127.0.0.1:${String((server.address() as AddressInfo).port)}`;
+    return { base, requests, close: () => server.close() };
+  }
+
+  it("uses one multipart request in production", async () => {
+    const server = await standIn(() => ({ status: 200, body: stored }));
+    try {
+      vi.stubEnv("STORAGE_EMULATOR_HOST", undefined);
+      const client = new Storage({
+        apiEndpoint: server.base,
+        authClient: new PassThroughClient(),
+        projectId: "demo",
+      });
+      await new GcsObjectStorage(
+        { quarantine: "b", sensitive: "b", public_media: "b" },
+        client,
+      ).write("sensitive", "k", data, "application/octet-stream");
+
+      expect(server.requests).toHaveLength(1);
+      const [upload] = server.requests;
+      expect(upload?.method).toBe("POST");
+      expect(upload?.url).toContain("uploadType=multipart");
+      expect(upload?.contentType).toMatch(/^multipart\/related; boundary=/);
+      expect(upload?.body.includes(data)).toBe(true);
+      expect(upload?.body.toString()).toContain('"cacheControl":"private, no-store"');
+    } finally {
+      server.close();
+    }
+  });
+
+  it("uses a resumable upload against the emulator", async () => {
+    const server = await standIn((req, base) =>
+      req.method === "POST"
+        ? { status: 200, headers: { location: `${base}/upload/session-1` } }
+        : { status: 200, body: stored },
+    );
+    try {
+      vi.stubEnv("STORAGE_EMULATOR_HOST", server.base);
+      await new GcsObjectStorage(
+        { quarantine: "b", sensitive: "b", public_media: "b" },
+        storageClient("demo"),
+      ).write("sensitive", "k", data, "application/octet-stream");
+
+      const [start, ...rest] = server.requests;
+      expect(start?.method).toBe("POST");
+      expect(start?.url).toContain("uploadType=resumable");
+      expect(start?.contentType).not.toMatch(/^multipart/);
+      expect(rest.some((req) => req.method === "PUT" && req.body.equals(data))).toBe(true);
     } finally {
       server.close();
     }
