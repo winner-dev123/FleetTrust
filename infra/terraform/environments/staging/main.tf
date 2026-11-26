@@ -32,17 +32,18 @@ provider "google" {
 module "fleettrust" {
   source = "../../modules/fleettrust"
 
-  project_id         = var.project_id
-  environment        = "staging"
-  region             = var.region
-  github_repository  = var.github_repository
-  alert_email        = var.alert_email
-  billing_account    = var.billing_account
-  monthly_budget_usd = 200
-  web_origins        = var.web_origins
-  api_host           = var.api_host
-  web_host           = var.web_host
-  api_domain         = var.api_domain
+  project_id        = var.project_id
+  environment       = "staging"
+  region            = var.region
+  github_repository = var.github_repository
+  alert_email       = var.alert_email
+  billing_account   = var.billing_account
+  monthly_budget    = var.monthly_budget
+  budget_currency   = var.budget_currency
+  web_origins       = var.web_origins
+  api_host          = var.api_host
+  web_host          = var.web_host
+  api_domain        = var.api_domain
 
   db_tier              = "db-custom-1-3840"
   db_high_availability = false
