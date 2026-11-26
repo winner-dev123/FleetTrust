@@ -38,7 +38,7 @@ module "fleettrust" {
   github_repository  = var.github_repository
   alert_email        = var.alert_email
   billing_account    = var.billing_account
-  monthly_budget_usd = 100
+  monthly_budget_usd = 200
   web_origins        = var.web_origins
   api_host           = var.api_host
   web_host           = var.web_host
