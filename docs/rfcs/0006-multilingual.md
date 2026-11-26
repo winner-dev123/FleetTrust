@@ -17,12 +17,13 @@ FleetTrust would be offered in more than one language: first the interface (webs
 | Domain labels           | Central maps in `@fleettrust/types` (categories, vehicle types, consents, opening hours)           | Turn the maps into message keys                                                 |
 | Error messages          | Central reason → message map in the SDK (`packages/sdk/src/errors.ts`)                             | Message keys per reason                                                         |
 | Screen text, mobile app | **In the English catalog** `@fleettrust/copy`, enforced by `apps/mobile/test/copy-catalog.test.ts` | Message keys already in place                                                   |
-| Screen text, website    | **Mostly written inline in components**                                                            | Extract into the same catalog (the remaining task)                              |
+| Screen text, website    | **In the English catalog** `@fleettrust/copy`, enforced by `apps/web/src/copy-catalog.test.ts`     | Message keys already in place                                                   |
+| Legal documents         | Whole pages (terms, privacy, accessibility statement), not split into keys                         | Translated and legally reviewed as whole documents, one per language            |
 | Emails and push         | Built in the API in English                                                                        | Templates per locale                                                            |
 | `<html lang>`           | `"en"`                                                                                             | Set from the active locale                                                      |
 | Right-to-left scripts   | Not handled                                                                                        | Logical CSS properties and mirrored layouts (only if an RTL language is chosen) |
 
-SRS §7's "strings kept outside code" is therefore **met for the mobile app** and **partly met for the website** (labels, errors, formatting). The migration path starts by closing the website gap.
+SRS §7's "strings kept outside code" is therefore **met for the mobile app and the website**. Both guard tests fail on new inline text. The legal documents and the accessibility statement are the deliberate exception (principle 2): they are reviewed and translated as whole documents.
 
 ## Why it's excluded today, and preconditions
 
@@ -78,7 +79,7 @@ All notification texts flow through `NotificationsService` today, so it is the s
 
 ### Touch points in existing code
 
-The website and app components (string extraction), `NotificationsService` (templates), email builders, `format.ts`, the root layout's `<html lang>`, and account settings (a language picker).
+The English catalog `packages/copy` (already used by the website and the app), `NotificationsService` (templates), email builders, `format.ts`, the root layout's `<html lang>`, and account settings (a language picker).
 
 ## Event schemas
 
@@ -86,7 +87,7 @@ The website and app components (string extraction), `NotificationsService` (temp
 
 ## Migration path
 
-1. **Extract English first.** Move inline screen text into the English catalog (`packages/copy`) with no behaviour change; this closes the SRS §7 gap. **Done for the mobile app** (a guard test fails on new inline text there). The website is next, area by area, with the same guard.
+1. **Extract English first.** Move inline screen text into the English catalog (`packages/copy`) with no behaviour change; this closes the SRS §7 gap. **Done** for the mobile app and the website, each with a guard test that fails on new inline text.
 2. **Decide.** Choose the launch languages and the translation workflow. Write the ADR. The guard's i18n-framework block is narrowed to the chosen library.
 3. **Expand.** Add the `users.locale` column (nullable), the language picker, locale-aware `format.ts`, and per-locale notification templates.
 4. **Translate and review:** professional translation, legal review of the safety and legal texts, and a native-speaker pass on the main journeys (the same journeys as the accessibility manual checks).
@@ -110,5 +111,5 @@ The website and app components (string extraction), `NotificationsService` (temp
 ## Exit criteria (to leave Draft)
 
 - Launch languages and the translation workflow decided.
-- English extraction (step 1) planned with an estimate.
+- English extraction (step 1): done.
 - The ADR and guard change drafted with the first change.

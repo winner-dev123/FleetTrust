@@ -66,5 +66,5 @@ All paths share the release rules from [release-and-rollback.md](../operations/r
 ## Residual risks and follow-ups
 
 - **The guard works on names.** A determined implementation under neutral names could slip past it. Mitigation: ADR-0011 stays a review rule, and design reviews check new modules against SRS §9.
-- **Multilingual readiness is partial.** The mobile app's text is in the English catalog (`@fleettrust/copy`, guard-tested); the website's is still mostly inline (RFC-0006, "Where the code stands today"). Extracting it is in scope under SRS §7 and is the next follow-up, independent of choosing languages.
+- **Multilingual readiness: English extraction done.** The text of the mobile app and the website is in the English catalog (`@fleettrust/copy`), and both have guard tests. What remains is the owner's decision on languages and translation workflow (RFC-0006 step 2) before any translation work.
 - **RFCs age.** Revisit them at each roadmap review. The seams test fails if an event they rely on is renamed or removed, which keeps them honest.
