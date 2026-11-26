@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@fleettrust/config": "workspace:*",
-    "firebase-tools": "15.36.0",
+    "firebase-tools": "15.37.0",
     "prettier": "catalog:",
     "turbo": "catalog:",
     "typescript": "catalog:"

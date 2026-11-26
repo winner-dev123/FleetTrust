@@ -30,6 +30,10 @@ describe("GcsObjectStorage signed upload URLs", () => {
       { quarantine: "ft-quarantine", sensitive: "ft-sensitive", public_media: "ft-media" },
       new Storage({
         projectId: "demo-fleettrust",
+        // Deprecated because loading key material from outside sources is risky. This key is
+        // generated in memory by the test; V4 signing reads it only from here. Production
+        // uses the Cloud Run service account (no key at all).
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         credentials: {
           client_email: clientEmail,
           private_key: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),

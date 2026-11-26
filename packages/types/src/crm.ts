@@ -219,11 +219,11 @@ export const timeOffRequestSchema = z
   })
   .strict()
   .refine((v) => Date.parse(v.endsAt) > Date.parse(v.startsAt), {
-    message: "The end must be after the start",
+    error: "The end must be after the start",
     path: ["endsAt"],
   })
   .refine((v) => Date.parse(v.endsAt) - Date.parse(v.startsAt) <= MAX_TIME_OFF_DAYS * 86_400_000, {
-    message: `At most ${MAX_TIME_OFF_DAYS} days at a time`,
+    error: `At most ${MAX_TIME_OFF_DAYS} days at a time`,
     path: ["endsAt"],
   });
 

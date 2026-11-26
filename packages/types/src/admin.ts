@@ -377,5 +377,5 @@ export const supportLookupSchema = z
   .object({ email: z.email().max(254).optional(), userId: z.uuid().optional() })
   .strict()
   .refine((value) => (value.email === undefined) !== (value.userId === undefined), {
-    message: "Search by email or by user ID",
+    error: "Search by email or by user ID",
   });

@@ -22,9 +22,9 @@ const clockTime = z
 export const hoursIntervalSchema = z
   .object({ opens: clockTime, closes: clockTime })
   .strict()
-  .refine((i) => i.opens !== "24:00", { message: "Opening time can't be 24:00", path: ["opens"] })
+  .refine((i) => i.opens !== "24:00", { error: "Opening time can't be 24:00", path: ["opens"] })
   .refine((i) => i.opens !== i.closes, {
-    message: "Opening and closing times are the same (use 00:00–24:00 for all day)",
+    error: "Opening and closing times are the same (use 00:00–24:00 for all day)",
     path: ["closes"],
   });
 export type HoursInterval = z.infer<typeof hoursIntervalSchema>;

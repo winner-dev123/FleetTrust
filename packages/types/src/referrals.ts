@@ -71,7 +71,7 @@ export const createReferralSchema = z
   .strict()
   .refine((v) => (v.relationship === "none") === (v.relationshipDetails === null), {
     path: ["relationshipDetails"],
-    message: "Describe the relationship (and only when there is one)",
+    error: "Describe the relationship (and only when there is one)",
   });
 export type CreateReferral = z.input<typeof createReferralSchema>;
 

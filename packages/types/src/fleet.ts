@@ -119,7 +119,7 @@ export const expenseRequestSchema = z
   .strict()
   .refine((v) => v.litres === null || v.category === "fuel", {
     path: ["litres"],
-    message: "Only fuel records carry litres",
+    error: "Only fuel records carry litres",
   });
 export type ExpenseRequest = z.input<typeof expenseRequestSchema>;
 

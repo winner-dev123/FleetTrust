@@ -45,7 +45,7 @@ export const routeSearchRequestSchema = z
   .strict()
   .refine((r) => r.origin.lng !== r.destination.lng || r.origin.lat !== r.destination.lat, {
     path: ["destination"],
-    message: "Origin and destination are the same",
+    error: "Origin and destination are the same",
   });
 export type RouteSearchRequest = z.input<typeof routeSearchRequestSchema>;
 
