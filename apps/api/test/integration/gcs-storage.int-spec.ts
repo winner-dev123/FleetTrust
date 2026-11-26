@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { Storage } from "@google-cloud/storage";
 import { describe, expect, it } from "vitest";
 
-import { GcsObjectStorage } from "../../src/platform/storage/index.js";
+import { GcsObjectStorage, storageClient } from "../../src/platform/storage/index.js";
 
 /**
  * The production Cloud Storage adapter against the Firebase Storage emulator (CI's
@@ -20,7 +19,7 @@ describe.skipIf(!emulator)("GcsObjectStorage against the Storage emulator", () =
   const bucket = "demo-fleettrust.appspot.com";
   const storage = new GcsObjectStorage(
     { quarantine: bucket, sensitive: bucket, public_media: bucket },
-    new Storage({ projectId: "demo-fleettrust" }),
+    storageClient("demo-fleettrust"),
   );
 
   it("writes, inspects, reads and deletes objects", async () => {

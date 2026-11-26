@@ -1,4 +1,4 @@
-export { GcsObjectStorage } from "./gcs-storage.js";
+export { GcsObjectStorage, storageClient } from "./gcs-storage.js";
 export { MemoryObjectStorage } from "./memory-storage.js";
 export {
   type BucketClass,

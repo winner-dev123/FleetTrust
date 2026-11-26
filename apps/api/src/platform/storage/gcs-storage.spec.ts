@@ -1,9 +1,11 @@
 import { createHash, createVerify, generateKeyPairSync } from "node:crypto";
+import { createServer, type IncomingHttpHeaders } from "node:http";
+import type { AddressInfo } from "node:net";
 
 import { Storage } from "@google-cloud/storage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { GcsObjectStorage } from "./gcs-storage.js";
+import { GcsObjectStorage, storageClient } from "./gcs-storage.js";
 
 /**
  * V4 signed upload URLs from the real client library, signed offline with a throwaway key.
@@ -104,5 +106,42 @@ describe("GcsObjectStorage signed upload URLs", () => {
     expect(accepts(upload.url, { contentType: "image/jpeg", range: "1,100" })).toBe(true);
     expect(accepts(upload.url, { contentType: "image/jpeg", range: "1,999999999" })).toBe(false);
     expect(accepts(upload.url, { contentType: "text/html", range: "1,100" })).toBe(false);
+  });
+});
+
+/**
+ * Against the emulator the client must not look for Google credentials (none exist locally or
+ * in CI). Client 9 sends every request through Google auth, so storageClient() opts out.
+ * A stand-in server answers like the emulator for a missing object.
+ */
+describe("storageClient against the emulator", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("talks to STORAGE_EMULATOR_HOST without credentials", async () => {
+    const seen: IncomingHttpHeaders[] = [];
+    const server = createServer((req, res) => {
+      seen.push(req.headers);
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: { code: 404, message: "Not Found" } }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const { port } = server.address() as AddressInfo;
+      vi.stubEnv("STORAGE_EMULATOR_HOST", `http://127.0.0.1:${String(port)}`);
+      vi.stubEnv("GOOGLE_APPLICATION_CREDENTIALS", undefined);
+      const bucket = "demo-fleettrust.appspot.com";
+      const storage = new GcsObjectStorage(
+        { quarantine: bucket, sensitive: bucket, public_media: bucket },
+        storageClient("demo-fleettrust"),
+      );
+
+      expect(await storage.head("sensitive", "missing")).toBeNull();
+      expect(seen).toHaveLength(1);
+      expect(seen[0]?.authorization).toBeUndefined();
+    } finally {
+      server.close();
+    }
   });
 });

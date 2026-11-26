@@ -1,4 +1,5 @@
 import { type Bucket, Storage } from "@google-cloud/storage";
+import { PassThroughClient } from "google-auth-library";
 
 import type { BucketClass, ObjectInfo, ObjectStorage, UploadUrl } from "./object-storage.js";
 
@@ -8,12 +9,24 @@ import type { BucketClass, ObjectInfo, ObjectStorage, UploadUrl } from "./object
  * the client talks to the Firebase Storage emulator instead (read/write/delete only: the
  * emulator doesn't verify signatures, see ADR-0012).
  */
+/**
+ * The Cloud Storage client. On Cloud Run it uses the runtime service account. Against the
+ * emulator (STORAGE_EMULATOR_HOST) requests carry no credentials: since client 9 every request
+ * goes through Google auth, which would otherwise look for real credentials and fail locally.
+ */
+export function storageClient(emulatorProjectId: string): Storage {
+  if (process.env["STORAGE_EMULATOR_HOST"]) {
+    return new Storage({ authClient: new PassThroughClient(), projectId: emulatorProjectId });
+  }
+  return new Storage();
+}
+
 export class GcsObjectStorage implements ObjectStorage {
   private readonly buckets: Record<BucketClass, Bucket>;
 
   constructor(
     private readonly names: Record<BucketClass, string>,
-    storage: Storage = new Storage(),
+    storage: Storage,
     /** CDN origin for public media; defaults to the bucket's storage.googleapis.com URL. */
     private readonly publicBaseUrl?: string,
   ) {
