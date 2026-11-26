@@ -43,9 +43,9 @@ FleetTrust runs in three kinds of environment. Each deployed environment is a se
 | Worker          | 1 instance, CPU always on  | 1–2 instances, CPU always on   |
 | ClamAV          | e2-medium VM               | e2-medium VM                   |
 | Website         | App Hosting, 0–4 instances | App Hosting, 1–10 instances    |
-| Budget alert    | USD 100 / month            | USD 200 / month                |
+| Budget alert    | USD 200 / month            | USD 200 / month                |
 
-These are starting points. The budget alerts at 50, 90 and 100 % tell you when to revisit them. Check prices in the Google Cloud pricing calculator before applying. Creating these resources starts billing (owner decision).
+These are starting points. Staging's always-on parts (database, Redis, ClamAV VM, NAT, worker) are estimated at about USD 150–200 a month (2026-11), so its budget is USD 200, not 100. Production costs more (regional database, HA Redis, a warm API instance): estimate it before applying and raise its budget to match. The budget alerts at 50, 90 and 100 % tell you when to revisit them. Check prices in the Google Cloud pricing calculator before applying. Creating these resources starts billing (owner decision).
 
 ## One-time setup (owner, per environment)
 

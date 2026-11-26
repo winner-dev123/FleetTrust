@@ -45,6 +45,7 @@ ui-debug.log
 *.tfvars
 !*.tfvars.example
 backend.hcl
+*.tfplan
 
 # OS / editor
 .DS_Store
