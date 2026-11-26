@@ -2,6 +2,8 @@
 project_id      = "fleettrust-production"
 alert_email     = "ops@example.com"
 billing_account = "" # XXXXXX-XXXXXX-XXXXXX to enable the budget alert
+budget_currency = "USD" # must be the billing account's currency (Billing > Account management)
+monthly_budget  = 200   # in budget_currency
 web_origins     = ["https://example.com"]
 api_host        = "" # e.g. api.example.com, after the first deploy
 web_host        = "" # e.g. example.com, after the first deploy

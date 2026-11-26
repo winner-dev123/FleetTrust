@@ -5,7 +5,7 @@ FleetTrust runs in three kinds of environment. Each deployed environment is a se
 | Environment | Where                                                          | Data                                                    | Who deploys                                                                                               |
 | ----------- | -------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Local / CI  | Laptop (Docker Compose + Firebase emulators) or GitHub Actions | Generated test data only                                | Anyone                                                                                                    |
-| Staging     | Project `fleettrust-staging`, region `europe-west1`            | Test accounts and test data; **never real users' data** | Automatically on every merge to `main` ([deploy-staging.yml](../../.github/workflows/deploy-staging.yml)) |
+| Staging     | Project `fleettrust-staging-eu1`, region `europe-west1`        | Test accounts and test data; **never real users' data** | Automatically on every merge to `main` ([deploy-staging.yml](../../.github/workflows/deploy-staging.yml)) |
 | Production  | Project `fleettrust-production`, region `europe-west1`         | Real users                                              | A person, with approval ([deploy-production.yml](../../.github/workflows/deploy-production.yml))          |
 
 **Region:** `europe-west1` (Belgium), the owner's decision for Prompt 29 (OQ-02, GDPR). It is a single Terraform variable.
@@ -35,15 +35,16 @@ FleetTrust runs in three kinds of environment. Each deployed environment is a se
 
 ## Sizing and cost (OQ-07)
 
-| Item            | Staging                    | Production                     |
-| --------------- | -------------------------- | ------------------------------ |
-| Cloud SQL       | 1 vCPU / 3.75 GB, zonal    | 2 vCPU / 7.5 GB, regional (HA) |
-| Redis           | Basic, 1 GB                | Standard HA, 1 GB              |
-| API (Cloud Run) | 0–4 instances              | 1–10 instances (one warm)      |
-| Worker          | 1 instance, CPU always on  | 1–2 instances, CPU always on   |
-| ClamAV          | e2-medium VM               | e2-medium VM                   |
-| Website         | App Hosting, 0–4 instances | App Hosting, 1–10 instances    |
-| Budget alert    | USD 200 / month            | USD 200 / month                |
+| Item            | Staging                                                                                                      | Production                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| Cloud SQL       | 1 vCPU / 3.75 GB, zonal                                                                                      | 2 vCPU / 7.5 GB, regional (HA) |
+| Redis           | Basic, 1 GB                                                                                                  | Standard HA, 1 GB              |
+| API (Cloud Run) | 0–4 instances                                                                                                | 1–10 instances (one warm)      |
+| Worker          | 1 instance, CPU always on                                                                                    | 1–2 instances, CPU always on   |
+| ClamAV          | e2-medium VM                                                                                                 | e2-medium VM                   |
+| Website         | App Hosting, 0–4 instances                                                                                   | App Hosting, 1–10 instances    |
+| Budget alert    | USD 200 / month                                                                                              | USD 200 / month                |
+| Budget currency | The billing account's own (`budget_currency`; Google rejects any other), so convert: e.g. BRL 1100 ≈ USD 200 | Same                           |
 
 These are starting points. Staging's always-on parts (database, Redis, ClamAV VM, NAT, worker) are estimated at about USD 150–200 a month (2026-11), so its budget is USD 200, not 100. Production costs more (regional database, HA Redis, a warm API instance): estimate it before applying and raise its budget to match. The budget alerts at 50, 90 and 100 % tell you when to revisit them. Check prices in the Google Cloud pricing calculator before applying. Creating these resources starts billing (owner decision).
 
@@ -51,7 +52,7 @@ These are starting points. Staging's always-on parts (database, Redis, ClamAV VM
 
 Do staging first, release to it, then repeat for production.
 
-1. **Project and billing.** Create the project, link the billing account, and install `gcloud` and Terraform 1.17.
+1. **Project and billing.** Create the project (project IDs are global: `fleettrust-staging` was taken, so staging is `fleettrust-staging-eu1`; check production's ID is free), link the billing account, and install `gcloud` and Terraform 1.17.
 2. **State bucket.** Create it by hand: see `backend.hcl.example` in the environment folder. Access is limited to operators, because the state contains the generated passwords.
 3. **Variables.** Copy `<env>.tfvars.example` to `<env>.tfvars` and fill in the project ID, alert email, billing account and website origin. These files are not committed.
 4. **Apply.**

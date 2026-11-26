@@ -26,6 +26,18 @@ variable "billing_account" {
   default     = ""
 }
 
+variable "monthly_budget" {
+  description = "Monthly budget alert amount, in budget_currency."
+  type        = number
+  default     = 200
+}
+
+variable "budget_currency" {
+  description = "The billing account's currency (e.g. USD, EUR, BRL); Google rejects any other."
+  type        = string
+  default     = "USD"
+}
+
 variable "web_origins" {
   description = "Website origins allowed to upload with signed URLs."
   type        = list(string)

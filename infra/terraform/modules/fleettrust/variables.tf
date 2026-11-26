@@ -36,10 +36,21 @@ variable "billing_account" {
   default     = ""
 }
 
-variable "monthly_budget_usd" {
-  description = "Monthly budget for this project (OQ-07). Alerts at 50, 90 and 100 %."
+variable "monthly_budget" {
+  description = "Monthly budget for this project (OQ-07), in budget_currency. Alerts at 50, 90 and 100 %."
   type        = number
   default     = 100
+}
+
+variable "budget_currency" {
+  description = "Currency of the budget. Must be the billing account's own currency (Google rejects any other)."
+  type        = string
+  default     = "USD"
+
+  validation {
+    condition     = can(regex("^[A-Z]{3}$", var.budget_currency))
+    error_message = "budget_currency must be an ISO 4217 code such as USD, EUR or BRL."
+  }
 }
 
 # --- Database ------------------------------------------------------------------------------------
