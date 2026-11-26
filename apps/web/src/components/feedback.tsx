@@ -44,7 +44,7 @@ export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () =
   );
 }
 
-export function Loading({ label = "Loading…" }: { label?: string }) {
+export function Loading({ label = copy.common.loading }: { label?: string }) {
   return (
     <p role="status" aria-live="polite" className="muted">
       {label}

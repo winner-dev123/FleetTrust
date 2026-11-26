@@ -96,12 +96,12 @@ The English catalog `packages/copy` (already used by the website and the app), `
 
 ## Risks
 
-| Risk                                 | Mitigation                                                                              |
-| ------------------------------------ | --------------------------------------------------------------------------------------- |
-| Mistranslated safety or legal text   | Professional translation plus legal review; English fallback, never a machine guess     |
-| Partial translations confusing users | Launch a language only at 100 % of the main journeys; fallback to English per string    |
-| Layout breakage (long words, RTL)    | Playwright journeys per locale; logical CSS properties                                  |
-| Catalog drift                        | Typed keys; CI check that every key exists in English and that unused keys are reported |
+| Risk                                 | Mitigation                                                                                                                                |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Mistranslated safety or legal text   | Professional translation plus legal review; English fallback, never a machine guess                                                       |
+| Partial translations confusing users | Launch a language only at 100 % of the main journeys; fallback to English per string                                                      |
+| Layout breakage (long words, RTL)    | Playwright journeys per locale; logical CSS properties                                                                                    |
+| Catalog drift                        | Typed keys (a missing English key fails the typecheck); the repository guard fails on unused keys (`tools/repo-guards/src/copy-usage.ts`) |
 
 ## Open questions
 

@@ -86,6 +86,19 @@ function inlineText(path: string): Finding[] {
     ) {
       report(node, node.initializer.text);
     }
+    if (
+      (ts.isBindingElement(node) || ts.isParameter(node)) &&
+      ts.isIdentifier(node.name) &&
+      TEXT_PROPS.has(node.name.text) &&
+      node.initializer &&
+      (ts.isStringLiteral(node.initializer) ||
+        ts.isNoSubstitutionTemplateLiteral(node.initializer)) &&
+      /[A-Za-z]{2,}/.test(node.initializer.text) &&
+      !SENTENCE.test(node.initializer.text)
+    ) {
+      // A default text prop value, e.g. `{ label = "Loading…" }`.
+      report(node, node.initializer.text);
+    }
     if (ts.isTemplateExpression(node) && /^[A-Z][A-Za-z']* /.test(node.head.text)) {
       report(node, node.getText());
     }

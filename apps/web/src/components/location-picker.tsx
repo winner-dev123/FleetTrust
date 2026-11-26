@@ -23,7 +23,7 @@ export interface PickedLocation {
 export function LocationPicker({
   value,
   onChange,
-  label = "Location",
+  label = copy.web.location.label,
   hint,
 }: {
   value: PickedLocation | null;

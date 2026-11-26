@@ -71,6 +71,7 @@ export const web = {
   },
 
   location: {
+    label: "Location",
     browserCannot: "This browser can't share a location. Type a place instead.",
     current: "Your current location",
     notShared: "Location wasn't shared. Type a place instead.",
@@ -187,9 +188,7 @@ export const web = {
 
   reportWhat: {
     article: "article",
-    comment: "comment",
     job: "job listing",
-    provider: "provider",
   },
 
   article: {
