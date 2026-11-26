@@ -24,7 +24,7 @@ import type { ApiEnv } from "../../config/env.js";
 import { Public } from "../../modules/identity/index.js";
 import { KEY_WRAPPER, KmsKeyWrapper, LocalKeyWrapper } from "../crypto/envelope.js";
 import { ClamAvScanner, EicarOnlyScanner, MALWARE_SCANNER } from "../scanning/malware-scanner.js";
-import { GcsObjectStorage } from "./gcs-storage.js";
+import { GcsObjectStorage, storageClient } from "./gcs-storage.js";
 import { MemoryObjectStorage } from "./memory-storage.js";
 import { OBJECT_STORAGE, type ObjectStorage } from "./object-storage.js";
 
@@ -102,7 +102,7 @@ export class StorageModule {
                     sensitive: env.STORAGE_SENSITIVE_BUCKET ?? "",
                     public_media: env.STORAGE_PUBLIC_MEDIA_BUCKET ?? "",
                   },
-                  undefined,
+                  storageClient(env.FIREBASE_PROJECT_ID),
                   env.PUBLIC_MEDIA_BASE_URL,
                 ),
         },
