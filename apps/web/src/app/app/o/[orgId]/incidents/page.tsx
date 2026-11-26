@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { FLEET_INCIDENT_KINDS, FLEET_INCIDENT_SEVERITIES } from "@fleettrust/types";
 import { type SubmitEvent, use, useState } from "react";
 
@@ -12,6 +13,8 @@ import { errorMessage } from "@fleettrust/sdk";
 import { formatDateTime, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.org.incidents;
 
 type Kind = (typeof FLEET_INCIDENT_KINDS)[number];
 type Severity = (typeof FLEET_INCIDENT_SEVERITIES)[number];
@@ -37,11 +40,11 @@ export default function FleetIncidentsPage(props: PageProps<"/app/o/[orgId]/inci
   async function report(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!vehicleId) {
-      setMessage({ ok: false, text: "Choose the vehicle." });
+      setMessage({ ok: false, text: t.chooseVehicle });
       return;
     }
     if (description.trim().length < 5) {
-      setMessage({ ok: false, text: "Describe what happened (at least 5 characters)." });
+      setMessage({ ok: false, text: t.describeTooShort });
       return;
     }
     try {
@@ -55,7 +58,7 @@ export default function FleetIncidentsPage(props: PageProps<"/app/o/[orgId]/inci
       });
       setDescription("");
       setWhere("");
-      setMessage({ ok: true, text: "Incident recorded." });
+      setMessage({ ok: true, text: t.recorded });
       data.reload();
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
@@ -64,53 +67,57 @@ export default function FleetIncidentsPage(props: PageProps<"/app/o/[orgId]/inci
 
   return (
     <>
-      <PageHeader
-        title="Fleet incidents"
-        description="For someone in danger right now, use Emergency instead."
-      />
+      <PageHeader title={t.title} description={t.description} />
       {data.status === "loading" ? <Loading /> : null}
       {data.status === "error" ? <ErrorNotice error={data.error} onRetry={data.reload} /> : null}
       {data.status === "ready" ? (
         <>
           {data.data.incidents.length === 0 ? (
-            <EmptyState title="No incidents recorded" />
+            <EmptyState title={t.empty} />
           ) : (
             <ul className="list-plain">
               {data.data.incidents.map((incident) => (
                 <li key={incident.id} className="card">
                   <p style={{ margin: 0 }}>
                     <strong>
-                      {titleCase(incident.kind)} · {incident.vehicle.name}
+                      {fill(t.heading, {
+                        kind: titleCase(incident.kind),
+                        vehicle: incident.vehicle.name,
+                      })}
                     </strong>{" "}
                     <Badge tone={incident.status === "open" ? "caution" : "neutral"}>
                       {titleCase(incident.status)}
                     </Badge>{" "}
                     <Badge tone={incident.severity === "high" ? "danger" : "neutral"}>
-                      {titleCase(incident.severity)} severity
+                      {fill(t.severity, { severity: titleCase(incident.severity) })}
                     </Badge>
                   </p>
                   <p style={{ margin: 0 }}>{incident.description}</p>
                   <p className="small muted" style={{ margin: 0 }}>
-                    {formatDateTime(incident.occurredAt)}
-                    {incident.location ? ` · ${incident.location}` : ""} · reported by{" "}
-                    {incident.reportedBy.name}
+                    {[
+                      formatDateTime(incident.occurredAt),
+                      incident.location,
+                      fill(t.reportedBy, { name: incident.reportedBy.name }),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 </li>
               ))}
             </ul>
           )}
-          <Card title="Record an incident">
+          <Card title={t.record}>
             <form className="stack" onSubmit={(event) => void report(event)} noValidate>
               <div className="grid">
                 <SelectField
-                  label="Vehicle"
+                  label={t.vehicle}
                   required
                   value={vehicleId}
                   onChange={(event) => {
                     setVehicleId(event.target.value);
                   }}
                   options={[
-                    { value: "", label: "Choose a vehicle" },
+                    { value: "", label: t.vehiclePlaceholder },
                     ...data.data.vehicles.map((vehicle) => ({
                       value: vehicle.id,
                       label: vehicleName(vehicle),
@@ -118,7 +125,7 @@ export default function FleetIncidentsPage(props: PageProps<"/app/o/[orgId]/inci
                   ]}
                 />
                 <SelectField
-                  label="What happened"
+                  label={t.whatHappened}
                   required
                   value={kind}
                   onChange={(event) => {
@@ -132,7 +139,7 @@ export default function FleetIncidentsPage(props: PageProps<"/app/o/[orgId]/inci
                   }))}
                 />
                 <SelectField
-                  label="Severity"
+                  label={t.severityLabel}
                   required
                   value={severity}
                   onChange={(event) => {
@@ -146,7 +153,7 @@ export default function FleetIncidentsPage(props: PageProps<"/app/o/[orgId]/inci
                   }))}
                 />
                 <TextField
-                  label="Where"
+                  label={t.where}
                   maxLength={200}
                   value={where}
                   onChange={(event) => {
@@ -155,7 +162,7 @@ export default function FleetIncidentsPage(props: PageProps<"/app/o/[orgId]/inci
                 />
               </div>
               <TextArea
-                label="Description"
+                label={t.descriptionLabel}
                 required
                 maxLength={2000}
                 value={description}
@@ -169,7 +176,7 @@ export default function FleetIncidentsPage(props: PageProps<"/app/o/[orgId]/inci
                 </Notice>
               ) : null}
               <div>
-                <Button type="submit">Record incident</Button>
+                <Button type="submit">{t.submit}</Button>
               </div>
             </form>
           </Card>

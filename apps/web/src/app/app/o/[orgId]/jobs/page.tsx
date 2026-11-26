@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill, plural } from "@fleettrust/copy";
 import { EMPLOYMENT_TYPES, JOB_ROLES, jobWarnings } from "@fleettrust/types";
 import Link from "next/link";
 import { type SubmitEvent, use, useState } from "react";
@@ -12,6 +13,8 @@ import { errorMessage } from "@fleettrust/sdk";
 import { formatDate, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.org.jobs;
 
 type Role = (typeof JOB_ROLES)[number];
 type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
@@ -46,12 +49,12 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
     if (title.trim().length < 5 || description.trim().length < 50) {
       setMessage({
         ok: false,
-        text: "Title: at least 5 characters. Description: at least 50 characters.",
+        text: t.tooShort,
       });
       return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(closesOn)) {
-      setMessage({ ok: false, text: "Choose a closing date." });
+      setMessage({ ok: false, text: t.closingDateMissing });
       return;
     }
     void act(async () => {
@@ -66,15 +69,12 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
       });
       setTitle("");
       setDescription("");
-    }, "Draft saved. Publish it when ready.");
+    }, t.draftSaved);
   }
 
   return (
     <>
-      <PageHeader
-        title="Jobs"
-        description="Post jobs for drivers, mechanics and fleet staff. Free for applicants."
-      />
+      <PageHeader title={t.title} description={t.description} />
       {message ? (
         <Notice tone={message.ok ? "success" : "danger"} live="polite">
           <p>{message.text}</p>
@@ -84,7 +84,7 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
       {jobs.status === "error" ? <ErrorNotice error={jobs.error} onRetry={jobs.reload} /> : null}
       {jobs.status === "ready" ? (
         jobs.data.length === 0 ? (
-          <EmptyState title="No jobs yet" />
+          <EmptyState title={t.empty} />
         ) : (
           <ul className="list-plain">
             {jobs.data.map((job) => (
@@ -93,31 +93,33 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
                   <strong>{job.title}</strong> <Badge>{titleCase(job.status)}</Badge>
                 </p>
                 <p className="small muted" style={{ margin: 0 }}>
-                  {job.locality} · closes {formatDate(job.closesOn)} ·{" "}
-                  {String(job.applications.total)} applications (
-                  {String(job.applications.submitted)} new)
+                  {plural(job.applications.total, t.summary, {
+                    locality: job.locality,
+                    date: formatDate(job.closesOn),
+                    submitted: job.applications.submitted,
+                  })}
                 </p>
                 {job.moderationNote ? (
                   <p className="small" style={{ margin: 0 }}>
-                    Moderator: {job.moderationNote}
+                    {fill(t.moderator, { note: job.moderationNote })}
                   </p>
                 ) : null}
                 <div className="cluster">
                   {job.status === "draft" || job.status === "rejected" ? (
                     <Button
-                      onClick={() => void act(() => api.publishJob(orgId, job.id), "Submitted.")}
+                      onClick={() => void act(() => api.publishJob(orgId, job.id), t.submitted)}
                     >
-                      Publish {job.title}
+                      {fill(t.publish, { title: job.title })}
                     </Button>
                   ) : null}
                   {job.status === "published" ? (
                     <>
-                      <Link href={`/jobs/${job.id}`}>View listing</Link>
+                      <Link href={`/jobs/${job.id}`}>{t.viewListing}</Link>
                       <Button
                         variant="ghost"
-                        onClick={() => void act(() => api.closeJob(orgId, job.id), "Job closed.")}
+                        onClick={() => void act(() => api.closeJob(orgId, job.id), t.closed)}
                       >
-                        Close {job.title}
+                        {fill(t.close, { title: job.title })}
                       </Button>
                     </>
                   ) : null}
@@ -127,10 +129,10 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
           </ul>
         )
       ) : null}
-      <Card title="New job">
+      <Card title={t.newJob}>
         <form className="stack" onSubmit={create} noValidate>
           <TextField
-            label="Job title"
+            label={t.jobTitle}
             required
             maxLength={120}
             value={title}
@@ -139,8 +141,8 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
             }}
           />
           <TextArea
-            label="Description"
-            hint="Duties, requirements, hours and how you'll contact applicants (at least 50 characters)."
+            label={t.descriptionLabel}
+            hint={t.descriptionHint}
             required
             maxLength={5000}
             value={description}
@@ -150,15 +152,12 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
           />
           {warnings.length > 0 ? (
             <Notice tone="caution">
-              <p>
-                This listing mentions fees or deposits. Listings that ask applicants to pay are
-                checked by a moderator before they appear, and may be refused.
-              </p>
+              <p>{t.feeWarning}</p>
             </Notice>
           ) : null}
           <div className="grid">
             <SelectField
-              label="Role"
+              label={t.role}
               required
               value={role}
               onChange={(event) => {
@@ -167,18 +166,18 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
               options={JOB_ROLES.map((value) => ({ value, label: titleCase(value) }))}
             />
             <SelectField
-              label="Type"
+              label={t.type}
               required
               value={employmentType}
               onChange={(event) => {
                 setEmploymentType(
-                  EMPLOYMENT_TYPES.find((t) => t === event.target.value) ?? "full_time",
+                  EMPLOYMENT_TYPES.find((type) => type === event.target.value) ?? "full_time",
                 );
               }}
               options={EMPLOYMENT_TYPES.map((value) => ({ value, label: titleCase(value) }))}
             />
             <TextField
-              label="Town"
+              label={t.town}
               required
               maxLength={80}
               value={locality}
@@ -187,7 +186,7 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
               }}
             />
             <TextField
-              label="Country code"
+              label={t.countryCode}
               required
               maxLength={2}
               value={countryCode}
@@ -196,7 +195,7 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
               }}
             />
             <TextField
-              label="Closing date"
+              label={t.closingDate}
               type="date"
               required
               value={closesOn}
@@ -206,7 +205,7 @@ export default function EmployerJobsPage(props: PageProps<"/app/o/[orgId]/jobs">
             />
           </div>
           <div>
-            <Button type="submit">Save draft</Button>
+            <Button type="submit">{t.saveDraft}</Button>
           </div>
         </form>
       </Card>

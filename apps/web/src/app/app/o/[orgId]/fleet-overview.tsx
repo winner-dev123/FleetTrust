@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import type { MyOrganization } from "@fleettrust/types";
 import Link from "next/link";
 
@@ -9,6 +10,8 @@ import { Card, PageHeader, Stat } from "@/components/layout";
 import { formatDate, titleCase } from "@fleettrust/types";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.org.fleet;
 
 /** Fleet dashboard: vehicles, maintenance, documents, incidents, requests and recorded spending. */
 export function FleetOverview({ membership }: { membership: MyOrganization }) {
@@ -20,10 +23,10 @@ export function FleetOverview({ membership }: { membership: MyOrganization }) {
     <>
       <PageHeader
         title={membership.organization.name}
-        description="Fleet dashboard"
+        description={t.description}
         actions={
           membership.permissions.includes("vehicles.manage") ? (
-            <ButtonLink href={`/app/o/${orgId}/vehicles`}>Vehicles</ButtonLink>
+            <ButtonLink href={`/app/o/${orgId}/vehicles`}>{t.vehiclesAction}</ButtonLink>
           ) : null
         }
       />
@@ -34,55 +37,50 @@ export function FleetOverview({ membership }: { membership: MyOrganization }) {
       {dashboard.status === "ready" ? (
         <>
           <p className="small muted">
-            Last {dashboard.data.window.days} days ({formatDate(dashboard.data.window.from)} to{" "}
-            {formatDate(dashboard.data.window.to)})
-            {dashboard.data.branchId ? " · your branch only" : ""}
+            {fill(t.window, {
+              days: dashboard.data.window.days,
+              from: formatDate(dashboard.data.window.from),
+              to: formatDate(dashboard.data.window.to),
+            })}
+            {dashboard.data.branchId ? ` · ${t.branchOnly}` : ""}
           </p>
           <div className="grid">
-            <Card title="Vehicles">
-              <Stat label="active" value={dashboard.data.vehicles.active} />
-              <Stat label="with a driver" value={dashboard.data.vehicles.withDriver} />
+            <Card title={t.vehicles}>
+              <Stat label={t.vehiclesActive} value={dashboard.data.vehicles.active} />
+              <Stat label={t.vehiclesWithDriver} value={dashboard.data.vehicles.withDriver} />
             </Card>
-            <Card title="Maintenance">
-              <Stat label="overdue" value={dashboard.data.maintenance.overdue} />
-              <Stat label="due soon" value={dashboard.data.maintenance.dueSoon} />
+            <Card title={t.maintenance}>
+              <Stat label={t.overdue} value={dashboard.data.maintenance.overdue} />
+              <Stat label={t.dueSoon} value={dashboard.data.maintenance.dueSoon} />
             </Card>
-            <Card title="Documents">
-              <Stat label="expired" value={dashboard.data.documents.expired} />
-              <Stat
-                label="expiring within 30 days"
-                value={dashboard.data.documents.expiringWithin30Days}
-              />
+            <Card title={t.documents}>
+              <Stat label={t.expired} value={dashboard.data.documents.expired} />
+              <Stat label={t.expiringSoon} value={dashboard.data.documents.expiringWithin30Days} />
             </Card>
-            <Card title="Incidents">
-              <Stat label="open" value={dashboard.data.incidents.open} />
-              <Stat label="high severity, open" value={dashboard.data.incidents.highSeverityOpen} />
+            <Card title={t.incidents}>
+              <Stat label={t.incidentsOpen} value={dashboard.data.incidents.open} />
+              <Stat label={t.incidentsHigh} value={dashboard.data.incidents.highSeverityOpen} />
               <p style={{ marginBottom: 0 }}>
-                <Link href={`/app/o/${orgId}/incidents`}>See incidents</Link>
+                <Link href={`/app/o/${orgId}/incidents`}>{t.seeIncidents}</Link>
               </p>
             </Card>
-            <Card title="Service requests">
-              <Stat label="open" value={dashboard.data.serviceRequests.open} />
-              <Stat label="accepted" value={dashboard.data.serviceRequests.accepted} />
+            <Card title={t.requests}>
+              <Stat label={t.requestsOpen} value={dashboard.data.serviceRequests.open} />
+              <Stat label={t.requestsAccepted} value={dashboard.data.serviceRequests.accepted} />
             </Card>
           </div>
 
           {dashboard.data.maintenance.items.length > 0 ? (
-            <Card title="Maintenance needing attention">
-              <div
-                className="table-wrap"
-                tabIndex={0}
-                role="region"
-                aria-label="Maintenance needing attention"
-              >
+            <Card title={t.attention}>
+              <div className="table-wrap" tabIndex={0} role="region" aria-label={t.attention}>
                 <table className="table">
-                  <caption className="visually-hidden">Maintenance needing attention</caption>
+                  <caption className="visually-hidden">{t.attention}</caption>
                   <thead>
                     <tr>
-                      <th scope="col">Vehicle</th>
-                      <th scope="col">Item</th>
-                      <th scope="col">Due</th>
-                      <th scope="col">Status</th>
+                      <th scope="col">{t.vehicle}</th>
+                      <th scope="col">{t.item}</th>
+                      <th scope="col">{t.due}</th>
+                      <th scope="col">{t.status}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -95,14 +93,14 @@ export function FleetOverview({ membership }: { membership: MyOrganization }) {
                         <td>
                           {[
                             item.nextDueOn ? formatDate(item.nextDueOn) : null,
-                            item.nextDueKm !== null ? `${String(item.nextDueKm)} km` : null,
+                            item.nextDueKm !== null ? fill(t.km, { km: item.nextDueKm }) : null,
                           ]
                             .filter(Boolean)
-                            .join(" or ") || "—"}
+                            .join(` ${t.or} `) || "—"}
                         </td>
                         <td>
                           <Badge tone={item.status === "overdue" ? "danger" : "caution"}>
-                            {item.status === "overdue" ? "Overdue" : "Due soon"}
+                            {item.status === "overdue" ? t.statusOverdue : t.statusDueSoon}
                           </Badge>
                         </td>
                       </tr>
@@ -113,26 +111,33 @@ export function FleetOverview({ membership }: { membership: MyOrganization }) {
             </Card>
           ) : null}
 
-          <Card title="Recorded spending">
+          <Card title={t.spending}>
             <Notice tone="caution">
               <p className="small">{dashboard.data.spending.disclaimer}</p>
             </Notice>
             {dashboard.data.spending.lines.length === 0 ? (
-              <p className="muted">Nothing recorded in this period.</p>
+              <p className="muted">{t.noSpending}</p>
             ) : (
               <ul className="list-plain" style={{ marginTop: 12 }}>
                 {dashboard.data.spending.lines.map((line) => (
                   <li key={line.currency}>
                     <strong>
-                      {line.currency} {line.total}
+                      {fill(t.spendingTotal, { currency: line.currency, total: line.total })}
                     </strong>{" "}
                     <span className="small muted">
-                      (expenses {line.bySource.expenses}, service records{" "}
-                      {line.bySource.serviceRecords})
+                      {fill(t.spendingSources, {
+                        expenses: line.bySource.expenses,
+                        serviceRecords: line.bySource.serviceRecords,
+                      })}
                     </span>
                     <span className="small" style={{ display: "block" }}>
                       {line.byCategory
-                        .map((entry) => `${titleCase(entry.category)}: ${entry.total}`)
+                        .map((entry) =>
+                          fill(t.spendingCategory, {
+                            category: titleCase(entry.category),
+                            total: entry.total,
+                          }),
+                        )
                         .join(" · ")}
                     </span>
                   </li>

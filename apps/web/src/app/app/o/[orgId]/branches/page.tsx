@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { type BranchDto, WEEKDAYS } from "@fleettrust/types";
 import { type SubmitEvent, use, useState } from "react";
 
@@ -12,15 +13,8 @@ import { errorMessage } from "@fleettrust/sdk";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
-const DAY_NAMES = {
-  mon: "Monday",
-  tue: "Tuesday",
-  wed: "Wednesday",
-  thu: "Thursday",
-  fri: "Friday",
-  sat: "Saturday",
-  sun: "Sunday",
-} as const;
+const t = copy.web.org.branches;
+const DAY_NAMES = copy.web.provider.days;
 
 type Weekday = (typeof WEEKDAYS)[number];
 interface DayHours {
@@ -38,7 +32,7 @@ function BranchLocation({ orgId, branch }: { orgId: string; branch: BranchDto })
     branch.serviceRadiusKm ? String(branch.serviceRadiusKm) : "",
   );
   const [location, setLocation] = useState<PickedLocation | null>(
-    branch.location ? { ...branch.location, label: "Saved location", accuracyM: null } : null,
+    branch.location ? { ...branch.location, label: t.savedLocation, accuracyM: null } : null,
   );
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -46,7 +40,7 @@ function BranchLocation({ orgId, branch }: { orgId: string; branch: BranchDto })
     event.preventDefault();
     const code = countryCode.trim().toUpperCase();
     if (code !== "" && !/^[A-Z]{2}$/.test(code)) {
-      setMessage({ ok: false, text: "Country: two letters, e.g. ZA." });
+      setMessage({ ok: false, text: t.countryInvalid });
       return;
     }
     try {
@@ -57,7 +51,7 @@ function BranchLocation({ orgId, branch }: { orgId: string; branch: BranchDto })
         location: location ? { lat: location.lat, lng: location.lng } : null,
         serviceRadiusKm: radius.trim() === "" ? null : Math.round(Number(radius)),
       });
-      setMessage({ ok: true, text: "Location saved." });
+      setMessage({ ok: true, text: t.locationSaved });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
     }
@@ -65,11 +59,11 @@ function BranchLocation({ orgId, branch }: { orgId: string; branch: BranchDto })
 
   return (
     <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
-      <h3>Location</h3>
+      <h3>{t.location}</h3>
       <div className="grid">
         <TextField
-          label="Street address"
-          hint="Shown to signed-in people only"
+          label={t.street}
+          hint={t.streetHint}
           maxLength={200}
           autoComplete="street-address"
           value={address}
@@ -78,7 +72,7 @@ function BranchLocation({ orgId, branch }: { orgId: string; branch: BranchDto })
           }}
         />
         <TextField
-          label="Town or suburb"
+          label={t.town}
           required
           maxLength={100}
           value={locality}
@@ -87,8 +81,8 @@ function BranchLocation({ orgId, branch }: { orgId: string; branch: BranchDto })
           }}
         />
         <TextField
-          label="Country code"
-          hint="Two letters, e.g. ZA"
+          label={t.country}
+          hint={t.countryHint}
           required
           maxLength={2}
           value={countryCode}
@@ -97,8 +91,8 @@ function BranchLocation({ orgId, branch }: { orgId: string; branch: BranchDto })
           }}
         />
         <TextField
-          label="How far do you travel (km)?"
-          hint="Leave empty if customers come to you"
+          label={t.radius}
+          hint={t.radiusHint}
           inputMode="numeric"
           value={radius}
           onChange={(event) => {
@@ -109,8 +103,8 @@ function BranchLocation({ orgId, branch }: { orgId: string; branch: BranchDto })
       <LocationPicker
         value={location}
         onChange={setLocation}
-        label="Map position"
-        hint="Visitors see an area of about 1 km; signed-in people see the exact point."
+        label={t.mapPosition}
+        hint={t.mapPositionHint}
       />
       {message ? (
         <Notice tone={message.ok ? "success" : "danger"} live="polite">
@@ -118,7 +112,7 @@ function BranchLocation({ orgId, branch }: { orgId: string; branch: BranchDto })
         </Notice>
       ) : null}
       <div>
-        <Button type="submit">Save location</Button>
+        <Button type="submit">{t.saveLocation}</Button>
       </div>
     </form>
   );
@@ -130,7 +124,7 @@ function BranchHours({ orgId, branchId }: { orgId: string; branchId: string }) {
   const [days, setDays] = useState<Record<Weekday, DayHours> | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
-  if (hours.status === "loading") return <Loading label="Loading hours…" />;
+  if (hours.status === "loading") return <Loading label={t.loadingHours} />;
   if (hours.status === "error") return <ErrorNotice error={hours.error} />;
   const weekly = hours.data.weekly ?? {};
   const current =
@@ -167,7 +161,7 @@ function BranchHours({ orgId, branchId }: { orgId: string; branchId: string }) {
           ]),
         ),
       });
-      setMessage({ ok: true, text: "Opening hours saved." });
+      setMessage({ ok: true, text: t.hoursSaved });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
     }
@@ -175,14 +169,14 @@ function BranchHours({ orgId, branchId }: { orgId: string; branchId: string }) {
 
   return (
     <form className="stack" onSubmit={(event) => void submit(event)}>
-      <h3>Opening hours</h3>
-      <p className="small muted">Times are local ({hours.data.timeZone}).</p>
+      <h3>{t.hours}</h3>
+      <p className="small muted">{fill(t.localTimes, { timeZone: hours.data.timeZone })}</p>
       {WEEKDAYS.map((day) => (
         <fieldset key={day} className="cluster" style={{ border: 0, padding: 0, margin: 0 }}>
           <legend className="visually-hidden">{DAY_NAMES[day]}</legend>
           <div style={{ minWidth: 150 }}>
             <Checkbox
-              label={`Open on ${DAY_NAMES[day]}`}
+              label={fill(t.openOn, { day: DAY_NAMES[day] })}
               checked={current[day].open}
               onChange={(event) => {
                 update(day, { open: event.target.checked });
@@ -192,7 +186,7 @@ function BranchHours({ orgId, branchId }: { orgId: string; branchId: string }) {
           {current[day].open ? (
             <>
               <TextField
-                label={`${DAY_NAMES[day]} opens`}
+                label={fill(t.opens, { day: DAY_NAMES[day] })}
                 type="time"
                 required
                 value={current[day].opens}
@@ -201,7 +195,7 @@ function BranchHours({ orgId, branchId }: { orgId: string; branchId: string }) {
                 }}
               />
               <TextField
-                label={`${DAY_NAMES[day]} closes`}
+                label={fill(t.closes, { day: DAY_NAMES[day] })}
                 type="time"
                 required
                 value={current[day].closes}
@@ -219,7 +213,7 @@ function BranchHours({ orgId, branchId }: { orgId: string; branchId: string }) {
         </Notice>
       ) : null}
       <div>
-        <Button type="submit">Save hours</Button>
+        <Button type="submit">{t.saveHours}</Button>
       </div>
     </form>
   );
@@ -232,7 +226,7 @@ export default function BranchesPage(props: PageProps<"/app/o/[orgId]/branches">
   const branches = useLoad(() => api.listBranches(orgId), `branches-${orgId}`);
   return (
     <>
-      <PageHeader title="Branches and hours" />
+      <PageHeader title={t.title} />
       {branches.status === "loading" ? <Loading /> : null}
       {branches.status === "error" ? (
         <ErrorNotice error={branches.error} onRetry={branches.reload} />

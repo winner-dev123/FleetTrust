@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { CATEGORY_LABELS, VEHICLE_TYPE_LABELS } from "@fleettrust/types";
 import { useRouter } from "next/navigation";
 import { type SubmitEvent, use, useState } from "react";
@@ -14,6 +15,8 @@ import { formatDate, formatDistance, titleCase } from "@fleettrust/types";
 import { EMPTY_PRICE, priceFromDraft } from "@/lib/price";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.org.inquiry;
 
 /** One inquiry: the customer's request and sending an indicative quote. */
 export default function InquiryPage(props: PageProps<"/app/o/[orgId]/inquiries/[recipientId]">) {
@@ -42,7 +45,7 @@ export default function InquiryPage(props: PageProps<"/app/o/[orgId]/inquiries/[
           message: note.trim() || null,
         }),
       );
-      setMessage({ ok: true, text: "Quote sent. The customer will be notified." });
+      setMessage({ ok: true, text: t.quoteSent });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
     } finally {
@@ -61,8 +64,8 @@ export default function InquiryPage(props: PageProps<"/app/o/[orgId]/inquiries/[
   return (
     <>
       <PageHeader
-        title={`${CATEGORY_LABELS[data.category]} inquiry`}
-        description={`Quotes accepted until ${formatDate(data.expiresAt)}`}
+        title={fill(t.title, { category: CATEGORY_LABELS[data.category] })}
+        description={fill(t.description, { date: formatDate(data.expiresAt) })}
       />
       <p>
         <Badge>{titleCase(data.recipientStatus)}</Badge>
@@ -72,28 +75,30 @@ export default function InquiryPage(props: PageProps<"/app/o/[orgId]/inquiries/[
           <p>{message.text}</p>
         </Notice>
       ) : null}
-      <Card title="Request">
+      <Card title={t.request}>
         <p>{data.description}</p>
         <p className="small muted" style={{ margin: 0 }}>
           {VEHICLE_TYPE_LABELS[data.vehicle.vehicleType]}
           {data.vehicle.make ? ` · ${data.vehicle.make}` : ""}
           {data.vehicle.model ? ` ${data.vehicle.model}` : ""} · {titleCase(data.urgency)}
           {data.distanceKm !== null
-            ? ` · ${data.location.approximate ? "about " : ""}${formatDistance(data.distanceKm * 1000)} away`
+            ? ` · ${fill(data.location.approximate ? t.distanceApproximate : t.distance, {
+                distance: formatDistance(data.distanceKm * 1000),
+              })}`
             : ""}
         </p>
         {data.location.approximate ? (
           <p className="small muted" style={{ marginBottom: 0 }}>
-            The exact location is shared if the customer accepts your quote.
+            {t.exactLater}
           </p>
         ) : data.locationNote ? (
           <p className="small" style={{ marginBottom: 0 }}>
-            Location note: {data.locationNote}
+            {fill(t.locationNote, { note: data.locationNote })}
           </p>
         ) : null}
       </Card>
       {data.referredBy ? (
-        <Notice title={`Referred by ${data.referredBy.name}`}>
+        <Notice title={fill(t.referredBy, { name: data.referredBy.name })}>
           <p className="small">
             {data.referredBy.relationshipLabel}
             {data.referredBy.relationshipDetails ? `: ${data.referredBy.relationshipDetails}` : ""}
@@ -101,13 +106,13 @@ export default function InquiryPage(props: PageProps<"/app/o/[orgId]/inquiries/[
         </Notice>
       ) : null}
       {data.quotes.length > 0 ? (
-        <Card title="Your quotes">
+        <Card title={t.yourQuotes}>
           <ul className="list-plain">
             {data.quotes.map((sent) => (
               <li key={sent.id}>
                 <strong>{sent.price.label}</strong> <Badge>{titleCase(sent.status)}</Badge>
                 <span className="small muted" style={{ display: "block" }}>
-                  Valid until {formatDate(sent.validUntil)}
+                  {fill(t.validUntil, { date: formatDate(sent.validUntil) })}
                 </span>
               </li>
             ))}
@@ -115,23 +120,21 @@ export default function InquiryPage(props: PageProps<"/app/o/[orgId]/inquiries/[
         </Card>
       ) : null}
       {open ? (
-        <Card title="Send a quote">
+        <Card title={t.sendQuote}>
           <form className="stack" onSubmit={(event) => void quote(event)} noValidate>
             <PriceFields value={price} onChange={setPrice} />
             <TextArea
-              label="Message to the customer"
+              label={t.messageLabel}
               maxLength={2000}
               value={note}
               onChange={(event) => {
                 setNote(event.target.value);
               }}
             />
-            <p className="small muted">
-              Never ask for a deposit through a link: FleetTrust warns customers about that.
-            </p>
+            <p className="small muted">{t.depositWarning}</p>
             <div className="cluster">
               <Button type="submit" busy={busy}>
-                Send quote
+                {t.send}
               </Button>
               <Button
                 variant="ghost"
@@ -146,7 +149,7 @@ export default function InquiryPage(props: PageProps<"/app/o/[orgId]/inquiries/[
                   )
                 }
               >
-                Decline
+                {t.decline}
               </Button>
             </div>
           </form>

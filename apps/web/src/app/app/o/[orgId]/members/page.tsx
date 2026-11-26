@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { ROLES_BY_KIND, type Role } from "@fleettrust/types";
 import { type SubmitEvent, use, useState } from "react";
 
@@ -13,6 +14,8 @@ import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
 import { WithMembership } from "../org";
+
+const t = copy.web.org.members;
 
 /** Members and invitations. Inviting needs `invitations.manage`; the API enforces every rule. */
 export default function MembersPage(props: PageProps<"/app/o/[orgId]/members">) {
@@ -49,7 +52,10 @@ export default function MembersPage(props: PageProps<"/app/o/[orgId]/members">) 
             setLink(`${window.location.origin}${created.acceptPath}`);
             setMessage({
               ok: true,
-              text: `Invitation created for ${created.invitation.email}. It expires ${formatDate(created.invitation.expiresAt)}. Send them the link below: it's shown only once.`,
+              text: fill(t.invitationCreated, {
+                email: created.invitation.email,
+                date: formatDate(created.invitation.expiresAt),
+              }),
             });
             data.reload();
           } catch (failure) {
@@ -59,13 +65,13 @@ export default function MembersPage(props: PageProps<"/app/o/[orgId]/members">) 
 
         return (
           <>
-            <PageHeader title={`Members: ${membership.organization.name}`} />
+            <PageHeader title={fill(t.title, { name: membership.organization.name })} />
             {message ? (
               <Notice tone={message.ok ? "success" : "danger"} live="polite">
                 <p>{message.text}</p>
                 {message.ok && link ? (
                   <TextField
-                    label="Invitation link"
+                    label={t.invitationLink}
                     readOnly
                     value={link}
                     onFocus={(event) => {
@@ -80,14 +86,14 @@ export default function MembersPage(props: PageProps<"/app/o/[orgId]/members">) 
               <ErrorNotice error={data.error} onRetry={data.reload} />
             ) : null}
             {data.status === "ready" ? (
-              <div className="table-wrap" tabIndex={0} role="region" aria-label="Members">
+              <div className="table-wrap" tabIndex={0} role="region" aria-label={t.members}>
                 <table className="table">
-                  <caption className="visually-hidden">Members</caption>
+                  <caption className="visually-hidden">{t.members}</caption>
                   <thead>
                     <tr>
-                      <th scope="col">Name</th>
-                      <th scope="col">Role</th>
-                      <th scope="col">Joined</th>
+                      <th scope="col">{t.name}</th>
+                      <th scope="col">{t.role}</th>
+                      <th scope="col">{t.joined}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -110,23 +116,26 @@ export default function MembersPage(props: PageProps<"/app/o/[orgId]/members">) 
               </div>
             ) : null}
             {data.status === "ready" && data.data.invitations.length > 0 ? (
-              <Card title="Pending invitations">
+              <Card title={t.pending}>
                 <ul className="list-plain">
                   {data.data.invitations.map((invitation) => (
                     <li key={invitation.id}>
-                      {invitation.email} · {titleCase(invitation.role)} · expires{" "}
-                      {formatDate(invitation.expiresAt)}
+                      {fill(t.pendingLine, {
+                        email: invitation.email,
+                        role: titleCase(invitation.role),
+                        date: formatDate(invitation.expiresAt),
+                      })}
                     </li>
                   ))}
                 </ul>
               </Card>
             ) : null}
             {canInvite ? (
-              <Card title="Invite someone">
+              <Card title={t.invite}>
                 <form className="stack" onSubmit={(event) => void invite(event)} noValidate>
                   <div className="grid">
                     <TextField
-                      label="Email address"
+                      label={t.email}
                       type="email"
                       required
                       autoComplete="off"
@@ -136,7 +145,7 @@ export default function MembersPage(props: PageProps<"/app/o/[orgId]/members">) 
                       }}
                     />
                     <SelectField
-                      label="Role"
+                      label={t.role}
                       required
                       value={role}
                       onChange={(event) => {
@@ -145,11 +154,9 @@ export default function MembersPage(props: PageProps<"/app/o/[orgId]/members">) 
                       options={roles.map((value) => ({ value, label: titleCase(value) }))}
                     />
                   </div>
-                  <p className="small muted">
-                    You&apos;ll get a link to send them. Only that email address can accept it.
-                  </p>
+                  <p className="small muted">{t.inviteNote}</p>
                   <div>
-                    <Button type="submit">Send invitation</Button>
+                    <Button type="submit">{t.send}</Button>
                   </div>
                 </form>
               </Card>

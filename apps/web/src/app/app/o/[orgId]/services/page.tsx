@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import {
   CATEGORY_LABELS,
   formatIndicativePrice,
@@ -21,6 +22,8 @@ import { EMPTY_PRICE, priceFromDraft } from "@/lib/price";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.org.services;
+
 type VehicleType = (typeof VEHICLE_TYPES)[number];
 
 function AddOffering({ orgId, onAdded }: { orgId: string; onAdded: () => void }) {
@@ -37,11 +40,11 @@ function AddOffering({ orgId, onAdded }: { orgId: string; onAdded: () => void })
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (name.trim().length < 2) {
-      setError("Name: at least 2 characters.");
+      setError(t.nameTooShort);
       return;
     }
     if (vehicleTypes.length === 0) {
-      setError("Choose at least one vehicle type.");
+      setError(t.vehicleTypeMissing);
       return;
     }
     const parsed = priceFromDraft(price);
@@ -75,7 +78,7 @@ function AddOffering({ orgId, onAdded }: { orgId: string; onAdded: () => void })
     <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
       <div className="grid">
         <SelectField
-          label="Category"
+          label={t.category}
           required
           value={category}
           onChange={(event) => {
@@ -84,7 +87,7 @@ function AddOffering({ orgId, onAdded }: { orgId: string; onAdded: () => void })
           options={PROVIDER_CATEGORIES.map((value) => ({ value, label: CATEGORY_LABELS[value] }))}
         />
         <TextField
-          label="Service name"
+          label={t.serviceName}
           required
           maxLength={120}
           value={name}
@@ -94,7 +97,7 @@ function AddOffering({ orgId, onAdded }: { orgId: string; onAdded: () => void })
         />
       </div>
       <TextArea
-        label="Description"
+        label={t.descriptionLabel}
         maxLength={1000}
         value={description}
         onChange={(event) => {
@@ -102,7 +105,7 @@ function AddOffering({ orgId, onAdded }: { orgId: string; onAdded: () => void })
         }}
       />
       <fieldset className="field">
-        <legend className="field__label">Vehicle types</legend>
+        <legend className="field__label">{t.vehicleTypes}</legend>
         <div className="grid" style={{ gap: 0 }}>
           {VEHICLE_TYPES.map((type) => (
             <Checkbox
@@ -121,8 +124,8 @@ function AddOffering({ orgId, onAdded }: { orgId: string; onAdded: () => void })
         </div>
       </fieldset>
       <Checkbox
-        label="Done at the customer's location"
-        hint="Needs a travel distance on your branch"
+        label={t.atCustomer}
+        hint={t.atCustomerHint}
         checked={atCustomer}
         onChange={(event) => {
           setAtCustomer(event.target.checked);
@@ -136,7 +139,7 @@ function AddOffering({ orgId, onAdded }: { orgId: string; onAdded: () => void })
       ) : null}
       <div>
         <Button type="submit" busy={busy}>
-          Add service
+          {t.add}
         </Button>
       </div>
     </form>
@@ -152,9 +155,9 @@ export default function ServicesPage(props: PageProps<"/app/o/[orgId]/services">
 
   return (
     <>
-      <PageHeader title="Services and prices" />
+      <PageHeader title={t.title} />
       <Notice>
-        <p className="small">Customers see: “{INDICATIVE_PRICE_DISCLAIMER}”</p>
+        <p className="small">{fill(t.customersSee, { disclaimer: INDICATIVE_PRICE_DISCLAIMER })}</p>
       </Notice>
       {message ? (
         <Notice tone="danger" live="assertive">
@@ -167,19 +170,19 @@ export default function ServicesPage(props: PageProps<"/app/o/[orgId]/services">
       ) : null}
       {offerings.status === "ready" ? (
         offerings.data.length === 0 ? (
-          <EmptyState title="No services yet">
-            <p>Add at least one service so customers know what you offer.</p>
+          <EmptyState title={t.emptyTitle}>
+            <p>{t.emptyBody}</p>
           </EmptyState>
         ) : (
-          <div className="table-wrap" tabIndex={0} role="region" aria-label="Your services">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label={t.yourServices}>
             <table className="table">
-              <caption className="visually-hidden">Your services</caption>
+              <caption className="visually-hidden">{t.yourServices}</caption>
               <thead>
                 <tr>
-                  <th scope="col">Service</th>
-                  <th scope="col">Price</th>
+                  <th scope="col">{t.service}</th>
+                  <th scope="col">{t.price}</th>
                   <th scope="col">
-                    <span className="visually-hidden">Actions</span>
+                    <span className="visually-hidden">{t.actions}</span>
                   </th>
                 </tr>
               </thead>
@@ -204,7 +207,7 @@ export default function ServicesPage(props: PageProps<"/app/o/[orgId]/services">
                             })
                         }
                       >
-                        Remove {offering.name}
+                        {fill(t.remove, { name: offering.name })}
                       </Button>
                     </td>
                   </tr>
@@ -214,7 +217,7 @@ export default function ServicesPage(props: PageProps<"/app/o/[orgId]/services">
           </div>
         )
       ) : null}
-      <Card title="Add a service">
+      <Card title={t.addTitle}>
         <AddOffering orgId={orgId} onAdded={offerings.reload} />
       </Card>
     </>
