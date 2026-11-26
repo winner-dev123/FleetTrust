@@ -38,7 +38,7 @@
     "@types/react-dom": "19.3.0",
     "axe-core": "^4.14.1",
     "eslint": "catalog:",
-    "jsdom": "26.1.0",
+    "jsdom": "31.0.1",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
