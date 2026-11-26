@@ -15,8 +15,8 @@
     "e2e": "playwright test"
   },
   "dependencies": {
-    "@firebase/app": "0.16.6",
-    "@firebase/auth": "1.13.10",
+    "@firebase/app": "0.16.7",
+    "@firebase/auth": "1.13.11",
     "@fleettrust/copy": "workspace:*",
     "@fleettrust/env": "workspace:*",
     "@fleettrust/sdk": "workspace:*",
@@ -28,7 +28,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.14.0",
+    "@axe-core/playwright": "^4.14.1",
     "@fleettrust/config": "workspace:*",
     "@playwright/test": "^1.65.1",
     "@testing-library/dom": "^10.4.2",

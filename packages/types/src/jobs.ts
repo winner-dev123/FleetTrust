@@ -62,7 +62,7 @@ const salarySchema = z
   .strict()
   .refine((s) => s.max === null || Number(s.max) >= Number(s.min), {
     path: ["max"],
-    message: "Must not be less than the minimum",
+    error: "Must not be less than the minimum",
   });
 
 export const jobRequestSchema = z
@@ -176,7 +176,7 @@ export const applyRequestSchema = z
   .strict()
   .refine((v) => v.phone !== null || v.email !== null, {
     path: ["phone"],
-    message: "Share a phone number or an email address",
+    error: "Share a phone number or an email address",
   });
 export type ApplyRequest = z.input<typeof applyRequestSchema>;
 

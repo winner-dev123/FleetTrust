@@ -89,7 +89,7 @@ export const createIncidentSchema = z
   })
   .strict()
   .refine((v) => !v.shareLocation || v.location !== null, {
-    message: "Location required when sharing it",
+    error: "Location required when sharing it",
     path: ["location"],
   });
 export type CreateIncident = z.input<typeof createIncidentSchema>;

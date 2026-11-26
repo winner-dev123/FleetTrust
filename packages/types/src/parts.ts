@@ -103,11 +103,11 @@ export const compatibilityEntrySchema = z
   .strict()
   .refine((v) => v.model === null || v.make !== null, {
     path: ["model"],
-    message: "A model needs a make",
+    error: "A model needs a make",
   })
   .refine((v) => v.yearFrom === null || v.yearTo === null || v.yearFrom <= v.yearTo, {
     path: ["yearTo"],
-    message: "yearTo must not be before yearFrom",
+    error: "yearTo must not be before yearFrom",
   });
 export type CompatibilityEntry = z.output<typeof compatibilityEntrySchema>;
 
@@ -132,7 +132,7 @@ export const stockRequestSchema = z
   .strict()
   .refine((v) => v.quantity === null || v.status === "in_stock" || v.status === "low_stock", {
     path: ["quantity"],
-    message: "Only in_stock and low_stock carry a quantity",
+    error: "Only in_stock and low_stock carry a quantity",
   });
 
 /** Create or replace a listing. Stock is set on create, then through the stock endpoint. */
@@ -319,7 +319,7 @@ export const createPartInquirySchema = z
   .strict()
   .refine((v) => v.vehicleId === null || v.vehicle === null, {
     path: ["vehicle"],
-    message: "Send either vehicleId or vehicle",
+    error: "Send either vehicleId or vehicle",
   });
 export type CreatePartInquiry = z.input<typeof createPartInquirySchema>;
 
@@ -334,11 +334,11 @@ export const answerPartInquirySchema = z
   .strict()
   .refine((v) => v.etaDays === null || v.availability === "can_order", {
     path: ["etaDays"],
-    message: "Only can_order carries etaDays",
+    error: "Only can_order carries etaDays",
   })
   .refine((v) => v.quantityAvailable === null || v.availability === "available", {
     path: ["quantityAvailable"],
-    message: "Only available carries quantityAvailable",
+    error: "Only available carries quantityAvailable",
   });
 export type AnswerPartInquiry = z.input<typeof answerPartInquirySchema>;
 
