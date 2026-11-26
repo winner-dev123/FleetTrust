@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { formatDateTime, titleCase } from "@fleettrust/types";
 import { type SubmitEvent, use, useState } from "react";
@@ -11,11 +12,13 @@ import { Card, PageHeader } from "@/components/layout";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.admin.reviewCase;
+
 type Decision = "approve" | "reject" | "request_changes";
 const DECISIONS: readonly { value: Decision; label: string }[] = [
-  { value: "approve", label: "Approve (grant the badge)" },
-  { value: "request_changes", label: "Ask for changes" },
-  { value: "reject", label: "Reject" },
+  { value: "approve", label: t.approve },
+  { value: "request_changes", label: t.requestChanges },
+  { value: "reject", label: t.reject },
 ];
 
 /** One verification case: documents (opened through single-use, audited links) and the decision. */
@@ -53,7 +56,7 @@ export default function ReviewCasePage(props: PageProps<"/app/admin/verification
           ? { decision, ...(reason.trim() ? { note: reason.trim() } : {}) }
           : { decision, reason: reason.trim() };
       reviewCase.setData(await api.decideReviewCase(caseId, body));
-      setMessage({ ok: true, text: "Decision recorded." });
+      setMessage({ ok: true, text: t.recorded });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
     } finally {
@@ -64,8 +67,12 @@ export default function ReviewCasePage(props: PageProps<"/app/admin/verification
   return (
     <>
       <PageHeader
-        title={`${titleCase(data.badgeType)} verification`}
-        description={`${titleCase(data.subject.type)} ${data.subject.id} · submitted ${formatDateTime(data.submittedAt)}`}
+        title={fill(t.title, { badge: titleCase(data.badgeType) })}
+        description={fill(t.description, {
+          type: titleCase(data.subject.type),
+          id: data.subject.id,
+          time: formatDateTime(data.submittedAt),
+        })}
       />
       <p>
         <Badge tone={decidable ? "caution" : "neutral"}>{titleCase(data.status)}</Badge>
@@ -75,20 +82,18 @@ export default function ReviewCasePage(props: PageProps<"/app/admin/verification
           <p>{message.text}</p>
         </Notice>
       ) : null}
-      <Card title="Documents">
-        <p className="small muted">
-          Each view uses a five-minute, single-use link and is recorded in the audit log.
-        </p>
+      <Card title={t.documents}>
+        <p className="small muted">{t.documentsNote}</p>
         <ul className="list-plain">
           {data.documents.map((doc) => (
             <li key={doc.id} className="cluster cluster--between">
               <span>
                 {titleCase(doc.kind)} · {titleCase(doc.status)}
-                {doc.scanResult ? ` · scan: ${doc.scanResult}` : ""}
+                {doc.scanResult ? ` · ${fill(t.scan, { result: doc.scanResult })}` : ""}
               </span>
               {doc.status === "available" ? (
                 <Button variant="secondary" onClick={() => void openDocument(doc.id)}>
-                  View {titleCase(doc.kind)}
+                  {fill(t.view, { kind: titleCase(doc.kind) })}
                 </Button>
               ) : null}
             </li>
@@ -96,10 +101,10 @@ export default function ReviewCasePage(props: PageProps<"/app/admin/verification
         </ul>
       </Card>
       {decidable ? (
-        <Card title="Decision">
+        <Card title={t.decision}>
           <form className="stack" onSubmit={(event) => void decide(event)}>
             <SelectField
-              label="Decision"
+              label={t.decision}
               options={DECISIONS}
               value={decision}
               onChange={(event) => {
@@ -109,11 +114,7 @@ export default function ReviewCasePage(props: PageProps<"/app/admin/verification
               }}
             />
             <TextArea
-              label={
-                decision === "approve"
-                  ? "Note (optional, internal)"
-                  : "Reason (shown to the applicant)"
-              }
+              label={decision === "approve" ? t.note : t.reason}
               maxLength={1000}
               value={reason}
               onChange={(event) => {
@@ -126,7 +127,7 @@ export default function ReviewCasePage(props: PageProps<"/app/admin/verification
                 busy={busy}
                 disabled={decision !== "approve" && reason.trim().length < 3}
               >
-                Record decision
+                {t.record}
               </Button>
             </div>
           </form>
@@ -134,8 +135,12 @@ export default function ReviewCasePage(props: PageProps<"/app/admin/verification
       ) : (
         <Notice>
           <p>
-            Decided {formatDateTime(data.decidedAt)}
-            {data.decisionReason ? `: ${data.decisionReason}` : "."}
+            {data.decisionReason
+              ? fill(t.decidedWithReason, {
+                  time: formatDateTime(data.decidedAt),
+                  reason: data.decisionReason,
+                })
+              : fill(t.decided, { time: formatDateTime(data.decidedAt) })}
           </p>
         </Notice>
       )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill, plural } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { formatDate, formatDateTime, type SupportAccountDto, titleCase } from "@fleettrust/types";
 import Link from "next/link";
@@ -12,6 +13,8 @@ import { EmptyState, ErrorNotice, Loading, Notice } from "@/components/feedback"
 import { Card, PageHeader } from "@/components/layout";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.admin.support;
 
 /**
  * Support (support agents): look up account metadata and open a case. Account actions
@@ -56,11 +59,8 @@ export default function SupportPage() {
 
   return (
     <>
-      <PageHeader
-        title="Support"
-        description="Account metadata and sign-in help, through audited cases."
-      />
-      <Card title="Find an account">
+      <PageHeader title={t.title} description={t.description} />
+      <Card title={t.find}>
         <form
           className="cluster"
           style={{ alignItems: "flex-end" }}
@@ -68,7 +68,7 @@ export default function SupportPage() {
         >
           <div style={{ flex: "1 1 260px" }}>
             <TextField
-              label="Email address"
+              label={t.email}
               type="email"
               value={email}
               onChange={(event) => {
@@ -77,7 +77,7 @@ export default function SupportPage() {
             />
           </div>
           <Button type="submit" busy={busy}>
-            Look up
+            {t.lookUp}
           </Button>
         </form>
       </Card>
@@ -87,36 +87,42 @@ export default function SupportPage() {
         </Notice>
       ) : null}
       {account ? (
-        <Card title={account.displayName ?? account.email ?? "Account"}>
+        <Card title={account.displayName ?? account.email ?? t.account}>
           <dl className="small">
-            <dt>Email</dt>
+            <dt>{t.emailLabel}</dt>
             <dd>
-              {account.email ?? "none"} ({account.emailVerified ? "verified" : "not verified"})
+              {fill(t.emailValue, {
+                email: account.email ?? t.none,
+                state: account.emailVerified ? t.verified : t.notVerified,
+              })}
             </dd>
-            <dt>Status</dt>
+            <dt>{t.status}</dt>
             <dd>
               {titleCase(account.status)}
               {account.activeSanctions > 0
-                ? ` · ${String(account.activeSanctions)} active suspension`
+                ? ` · ${plural(account.activeSanctions, t.activeSuspensions)}`
                 : ""}
             </dd>
-            <dt>Joined</dt>
+            <dt>{t.joined}</dt>
             <dd>{formatDate(account.createdAt)}</dd>
-            <dt>Last seen</dt>
+            <dt>{t.lastSeen}</dt>
             <dd>
-              {formatDateTime(account.lastSeenAt)} via {account.lastSignInProvider ?? "unknown"}
+              {fill(t.lastSeenValue, {
+                time: formatDateTime(account.lastSeenAt),
+                provider: account.lastSignInProvider ?? t.unknown,
+              })}
             </dd>
-            <dt>Organizations</dt>
+            <dt>{t.organizations}</dt>
             <dd>
               {account.organizations.length === 0
-                ? "None"
+                ? t.noOrganizations
                 : account.organizations.map((o) => `${o.name} (${o.kind}, ${o.role})`).join("; ")}
             </dd>
           </dl>
           <form className="stack" onSubmit={(event) => void openCase(event)}>
             <TextArea
-              label="Why are you opening a case?"
-              hint="Recorded in the audit log. For example: lost phone, can't receive the sign-in email."
+              label={t.why}
+              hint={t.whyHint}
               required
               minLength={5}
               maxLength={1000}
@@ -127,19 +133,19 @@ export default function SupportPage() {
             />
             <div>
               <Button type="submit" disabled={reason.trim().length < 5}>
-                Open a case
+                {t.openCase}
               </Button>
             </div>
           </form>
         </Card>
       ) : null}
-      <Card title="Open cases">
+      <Card title={t.openCases}>
         {cases.status === "loading" ? <Loading /> : null}
         {cases.status === "error" ? (
           <ErrorNotice error={cases.error} onRetry={cases.reload} />
         ) : null}
         {cases.status === "ready" && cases.data.length === 0 ? (
-          <EmptyState title="No open cases" />
+          <EmptyState title={t.noCases} />
         ) : null}
         {cases.status === "ready" ? (
           <ul className="list-plain">
@@ -147,8 +153,11 @@ export default function SupportPage() {
               <li key={c.id}>
                 <Link href={`/app/admin/support/${c.id}`}>{c.subjectEmail ?? c.userId}</Link>{" "}
                 <span className="small muted">
-                  {c.reason.slice(0, 80)} · opened {formatDateTime(c.openedAt)} by{" "}
-                  {c.openedBy ?? "staff"}
+                  {fill(t.caseLine, {
+                    reason: c.reason.slice(0, 80),
+                    time: formatDateTime(c.openedAt),
+                    by: c.openedBy ?? t.staff,
+                  })}
                 </span>
               </li>
             ))}

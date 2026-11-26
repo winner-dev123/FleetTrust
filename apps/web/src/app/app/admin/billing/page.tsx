@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import {
   type BillingAccount,
@@ -18,6 +19,8 @@ import { ErrorNotice, Notice } from "@/components/feedback";
 import { Card, PageHeader } from "@/components/layout";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.admin.billing;
 
 type SubjectType = "user" | "organization";
 
@@ -68,32 +71,33 @@ export default function BillingPage() {
             .filter((v) => v.status === "published")
             .map((v) => ({
               value: v.id,
-              label: `${plan.name} (v${String(v.version)}, ${plan.audience})`,
+              label: fill(t.planOption, {
+                name: plan.name,
+                version: v.version,
+                audience: plan.audience,
+              }),
             })),
         )
       : [];
 
   return (
     <>
-      <PageHeader
-        title="Plans and quotas"
-        description="Assign plans only after billing is confirmed outside FleetTrust. Every change is audited."
-      />
+      <PageHeader title={t.title} description={t.description} />
       {plans.status === "error" ? <ErrorNotice error={plans.error} onRetry={plans.reload} /> : null}
-      <Card title="Find an account">
+      <Card title={t.find}>
         <form
           className="cluster"
           style={{ alignItems: "flex-end" }}
           onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
             event.preventDefault();
-            void act(refresh, "Account loaded.");
+            void act(refresh, t.loaded);
           }}
         >
           <SelectField
-            label="Type"
+            label={t.type}
             options={[
-              { value: "organization", label: "Organization" },
-              { value: "user", label: "Person" },
+              { value: "organization", label: t.organization },
+              { value: "user", label: t.person },
             ]}
             value={type}
             onChange={(event) => {
@@ -102,14 +106,14 @@ export default function BillingPage() {
           />
           <div style={{ flex: "1 1 280px" }}>
             <TextField
-              label="ID"
+              label={t.id}
               value={id}
               onChange={(event) => {
                 setId(event.target.value);
               }}
             />
           </div>
-          <Button type="submit">Load</Button>
+          <Button type="submit">{t.load}</Button>
         </form>
       </Card>
       {message ? (
@@ -119,33 +123,40 @@ export default function BillingPage() {
       ) : null}
       {account ? (
         <>
-          <Card title={`Current plan: ${account.entitlements.plan.name}`}>
+          <Card title={fill(t.currentPlan, { name: account.entitlements.plan.name })}>
             <ul className="list-plain small">
               {account.entitlements.entitlements.map((e) => (
                 <li key={e.key}>
-                  {capabilityLabel(e.key)}: {usageLabel(e.used, e.limit)}
+                  {fill(t.entitlement, {
+                    capability: capabilityLabel(e.key),
+                    usage: usageLabel(e.used, e.limit),
+                  })}
                 </li>
               ))}
             </ul>
           </Card>
-          <Card title="Assignments">
+          <Card title={t.assignments}>
             <ul className="list-plain">
               {account.assignments.map((a) => (
                 <li key={a.id} className="cluster cluster--between">
                   <span>
-                    {a.planCode} v{a.planVersion} · from {formatDate(a.startsAt)} · ref{" "}
-                    {a.externalReference}
-                    {a.endedAt ? ` · ended ${formatDate(a.endedAt)}` : ""}
+                    {fill(t.assignment, {
+                      plan: a.planCode,
+                      version: a.planVersion,
+                      date: formatDate(a.startsAt),
+                      reference: a.externalReference,
+                    })}
+                    {a.endedAt ? ` · ${fill(t.ended, { date: formatDate(a.endedAt) })}` : ""}
                   </span>
                   {a.endedAt ? null : (
                     <ConfirmAction
-                      label="End assignment"
+                      label={t.endAssignment}
                       phrase="END"
-                      consequence="The account moves to its default plan after the grace period."
+                      consequence={t.endConsequence}
                       onConfirm={async () => {
                         await api.endPlanAssignment(a.id, null, "plan.end_assignment");
                         await refresh();
-                        setMessage({ ok: true, text: "Assignment ended." });
+                        setMessage({ ok: true, text: t.assignmentEnded });
                       }}
                     />
                   )}
@@ -163,28 +174,28 @@ export default function BillingPage() {
                     externalReference: reference.trim(),
                     graceDays: Number(graceDays),
                   });
-                }, "Plan assigned.");
+                }, t.assigned);
               }}
             >
-              <h3>Assign a plan</h3>
+              <h3>{t.assignTitle}</h3>
               <SelectField
-                label="Plan"
-                options={[{ value: "", label: "Choose a plan" }, ...versions]}
+                label={t.plan}
+                options={[{ value: "", label: t.choosePlan }, ...versions]}
                 value={planVersionId}
                 onChange={(event) => {
                   setPlanVersionId(event.target.value);
                 }}
               />
               <TextField
-                label="External billing reference"
-                hint="Contract or invoice reference from the billing system."
+                label={t.reference}
+                hint={t.referenceHint}
                 value={reference}
                 onChange={(event) => {
                   setReference(event.target.value);
                 }}
               />
               <TextField
-                label="Grace days after it ends"
+                label={t.graceDays}
                 type="number"
                 min={0}
                 max={90}
@@ -195,30 +206,33 @@ export default function BillingPage() {
               />
               <div>
                 <Button type="submit" disabled={!planVersionId || reference.trim() === ""}>
-                  Assign plan
+                  {t.assign}
                 </Button>
               </div>
             </form>
           </Card>
-          <Card title="Quota overrides">
+          <Card title={t.overrides}>
             <ul className="list-plain">
               {account.overrides
                 .filter((o) => o.revokedAt === null)
                 .map((o) => (
                   <li key={o.id} className="cluster cluster--between">
                     <span>
-                      {capabilityLabel(o.key)}: {o.limit === null ? "unlimited" : String(o.limit)} ·{" "}
-                      {o.reason}
+                      {fill(t.override, {
+                        capability: capabilityLabel(o.key),
+                        limit: o.limit ?? t.unlimited,
+                        reason: o.reason,
+                      })}
                     </span>
                     <Button
                       variant="ghost"
                       onClick={() =>
                         void act(async () => {
                           await api.revokeQuotaOverride(o.id);
-                        }, "Override removed.")
+                        }, t.overrideRemoved)
                       }
                     >
-                      Remove override
+                      {t.removeOverride}
                     </Button>
                   </li>
                 ))}
@@ -234,12 +248,12 @@ export default function BillingPage() {
                     limit: overrideLimit.trim() === "" ? null : Number(overrideLimit),
                     reason: overrideReason.trim(),
                   });
-                }, "Override set.");
+                }, t.overrideSet);
               }}
             >
-              <h3>Set an override</h3>
+              <h3>{t.setOverrideTitle}</h3>
               <SelectField
-                label="Limit"
+                label={t.limit}
                 options={CAPABILITY_KEYS.map((key) => ({
                   value: key,
                   label: CAPABILITIES[key].label,
@@ -252,8 +266,8 @@ export default function BillingPage() {
                 }}
               />
               <TextField
-                label="New limit"
-                hint="Leave empty for no limit."
+                label={t.newLimit}
+                hint={t.newLimitHint}
                 type="number"
                 min={0}
                 value={overrideLimit}
@@ -262,7 +276,7 @@ export default function BillingPage() {
                 }}
               />
               <TextField
-                label="Reason"
+                label={t.reason}
                 value={overrideReason}
                 onChange={(event) => {
                   setOverrideReason(event.target.value);
@@ -270,7 +284,7 @@ export default function BillingPage() {
               />
               <div>
                 <Button type="submit" disabled={overrideReason.trim().length < 3}>
-                  Set override
+                  {t.setOverride}
                 </Button>
               </div>
             </form>

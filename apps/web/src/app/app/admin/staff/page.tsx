@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import {
   STAFF_ROLE_LABELS,
   STAFF_ROLE_SCOPES,
@@ -17,6 +18,8 @@ import { useAdmin } from "@/lib/admin-context";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.admin.staff;
+
 const ROLE_OPTIONS = STAFF_ROLES.map((role) => ({ value: role, label: STAFF_ROLE_LABELS[role] }));
 
 /** Super admins grant and revoke staff roles. Nobody changes their own roles. */
@@ -30,20 +33,17 @@ export default function StaffPage() {
 
   return (
     <>
-      <PageHeader
-        title="Staff roles"
-        description="Give each person only the roles their work needs. Every change is audited; you can't change your own roles."
-      />
+      <PageHeader title={t.title} description={t.description} />
       {done ? (
         <Notice tone="success" live="polite">
           <p>{done}</p>
         </Notice>
       ) : null}
-      <Card title="Grant a role">
-        <p className="small muted">The person must have signed in to FleetTrust once.</p>
+      <Card title={t.grant}>
+        <p className="small muted">{t.signedInOnce}</p>
         <div className="grid">
           <TextField
-            label="Email address"
+            label={t.email}
             type="email"
             value={email}
             onChange={(event) => {
@@ -51,7 +51,7 @@ export default function StaffPage() {
             }}
           />
           <SelectField
-            label="Role"
+            label={t.role}
             options={ROLE_OPTIONS}
             value={role}
             hint={STAFF_ROLE_SCOPES[role]}
@@ -62,14 +62,17 @@ export default function StaffPage() {
         </div>
         {email.trim() !== "" ? (
           <ConfirmAction
-            label={`Grant ${STAFF_ROLE_LABELS[role]}`}
+            label={fill(t.grantRole, { role: STAFF_ROLE_LABELS[role] })}
             phrase={email.trim().toLowerCase()}
-            consequence={`${email.trim()} will be able to: ${STAFF_ROLE_SCOPES[role]}`}
+            consequence={fill(t.grantConsequence, {
+              email: email.trim(),
+              scope: STAFF_ROLE_SCOPES[role],
+            })}
             onConfirm={async () => {
               staff.setData(
                 await api.grantStaffRole(email.trim().toLowerCase(), role, "staff.grant"),
               );
-              setDone(`Granted ${STAFF_ROLE_LABELS[role]} to ${email.trim()}.`);
+              setDone(fill(t.granted, { role: STAFF_ROLE_LABELS[role], email: email.trim() }));
               setEmail("");
             }}
           />
@@ -79,16 +82,16 @@ export default function StaffPage() {
       {staff.status === "loading" ? <Loading /> : null}
       {staff.status === "error" ? <ErrorNotice error={staff.error} onRetry={staff.reload} /> : null}
       {staff.status === "ready" ? (
-        <Card title="Current staff">
-          <div className="table-wrap" tabIndex={0} role="region" aria-label="Current staff">
+        <Card title={t.current}>
+          <div className="table-wrap" tabIndex={0} role="region" aria-label={t.current}>
             <table className="table">
-              <caption className="visually-hidden">Current staff</caption>
+              <caption className="visually-hidden">{t.current}</caption>
               <thead>
                 <tr>
-                  <th scope="col">Person</th>
-                  <th scope="col">Role</th>
-                  <th scope="col">Since</th>
-                  <th scope="col">Action</th>
+                  <th scope="col">{t.person}</th>
+                  <th scope="col">{t.role}</th>
+                  <th scope="col">{t.since}</th>
+                  <th scope="col">{t.action}</th>
                 </tr>
               </thead>
               <tbody>
@@ -98,25 +101,30 @@ export default function StaffPage() {
                       <td>
                         {member.displayName ?? "—"}
                         <span className="small muted" style={{ display: "block" }}>
-                          {member.email ?? "no email"}
+                          {member.email ?? t.noEmail}
                         </span>
                       </td>
                       <td>{STAFF_ROLE_LABELS[held.role]}</td>
                       <td>{formatDate(held.since)}</td>
                       <td>
                         {member.userId === me.userId ? (
-                          <span className="small muted">You</span>
+                          <span className="small muted">{t.you}</span>
                         ) : (
                           <ConfirmAction
-                            label={`Revoke ${STAFF_ROLE_LABELS[held.role]}`}
+                            label={fill(t.revokeRole, { role: STAFF_ROLE_LABELS[held.role] })}
                             phrase={member.email ?? "REVOKE"}
-                            consequence={`${member.email ?? "This person"} loses this role straight away.`}
+                            consequence={fill(t.revokeConsequence, {
+                              who: member.email ?? t.thisPerson,
+                            })}
                             onConfirm={async () => {
                               staff.setData(
                                 await api.revokeStaffRole(member.userId, held.role, "staff.revoke"),
                               );
                               setDone(
-                                `Revoked ${STAFF_ROLE_LABELS[held.role]} from ${member.email ?? "the person"}.`,
+                                fill(t.revoked, {
+                                  role: STAFF_ROLE_LABELS[held.role],
+                                  who: member.email ?? t.thePerson,
+                                }),
                               );
                             }}
                           />

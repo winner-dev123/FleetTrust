@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { type FeatureSettingDto, formatDateTime } from "@fleettrust/types";
 import { type SubmitEvent, useState } from "react";
@@ -10,6 +11,8 @@ import { ErrorNotice, Loading, Notice } from "@/components/feedback";
 import { Card, PageHeader } from "@/components/layout";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.admin.features;
 
 /** One setting with an editor that fits its type (on/off, number, short text). */
 function SettingEditor({
@@ -38,7 +41,7 @@ function SettingEditor({
       const next =
         kind === "text" && typeof value === "string" && value.trim() === "" ? null : value;
       onSaved(await api.setFeatureSetting(setting.key, next));
-      setMessage({ ok: true, text: "Saved." });
+      setMessage({ ok: true, text: t.saved });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
     } finally {
@@ -54,7 +57,7 @@ function SettingEditor({
         </p>
         {kind === "boolean" ? (
           <Checkbox
-            label="On"
+            label={t.on}
             checked={value === true}
             onChange={(event) => {
               setValue(event.target.checked);
@@ -62,7 +65,7 @@ function SettingEditor({
           />
         ) : kind === "number" ? (
           <TextField
-            label="Value"
+            label={t.value}
             type="number"
             value={typeof value === "number" ? String(value) : ""}
             onChange={(event) => {
@@ -71,8 +74,8 @@ function SettingEditor({
           />
         ) : (
           <TextArea
-            label="Text"
-            hint={setting.editor?.emptyHint ?? "Leave empty to clear it."}
+            label={t.text}
+            hint={setting.editor?.emptyHint ?? t.emptyHint}
             maxLength={setting.editor?.maxLength ?? 280}
             value={typeof value === "string" ? value : ""}
             onChange={(event) => {
@@ -81,11 +84,18 @@ function SettingEditor({
           />
         )}
         <p className="small muted" style={{ margin: 0 }}>
-          Default: {JSON.stringify(setting.defaultValue)} ·{" "}
-          {setting.public ? "Shown to everyone" : "Server only"}
-          {setting.updatedAt
-            ? ` · last changed ${formatDateTime(setting.updatedAt)} by ${setting.updatedBy ?? "staff"}`
-            : ""}
+          {[
+            fill(t.default, { value: JSON.stringify(setting.defaultValue) }),
+            setting.public ? t.public : t.serverOnly,
+            setting.updatedAt
+              ? fill(t.lastChanged, {
+                  time: formatDateTime(setting.updatedAt),
+                  by: setting.updatedBy ?? t.staff,
+                })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
         {message ? (
           <Notice tone={message.ok ? "success" : "danger"} live="polite">
@@ -94,7 +104,7 @@ function SettingEditor({
         ) : null}
         <div>
           <Button type="submit" busy={busy}>
-            Save
+            {t.save}
           </Button>
         </div>
       </form>
@@ -111,10 +121,7 @@ export default function FeaturesPage() {
   const settings = useLoad(() => api.featureSettings(), "admin-features");
   return (
     <>
-      <PageHeader
-        title="Feature settings"
-        description="Changes apply straight away and are recorded in the audit log."
-      />
+      <PageHeader title={t.title} description={t.description} />
       {settings.status === "loading" ? <Loading /> : null}
       {settings.status === "error" ? (
         <ErrorNotice error={settings.error} onRetry={settings.reload} />

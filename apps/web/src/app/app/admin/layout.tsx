@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { isNotFound } from "@fleettrust/sdk";
 import { STAFF_ROLE_LABELS } from "@fleettrust/types";
 import Link from "next/link";
@@ -14,6 +15,8 @@ import { currentHref } from "@/lib/nav";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.admin.layout;
+
 /**
  * Admin console frame (Prompt 26). Shows only the sections the person's staff roles allow;
  * the API enforces the same rules. Until the sign-in used two-step verification, only the
@@ -27,10 +30,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (me.status === "loading") return <Loading />;
   if (me.status === "error") {
     return isNotFound(me.error) ? (
-      <PageHeader
-        title="Page not found"
-        description="This page doesn't exist or you don't have access."
-      />
+      <PageHeader title={t.notFoundTitle} description={t.notFoundBody} />
     ) : (
       <ErrorNotice error={me.error} onRetry={me.reload} />
     );
@@ -43,22 +43,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (needsMfa(me.data) && !onSetup) {
     content = (
       <>
-        <PageHeader title="Two-step sign-in needed" />
+        <PageHeader title={t.mfaTitle} />
         <Notice tone="caution">
           <p>
-            Staff tools need two-step sign-in with an authenticator app.{" "}
-            <Link href="/app/admin/security">Set it up or sign in with your code</Link>.
+            {t.mfaBody} <Link href="/app/admin/security">{t.mfaLink}</Link>.
           </p>
         </Notice>
       </>
     );
   } else if (section && !canOpen(section, me.data.roles)) {
-    content = (
-      <PageHeader
-        title="Page not found"
-        description="This page doesn't exist or you don't have access."
-      />
-    );
+    content = <PageHeader title={t.notFoundTitle} description={t.notFoundBody} />;
   }
 
   const active = currentHref(
@@ -68,7 +62,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <AdminContext value={me.data}>
       <div className="stack">
-        <nav aria-label="Admin console" className="card" style={{ padding: 8 }}>
+        <nav aria-label={t.nav} className="card" style={{ padding: 8 }}>
           <ul className="cluster list-plain">
             {sections.map((s) => (
               <li key={s.href} style={{ marginTop: 0 }}>
@@ -80,9 +74,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </ul>
         </nav>
         <p className="small muted" style={{ margin: 0 }}>
-          Signed in as {me.data.email ?? "staff"} ·{" "}
-          {me.data.roles.map((role) => STAFF_ROLE_LABELS[role]).join(", ")} · Every action here is
-          recorded in the audit log.
+          {fill(t.signedInAs, {
+            email: me.data.email ?? t.staff,
+            roles: me.data.roles.map((role) => STAFF_ROLE_LABELS[role]).join(", "),
+          })}
         </p>
         {content}
       </div>

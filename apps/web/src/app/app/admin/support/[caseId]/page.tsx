@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { formatDateTime, titleCase } from "@fleettrust/types";
 import { type SubmitEvent, use, useState } from "react";
@@ -12,11 +13,13 @@ import { Card, PageHeader } from "@/components/layout";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.admin.supportCase;
+
 const ACTION_LABELS: Record<string, string> = {
-  "support.case_opened": "Case opened",
-  "support.sessions_revoked": "Signed out everywhere",
-  "support.sign_in_link_sent": "Sign-in link emailed",
-  "support.case_closed": "Case closed",
+  "support.case_opened": t.caseOpened,
+  "support.sessions_revoked": t.sessionsRevoked,
+  "support.sign_in_link_sent": t.linkSent,
+  "support.case_closed": t.caseClosed,
 };
 
 /** One support case: account actions are only possible while it's open. */
@@ -50,13 +53,13 @@ export default function SupportCasePage(props: PageProps<"/app/admin/support/[ca
   return (
     <>
       <PageHeader
-        title={`Support case: ${data.subjectEmail ?? data.userId}`}
+        title={fill(t.title, { who: data.subjectEmail ?? data.userId })}
         description={data.reason}
       />
       <p>
         <Badge tone={open ? "caution" : "neutral"}>{titleCase(data.status)}</Badge>{" "}
         <span className="small muted">
-          Opened {formatDateTime(data.openedAt)} by {data.openedBy ?? "staff"}
+          {fill(t.opened, { time: formatDateTime(data.openedAt), by: data.openedBy ?? t.staff })}
         </span>
       </p>
       {message ? (
@@ -65,10 +68,8 @@ export default function SupportCasePage(props: PageProps<"/app/admin/support/[ca
         </Notice>
       ) : null}
       {open ? (
-        <Card title="Help them sign in">
-          <p className="small">
-            The link goes only to the account&apos;s own email address; you never see it.
-          </p>
+        <Card title={t.help}>
+          <p className="small">{t.linkNote}</p>
           <div className="cluster">
             <Button
               variant="secondary"
@@ -76,30 +77,30 @@ export default function SupportCasePage(props: PageProps<"/app/admin/support/[ca
               onClick={() =>
                 void act(async () => {
                   supportCase.setData(await api.supportSendSignInLink(caseId));
-                }, "Sign-in link emailed.")
+                }, t.linkEmailed)
               }
             >
-              Email a sign-in link
+              {t.emailLink}
             </Button>
             <ConfirmAction
-              label="Sign out everywhere"
+              label={t.signOutEverywhere}
               phrase="SIGN OUT"
-              consequence="Every device signed in to this account is signed out. Use it for a lost or stolen phone."
+              consequence={t.signOutConsequence}
               onConfirm={async () => {
                 supportCase.setData(
                   await api.supportRevokeSessions(caseId, "support.revoke_sessions"),
                 );
-                setMessage({ ok: true, text: "Signed out of every device." });
+                setMessage({ ok: true, text: t.signedOut });
               }}
             />
           </div>
         </Card>
       ) : (
         <Notice>
-          <p>Closed: {data.resolution}</p>
+          <p>{fill(t.closed, { resolution: data.resolution ?? "" })}</p>
         </Notice>
       )}
-      <Card title="What happened">
+      <Card title={t.whatHappened}>
         <ol>
           {data.actions.map((a) => (
             <li key={`${a.action}-${a.at}`}>
@@ -109,18 +110,18 @@ export default function SupportCasePage(props: PageProps<"/app/admin/support/[ca
         </ol>
       </Card>
       {open ? (
-        <Card title="Close the case">
+        <Card title={t.closeTitle}>
           <form
             className="stack"
             onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
               event.preventDefault();
               void act(async () => {
                 supportCase.setData(await api.closeSupportCase(caseId, resolution.trim()));
-              }, "Case closed.");
+              }, t.closedDone);
             }}
           >
             <TextArea
-              label="Resolution"
+              label={t.resolution}
               required
               minLength={3}
               maxLength={1000}
@@ -131,7 +132,7 @@ export default function SupportCasePage(props: PageProps<"/app/admin/support/[ca
             />
             <div>
               <Button type="submit" disabled={resolution.trim().length < 3} busy={busy}>
-                Close case
+                {t.close}
               </Button>
             </div>
           </form>
