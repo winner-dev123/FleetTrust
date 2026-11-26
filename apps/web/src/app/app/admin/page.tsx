@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill, plural } from "@fleettrust/copy";
 import { STAFF_ROLE_LABELS, STAFF_ROLE_SCOPES } from "@fleettrust/types";
 
 import { ErrorNotice, Loading } from "@/components/feedback";
@@ -9,15 +10,18 @@ import { useSession } from "@/lib/session";
 import { useAdmin } from "@/lib/admin-context";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.admin.home;
+
 /** What each of the person's staff roles allows (least privilege, SRS §2.3). */
 function RoleSummary() {
   const me = useAdmin();
   return (
-    <Card title="Your roles">
+    <Card title={t.yourRoles}>
       <ul className="list-plain">
         {me.roles.map((role) => (
           <li key={role}>
-            <strong>{STAFF_ROLE_LABELS[role]}:</strong> {STAFF_ROLE_SCOPES[role]}
+            <strong>{fill(t.roleLine, { role: STAFF_ROLE_LABELS[role] })}</strong>{" "}
+            {STAFF_ROLE_SCOPES[role]}
           </li>
         ))}
       </ul>
@@ -32,7 +36,7 @@ export default function AdminPage() {
     me.roles.includes("trust_safety_moderator") || me.roles.includes("verification_reviewer");
   return (
     <>
-      <PageHeader title="Admin console" description="FleetTrust staff tools." />
+      <PageHeader title={t.title} description={t.description} />
       <RoleSummary />
       {trust ? <TrustOverview /> : null}
     </>
@@ -60,45 +64,40 @@ function TrustOverview() {
 
   return (
     <>
-      <h2>Trust and safety</h2>
+      <h2>{t.trust}</h2>
       <div className="grid">
-        <Card title="Reports">
-          <Stat label="open" value={dashboard.reports.open} />
+        <Card title={t.reports}>
+          <Stat label={t.reportsOpen} value={dashboard.reports.open} />
         </Card>
-        <Card title="Waiting for moderation">
-          <Stat label="articles" value={dashboard.pendingModeration.articles} />
-          <Stat label="jobs" value={dashboard.pendingModeration.jobs} />
+        <Card title={t.waiting}>
+          <Stat label={t.articles} value={dashboard.pendingModeration.articles} />
+          <Stat label={t.jobs} value={dashboard.pendingModeration.jobs} />
         </Card>
-        <Card title="Appeals">
-          <Stat label="moderation appeals open" value={dashboard.appeals.open} />
-          <Stat label="verification appeals open" value={dashboard.appeals.verificationOpen} />
+        <Card title={t.appeals}>
+          <Stat label={t.moderationAppeals} value={dashboard.appeals.open} />
+          <Stat label={t.verificationAppeals} value={dashboard.appeals.verificationOpen} />
         </Card>
-        <Card title="Members">
-          <Stat label="active suspensions" value={dashboard.members.activeSuspensions} />
-          <Stat label="warnings (30 days)" value={dashboard.members.warningsLast30Days} />
-          <Stat label="Power Users" value={dashboard.members.powerUsers} />
+        <Card title={t.members}>
+          <Stat label={t.suspensions} value={dashboard.members.activeSuspensions} />
+          <Stat label={t.warnings} value={dashboard.members.warningsLast30Days} />
+          <Stat label={t.powerUsers} value={dashboard.members.powerUsers} />
         </Card>
-        <Card title="Verification">
-          <Stat label="cases waiting" value={dashboard.verification.casesWaiting} />
+        <Card title={t.verification}>
+          <Stat label={t.casesWaiting} value={dashboard.verification.casesWaiting} />
         </Card>
-        <Card title="Emergency">
-          <Stat label="flagged active alerts" value={dashboard.emergency.flaggedActive} />
+        <Card title={t.emergency}>
+          <Stat label={t.flaggedAlerts} value={dashboard.emergency.flaggedActive} />
         </Card>
       </div>
 
-      <Card title="Reports received, last 14 days">
-        <div
-          className="table-wrap"
-          tabIndex={0}
-          role="region"
-          aria-label="Reports received per day"
-        >
+      <Card title={t.reportsChart}>
+        <div className="table-wrap" tabIndex={0} role="region" aria-label={t.reportsPerDay}>
           <table className="table">
-            <caption className="visually-hidden">Reports received per day</caption>
+            <caption className="visually-hidden">{t.reportsPerDay}</caption>
             <thead>
               <tr>
-                <th scope="col">Day</th>
-                <th scope="col">Reports</th>
+                <th scope="col">{t.day}</th>
+                <th scope="col">{t.reportsColumn}</th>
               </tr>
             </thead>
             <tbody>
@@ -114,18 +113,20 @@ function TrustOverview() {
       </Card>
 
       {queue ? (
-        <Card title="Moderation queue">
+        <Card title={t.queue}>
           {queue.length === 0 ? (
-            <p className="muted">Nothing waiting.</p>
+            <p className="muted">{t.nothingWaiting}</p>
           ) : (
             <ul className="list-plain">
               {queue.map((item) => (
                 <li key={`${item.targetType}-${item.targetId}`}>
                   <strong>{item.title}</strong>{" "}
                   <span className="small muted">
-                    {titleCase(item.targetType)} · {String(item.openReports)} open reports ·{" "}
-                    {item.reasons.map(titleCase).join(", ")} · since{" "}
-                    {formatDateTime(item.waitingSince)}
+                    {plural(item.openReports, t.queueLine, {
+                      type: titleCase(item.targetType),
+                      reasons: item.reasons.map(titleCase).join(", "),
+                      time: formatDateTime(item.waitingSince),
+                    })}
                   </span>
                 </li>
               ))}
@@ -134,7 +135,7 @@ function TrustOverview() {
         </Card>
       ) : null}
 
-      <Card title="Recent audited actions">
+      <Card title={t.recent}>
         <ul className="list-plain small">
           {dashboard.recentActions.map((action) => (
             <li key={`${action.at}-${action.action}-${action.targetId ?? ""}`}>

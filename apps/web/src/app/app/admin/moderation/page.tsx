@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill, plural } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { formatDateTime, titleCase } from "@fleettrust/types";
 import Link from "next/link";
@@ -11,6 +12,8 @@ import { EmptyState, ErrorNotice, Loading, Notice } from "@/components/feedback"
 import { Card, PageHeader } from "@/components/layout";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.admin.moderation;
 
 /** Trust and safety moderators: reported content, members and appeals. */
 export default function ModerationPage() {
@@ -26,7 +29,7 @@ export default function ModerationPage() {
       await api.decideAppeal(appealId, { outcome, reason: reason.trim() });
       setMessage({
         ok: true,
-        text: outcome === "overturned" ? "Appeal accepted." : "Appeal refused.",
+        text: outcome === "overturned" ? t.accepted : t.refused,
       });
       setReason("");
       appeals.reload();
@@ -37,19 +40,19 @@ export default function ModerationPage() {
 
   return (
     <>
-      <PageHeader title="Moderation" description="Reported content waits here, oldest first." />
+      <PageHeader title={t.title} description={t.description} />
       {message ? (
         <Notice tone={message.ok ? "success" : "danger"} live="polite">
           <p>{message.text}</p>
         </Notice>
       ) : null}
-      <Card title="Queue">
+      <Card title={t.queue}>
         {queue.status === "loading" ? <Loading /> : null}
         {queue.status === "error" ? (
           <ErrorNotice error={queue.error} onRetry={queue.reload} />
         ) : null}
         {queue.status === "ready" && queue.data.length === 0 ? (
-          <EmptyState title="Nothing waiting" />
+          <EmptyState title={t.nothingWaiting} />
         ) : null}
         {queue.status === "ready" ? (
           <ul className="list-plain">
@@ -59,24 +62,26 @@ export default function ModerationPage() {
                   {item.title}
                 </Link>{" "}
                 <span className="small muted">
-                  {titleCase(item.targetType)} · {String(item.openReports)} open reports ·{" "}
-                  {item.reasons.map(titleCase).join(", ")} · since{" "}
-                  {formatDateTime(item.waitingSince)}
+                  {plural(item.openReports, t.queueLine, {
+                    type: titleCase(item.targetType),
+                    reasons: item.reasons.map(titleCase).join(", "),
+                    time: formatDateTime(item.waitingSince),
+                  })}
                 </span>
               </li>
             ))}
           </ul>
         ) : null}
       </Card>
-      <Card title="Open appeals">
+      <Card title={t.openAppeals}>
         {appeals.status === "ready" && appeals.data.length === 0 ? (
-          <p className="muted">No open appeals.</p>
+          <p className="muted">{t.noAppeals}</p>
         ) : null}
         {appeals.status === "ready" && appeals.data.length > 0 ? (
           <>
             <TextArea
-              label="Reason for your decision"
-              hint="Shown to the member."
+              label={t.reason}
+              hint={t.reasonHint}
               value={reason}
               onChange={(event) => {
                 setReason(event.target.value);
@@ -87,23 +92,25 @@ export default function ModerationPage() {
                 <li key={appeal.id} className="card stack" style={{ gap: 8 }}>
                   <p style={{ margin: 0 }}>{appeal.statement}</p>
                   <p className="small muted" style={{ margin: 0 }}>
-                    {titleCase(appeal.kind)} appeal ·{" "}
-                    <Link href={`/app/admin/moderation/user/${appeal.userId}`}>member history</Link>{" "}
-                    · filed {formatDateTime(appeal.createdAt)}
+                    {fill(t.appealKind, { kind: titleCase(appeal.kind) })} ·{" "}
+                    <Link href={`/app/admin/moderation/user/${appeal.userId}`}>
+                      {t.memberHistory}
+                    </Link>{" "}
+                    · {fill(t.filed, { time: formatDateTime(appeal.createdAt) })}
                   </p>
                   <div className="cluster">
                     <Button
                       disabled={reason.trim().length < 3}
                       onClick={() => void decide(appeal.id, "overturned")}
                     >
-                      Accept appeal
+                      {t.accept}
                     </Button>
                     <Button
                       variant="secondary"
                       disabled={reason.trim().length < 3}
                       onClick={() => void decide(appeal.id, "upheld")}
                     >
-                      Keep the decision
+                      {t.keep}
                     </Button>
                   </div>
                 </li>

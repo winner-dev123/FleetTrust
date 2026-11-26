@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import {
   formatDateTime,
@@ -16,13 +17,15 @@ import { Card, PageHeader } from "@/components/layout";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
 
+const t = copy.web.admin.moderationCase;
+
 type Decision = "approve" | "reject" | "hide" | "restore" | "dismiss-reports";
 const DECISION_LABELS: Record<Decision, string> = {
-  approve: "Approve",
-  reject: "Reject",
-  hide: "Hide",
-  restore: "Restore",
-  "dismiss-reports": "Dismiss reports",
+  approve: t.approve,
+  reject: t.reject,
+  hide: t.hide,
+  restore: t.restore,
+  "dismiss-reports": t.dismissReports,
 };
 
 /** A member's standing: sanctions, appeals and decisions about their content. */
@@ -46,7 +49,7 @@ function MemberPanel({ userId }: { userId: string }) {
       );
       setMessage({
         ok: true,
-        text: kind === "warning" ? "Warning recorded." : "Member suspended.",
+        text: kind === "warning" ? t.warningRecorded : t.suspended,
       });
       setReason("");
       history.reload();
@@ -60,49 +63,62 @@ function MemberPanel({ userId }: { userId: string }) {
     return <ErrorNotice error={history.error} onRetry={history.reload} />;
   const data = history.data;
   return (
-    <Card title="Member standing">
+    <Card title={t.standing}>
       <p>
-        {titleCase(data.status)} · Power User: {titleCase(data.powerUser)}
+        {fill(t.standingLine, {
+          status: titleCase(data.status),
+          powerUser: titleCase(data.powerUser),
+        })}
       </p>
       {message ? (
         <Notice tone={message.ok ? "success" : "danger"} live="polite">
           <p>{message.text}</p>
         </Notice>
       ) : null}
-      <h3>Sanctions</h3>
-      {data.sanctions.length === 0 ? <p className="muted">None.</p> : null}
+      <h3>{t.sanctions}</h3>
+      {data.sanctions.length === 0 ? <p className="muted">{t.none}</p> : null}
       <ul className="list-plain">
         {data.sanctions.map((s) => (
           <li key={s.id} className="cluster cluster--between">
             <span>
-              {titleCase(s.kind)} · {s.reason} · {formatDateTime(s.startsAt)}
-              {s.endsAt ? ` until ${formatDateTime(s.endsAt)}` : ""}
-              {s.liftedAt ? ` · lifted ${formatDateTime(s.liftedAt)}` : ""}
+              {[
+                titleCase(s.kind),
+                s.reason,
+                s.endsAt
+                  ? fill(t.fromUntil, {
+                      start: formatDateTime(s.startsAt),
+                      end: formatDateTime(s.endsAt),
+                    })
+                  : formatDateTime(s.startsAt),
+                s.liftedAt ? fill(t.lifted, { time: formatDateTime(s.liftedAt) }) : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </span>
             {s.kind === "suspension" && !s.liftedAt ? (
               <Button
                 variant="ghost"
                 onClick={() =>
                   void api
-                    .liftSanction(s.id, "Lifted by a moderator")
+                    .liftSanction(s.id, t.liftReason)
                     .then(history.reload, (failure: unknown) => {
                       setMessage({ ok: false, text: errorMessage(failure) });
                     })
                 }
               >
-                Lift suspension
+                {t.lift}
               </Button>
             ) : null}
           </li>
         ))}
       </ul>
       <form className="stack" onSubmit={(event) => void sanction(event)}>
-        <h3>New sanction</h3>
+        <h3>{t.newSanction}</h3>
         <SelectField
-          label="Kind"
+          label={t.kind}
           options={[
-            { value: "warning", label: "Warning" },
-            { value: "suspension", label: "Suspension" },
+            { value: "warning", label: t.warning },
+            { value: "suspension", label: t.suspension },
           ]}
           value={kind}
           onChange={(event) => {
@@ -111,8 +127,8 @@ function MemberPanel({ userId }: { userId: string }) {
         />
         {kind === "suspension" ? (
           <TextField
-            label="Days"
-            hint="Leave empty to suspend until lifted."
+            label={t.days}
+            hint={t.daysHint}
             type="number"
             min={1}
             max={365}
@@ -123,8 +139,8 @@ function MemberPanel({ userId }: { userId: string }) {
           />
         ) : null}
         <TextArea
-          label="Reason"
-          hint="Shown to the member, who can appeal."
+          label={t.reason}
+          hint={t.sanctionReasonHint}
           value={reason}
           onChange={(event) => {
             setReason(event.target.value);
@@ -136,7 +152,7 @@ function MemberPanel({ userId }: { userId: string }) {
             variant={kind === "suspension" ? "danger" : "primary"}
             disabled={reason.trim().length < 3}
           >
-            {kind === "suspension" ? "Suspend member" : "Record warning"}
+            {kind === "suspension" ? t.suspend : t.recordWarning}
           </Button>
         </div>
       </form>
@@ -147,7 +163,7 @@ function MemberPanel({ userId }: { userId: string }) {
 /** One reported item: what was reported, by how many, and the decision. */
 export default function ModerationCasePage(props: PageProps<"/app/admin/moderation/[type]/[id]">) {
   const params = use(props.params);
-  const type = REPORT_TARGET_TYPES.find((t) => t === params.type);
+  const type = REPORT_TARGET_TYPES.find((value) => value === params.type);
   const { api } = useSession();
   const moderationCase = useLoad(
     () => (type ? api.moderationCase(type, params.id) : Promise.reject(new Error("unknown type"))),
@@ -156,7 +172,7 @@ export default function ModerationCasePage(props: PageProps<"/app/admin/moderati
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
-  if (!type) return <EmptyState title="Page not found" />;
+  if (!type) return <EmptyState title={t.notFound} />;
   if (moderationCase.status === "loading") return <Loading />;
   if (moderationCase.status === "error")
     return <ErrorNotice error={moderationCase.error} onRetry={moderationCase.reload} />;
@@ -172,7 +188,7 @@ export default function ModerationCasePage(props: PageProps<"/app/admin/moderati
       moderationCase.setData(
         await api.moderate(target, params.id, decision, reason.trim() || null),
       );
-      setMessage({ ok: true, text: `${DECISION_LABELS[decision]}: done.` });
+      setMessage({ ok: true, text: fill(t.done, { decision: DECISION_LABELS[decision] }) });
     } catch (failure) {
       setMessage({ ok: false, text: errorMessage(failure) });
     }
@@ -190,11 +206,11 @@ export default function ModerationCasePage(props: PageProps<"/app/admin/moderati
         </Notice>
       ) : null}
       {data.text ? (
-        <Card title="Content">
+        <Card title={t.content}>
           <p style={{ whiteSpace: "pre-line" }}>{data.text}</p>
         </Card>
       ) : null}
-      <Card title={`Reports (${String(data.reports.length)})`}>
+      <Card title={fill(t.reports, { count: data.reports.length })}>
         <ul className="list-plain small">
           {data.reports.map((r) => (
             <li key={r.id}>
@@ -204,10 +220,10 @@ export default function ModerationCasePage(props: PageProps<"/app/admin/moderati
           ))}
         </ul>
       </Card>
-      <Card title="Decision">
+      <Card title={t.decision}>
         <TextArea
-          label="Reason"
-          hint="Recorded with the decision; shown to the author when content is rejected or hidden."
+          label={t.reason}
+          hint={t.decisionHint}
           value={reason}
           onChange={(event) => {
             setReason(event.target.value);
@@ -224,7 +240,7 @@ export default function ModerationCasePage(props: PageProps<"/app/admin/moderati
             </Button>
           ))}
         </div>
-        <h3>History</h3>
+        <h3>{t.history}</h3>
         <ul className="list-plain small">
           {data.actions.map((a) => (
             <li key={a.id}>

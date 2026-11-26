@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill, plural } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { formatDateTime, titleCase } from "@fleettrust/types";
 import Link from "next/link";
@@ -12,6 +13,8 @@ import { EmptyState, ErrorNotice, Loading, Notice } from "@/components/feedback"
 import { Card, PageHeader } from "@/components/layout";
 import { useSession } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
+
+const t = copy.web.admin.verification;
 
 const STATUSES = ["submitted", "changes_requested", "approved", "rejected", "withdrawn"] as const;
 
@@ -32,7 +35,7 @@ export default function VerificationPage() {
       await api.decideReviewAppeal(id, decision, appealReason.trim());
       setMessage({
         ok: true,
-        text: decision === "overturn" ? "Appeal accepted." : "Appeal refused.",
+        text: decision === "overturn" ? t.accepted : t.refused,
       });
       setAppealReason("");
       appeals.reload();
@@ -43,18 +46,15 @@ export default function VerificationPage() {
 
   return (
     <>
-      <PageHeader
-        title="Verification"
-        description="Decide on evidence. You can't review cases you opened yourself."
-      />
+      <PageHeader title={t.title} description={t.description} />
       {message ? (
         <Notice tone={message.ok ? "success" : "danger"} live="polite">
           <p>{message.text}</p>
         </Notice>
       ) : null}
-      <Card title="Cases">
+      <Card title={t.cases}>
         <SelectField
-          label="Show"
+          label={t.show}
           options={STATUSES.map((s) => ({ value: s, label: titleCase(s) }))}
           value={status}
           onChange={(event) => {
@@ -66,17 +66,21 @@ export default function VerificationPage() {
           <ErrorNotice error={queue.error} onRetry={queue.reload} />
         ) : null}
         {queue.status === "ready" && queue.data.length === 0 ? (
-          <EmptyState title="Nothing here" />
+          <EmptyState title={t.nothingHere} />
         ) : null}
         {queue.status === "ready" ? (
           <ul className="list-plain">
             {queue.data.map((c) => (
               <li key={c.id}>
                 <Link href={`/app/admin/verification/${c.id}`}>
-                  {titleCase(c.badgeType)} badge for {c.subject.type} {c.subject.id.slice(0, 8)}
+                  {fill(t.caseLink, {
+                    badge: titleCase(c.badgeType),
+                    type: c.subject.type,
+                    id: c.subject.id.slice(0, 8),
+                  })}
                 </Link>{" "}
                 <span className="small muted">
-                  {c.documents.length} documents · submitted {formatDateTime(c.submittedAt)}
+                  {plural(c.documents.length, t.caseMeta, { time: formatDateTime(c.submittedAt) })}
                 </span>
               </li>
             ))}
@@ -84,15 +88,15 @@ export default function VerificationPage() {
         ) : null}
       </Card>
 
-      <Card title="Open appeals">
+      <Card title={t.openAppeals}>
         {appeals.status === "ready" && appeals.data.length === 0 ? (
-          <p className="muted">No open appeals.</p>
+          <p className="muted">{t.noAppeals}</p>
         ) : null}
         {appeals.status === "ready" && appeals.data.length > 0 ? (
           <>
             <TextArea
-              label="Reason for your decision"
-              hint="Shown to the person. Needed for either decision."
+              label={t.appealReason}
+              hint={t.appealReasonHint}
               value={appealReason}
               onChange={(event) => {
                 setAppealReason(event.target.value);
@@ -104,23 +108,23 @@ export default function VerificationPage() {
                   <p style={{ margin: 0 }}>{appeal.statement}</p>
                   <p className="small muted" style={{ margin: 0 }}>
                     {appeal.caseId
-                      ? `Case ${appeal.caseId.slice(0, 8)}`
-                      : `Badge ${appeal.badgeId?.slice(0, 8) ?? ""}`}{" "}
-                    · filed {formatDateTime(appeal.createdAt)}
+                      ? fill(t.appealCase, { id: appeal.caseId.slice(0, 8) })
+                      : fill(t.appealBadge, { id: appeal.badgeId?.slice(0, 8) ?? "" })}{" "}
+                    · {fill(t.filed, { time: formatDateTime(appeal.createdAt) })}
                   </p>
                   <div className="cluster">
                     <Button
                       disabled={appealReason.trim().length < 3}
                       onClick={() => void decideAppeal(appeal.id, "overturn")}
                     >
-                      Accept appeal
+                      {t.accept}
                     </Button>
                     <Button
                       variant="secondary"
                       disabled={appealReason.trim().length < 3}
                       onClick={() => void decideAppeal(appeal.id, "uphold")}
                     >
-                      Keep the decision
+                      {t.keep}
                     </Button>
                   </div>
                 </li>
@@ -130,21 +134,19 @@ export default function VerificationPage() {
         ) : null}
       </Card>
 
-      <Card title="Revoke a badge">
-        <p className="small">
-          For a badge that should no longer stand (for example a licence reported suspended).
-        </p>
+      <Card title={t.revokeTitle}>
+        <p className="small">{t.revokeIntro}</p>
         <div className="grid">
           <TextField
-            label="Badge ID"
+            label={t.badgeId}
             value={badgeId}
             onChange={(event) => {
               setBadgeId(event.target.value);
             }}
           />
           <TextArea
-            label="Reason"
-            hint="Shown to the badge holder, who can appeal."
+            label={t.reason}
+            hint={t.reasonHint}
             value={revokeReason}
             onChange={(event) => {
               setRevokeReason(event.target.value);
@@ -153,12 +155,12 @@ export default function VerificationPage() {
         </div>
         {badgeId.trim() && revokeReason.trim().length >= 3 ? (
           <ConfirmAction
-            label="Revoke badge"
+            label={t.revoke}
             phrase="REVOKE"
-            consequence="The badge stops showing as verified immediately. The holder must verify again or appeal."
+            consequence={t.revokeConsequence}
             onConfirm={async () => {
               await api.revokeBadge(badgeId.trim(), revokeReason.trim(), "badge.revoke");
-              setMessage({ ok: true, text: "Badge revoked." });
+              setMessage({ ok: true, text: t.revoked });
               setBadgeId("");
               setRevokeReason("");
             }}
@@ -166,17 +168,15 @@ export default function VerificationPage() {
         ) : null}
       </Card>
 
-      <Card title="Document retention">
-        <p className="small">
-          Deletes stored documents whose retention period has ended (this also runs on a schedule).
-        </p>
+      <Card title={t.retention}>
+        <p className="small">{t.retentionIntro}</p>
         <ConfirmAction
-          label="Delete expired documents now"
+          label={t.purge}
           phrase="PURGE"
-          consequence="Expired verification documents are permanently deleted from storage."
+          consequence={t.purgeConsequence}
           onConfirm={async () => {
             const { purged } = await api.purgeExpiredDocuments("verification.purge");
-            setMessage({ ok: true, text: `${String(purged)} documents deleted.` });
+            setMessage({ ok: true, text: plural(purged, t.purged) });
           }}
         />
       </Card>

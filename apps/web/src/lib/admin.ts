@@ -1,4 +1,7 @@
+import { copy } from "@fleettrust/copy";
 import type { AdminMe, AuditQuery, StaffRole } from "@fleettrust/types";
+
+const t = copy.web.admin.sections;
 
 /** One section of the admin console and the staff roles that may open it (least privilege). */
 export interface AdminSection {
@@ -8,16 +11,16 @@ export interface AdminSection {
 }
 
 export const ADMIN_SECTIONS: readonly AdminSection[] = [
-  { href: "/app/admin", label: "Overview", roles: "any" },
-  { href: "/app/admin/verification", label: "Verification", roles: ["verification_reviewer"] },
-  { href: "/app/admin/billing", label: "Plans and quotas", roles: ["billing_operator"] },
-  { href: "/app/admin/moderation", label: "Moderation", roles: ["trust_safety_moderator"] },
-  { href: "/app/admin/support", label: "Support", roles: ["support_agent"] },
-  { href: "/app/admin/staff", label: "Staff roles", roles: ["super_admin"] },
-  { href: "/app/admin/features", label: "Feature settings", roles: ["super_admin"] },
-  { href: "/app/admin/taxonomy", label: "Service categories", roles: ["super_admin"] },
-  { href: "/app/admin/audit", label: "Audit log", roles: "any" },
-  { href: "/app/admin/security", label: "Two-step sign-in", roles: "any" },
+  { href: "/app/admin", label: t.overview, roles: "any" },
+  { href: "/app/admin/verification", label: t.verification, roles: ["verification_reviewer"] },
+  { href: "/app/admin/billing", label: t.billing, roles: ["billing_operator"] },
+  { href: "/app/admin/moderation", label: t.moderation, roles: ["trust_safety_moderator"] },
+  { href: "/app/admin/support", label: t.support, roles: ["support_agent"] },
+  { href: "/app/admin/staff", label: t.staff, roles: ["super_admin"] },
+  { href: "/app/admin/features", label: t.features, roles: ["super_admin"] },
+  { href: "/app/admin/taxonomy", label: t.taxonomy, roles: ["super_admin"] },
+  { href: "/app/admin/audit", label: t.audit, roles: "any" },
+  { href: "/app/admin/security", label: t.security, roles: "any" },
 ];
 
 export function canOpen(section: AdminSection, roles: readonly StaffRole[]): boolean {

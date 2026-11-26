@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { multiFactor, type TotpSecret, TotpMultiFactorGenerator } from "@firebase/auth";
 import { useRouter } from "next/navigation";
 import { type SubmitEvent, useState } from "react";
@@ -12,6 +13,8 @@ import { useAdmin } from "@/lib/admin-context";
 import { firebaseAuth } from "@/lib/firebase";
 import { rememberReturnPath } from "@/lib/return-path";
 import { useSession } from "@/lib/session";
+
+const t = copy.web.admin.security;
 
 type Step =
   | { kind: "idle" }
@@ -63,9 +66,7 @@ export default function SecurityPage() {
     } catch (error) {
       setStep({
         kind: "error",
-        message: requiresRecentLogin(error)
-          ? "For your security, sign in again, then come back here to set up the app."
-          : "Two-step sign-in couldn't be started. It needs Identity Platform on the Firebase project (OQ-12).",
+        message: requiresRecentLogin(error) ? t.recentLogin : t.startFailed,
       });
     } finally {
       setBusy(false);
@@ -75,20 +76,20 @@ export default function SecurityPage() {
   async function finish(event: SubmitEvent<HTMLFormElement>, secret: TotpSecret) {
     event.preventDefault();
     if (!user || !/^\d{6}$/.test(code.trim())) {
-      setStep({ kind: "error", message: "Enter the 6-digit code your app shows for FleetTrust." });
+      setStep({ kind: "error", message: t.codeInvalid });
       return;
     }
     setBusy(true);
     try {
       await multiFactor(user).enroll(
         TotpMultiFactorGenerator.assertionForEnrollment(secret, code.trim()),
-        "Authenticator app",
+        t.appName,
       );
       setStep({ kind: "done" });
     } catch {
       setStep({
         kind: "error",
-        message: "That code didn't work. Check the time on your phone and try the current code.",
+        message: t.codeRejected,
       });
     } finally {
       setBusy(false);
@@ -97,31 +98,25 @@ export default function SecurityPage() {
 
   return (
     <>
-      <PageHeader
-        title="Two-step sign-in"
-        description="Staff tools need a code from an authenticator app every time you sign in."
-      />
+      <PageHeader title={t.title} description={t.description} />
       {me.mfa.satisfied ? (
-        <Notice tone="success" title="This sign-in used two-step verification">
-          <p>You can use the staff tools your roles allow.</p>
+        <Notice tone="success" title={t.satisfiedTitle}>
+          <p>{t.satisfiedBody}</p>
         </Notice>
       ) : enrolled.length > 0 ? (
-        <Notice tone="caution" title="Sign in again with your code">
-          <p>Your authenticator app is set up, but this sign-in didn&apos;t use it.</p>
-          <Button onClick={() => void signInAgain()}>Sign in again</Button>
+        <Notice tone="caution" title={t.againTitle}>
+          <p>{t.againBody}</p>
+          <Button onClick={() => void signInAgain()}>{t.signInAgain}</Button>
         </Notice>
       ) : null}
 
       {enrolled.length === 0 ? (
-        <Card title="Set up an authenticator app">
+        <Card title={t.setUpTitle}>
           {step.kind === "idle" ? (
             <>
-              <p>
-                Use an app such as Google Authenticator, Microsoft Authenticator or 1Password.
-                You&apos;ll add FleetTrust to it, then type the code it shows.
-              </p>
+              <p>{t.setUpBody}</p>
               <Button busy={busy} onClick={() => void start()}>
-                Start setup
+                {t.start}
               </Button>
             </>
           ) : null}
@@ -129,16 +124,15 @@ export default function SecurityPage() {
             <form className="stack" onSubmit={(event) => void finish(event, step.secret)}>
               <ol>
                 <li>
-                  In your app, add an account and enter this key:{" "}
-                  <code>{step.secret.secretKey}</code>
+                  {t.stepKey} <code>{step.secret.secretKey}</code>
                 </li>
                 <li>
-                  On this phone? <a href={step.uri}>Open the setup link</a> instead.
+                  {t.stepLinkBefore} <a href={step.uri}>{t.stepLink}</a> {t.stepLinkAfter}
                 </li>
-                <li>Type the 6-digit code the app shows.</li>
+                <li>{t.stepCode}</li>
               </ol>
               <TextField
-                label="6-digit code"
+                label={t.code}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={6}
@@ -149,15 +143,15 @@ export default function SecurityPage() {
               />
               <div>
                 <Button type="submit" busy={busy}>
-                  Turn on two-step sign-in
+                  {t.turnOn}
                 </Button>
               </div>
             </form>
           ) : null}
           {step.kind === "done" ? (
-            <Notice tone="success" live="polite" title="Two-step sign-in is on">
-              <p>Sign in again with your code to open the staff tools.</p>
-              <Button onClick={() => void signInAgain()}>Sign in again</Button>
+            <Notice tone="success" live="polite" title={t.onTitle}>
+              <p>{t.onBody}</p>
+              <Button onClick={() => void signInAgain()}>{t.signInAgain}</Button>
             </Notice>
           ) : null}
           {step.kind === "error" ? (
@@ -165,7 +159,7 @@ export default function SecurityPage() {
               <p>{step.message}</p>
               <div className="cluster">
                 <Button variant="secondary" onClick={() => void signInAgain()}>
-                  Sign in again
+                  {t.signInAgain}
                 </Button>
                 <Button
                   variant="ghost"
@@ -173,17 +167,18 @@ export default function SecurityPage() {
                     setStep({ kind: "idle" });
                   }}
                 >
-                  Try again
+                  {t.tryAgain}
                 </Button>
               </div>
             </Notice>
           ) : null}
         </Card>
       ) : (
-        <Card title="Your authenticator app">
+        <Card title={t.yourApp}>
           <p>
-            Set up {enrolled.map((f) => f.displayName ?? "Authenticator app").join(", ")}. Lost your
-            phone? Ask another super admin; support can sign you out everywhere.
+            {fill(t.enrolled, {
+              apps: enrolled.map((f) => f.displayName ?? t.appName).join(", "),
+            })}
           </p>
         </Card>
       )}

@@ -96,34 +96,30 @@ function inlineText(path: string): Finding[] {
 }
 
 /**
- * Migrated so far (the website moves slice by slice; each slice adds its folders here).
- * Legal documents and the accessibility statement are whole documents, reviewed and translated
- * as documents (RFC-0006 principle 2), so they stay as pages.
+ * Every page and component, plus the helpers that produce labels. Legal documents and the
+ * accessibility statement are whole documents, reviewed and translated as documents
+ * (RFC-0006 principle 2), so they stay as pages.
  */
-const MIGRATED = [
-  "src/app/(site)",
+const SCANNED = [
+  "src/app",
   "src/components",
-  "src/app/layout.tsx",
-  "src/app/not-found.tsx",
+  "src/lib/admin.ts",
   "src/lib/nav.ts",
   "src/lib/price.ts",
-  "src/app/app",
 ];
 const DOCUMENTS = ["src/app/(site)/legal/", "src/app/(site)/accessibility/"];
-/** Not migrated yet: the admin console moves in the next slice. */
-const NOT_YET = ["src/app/app/admin/"];
 
-const files = MIGRATED.flatMap((path) => {
+const files = SCANNED.flatMap((path) => {
   const full = join(root, path);
   return statSync(full).isDirectory() ? sourceFiles(full) : [full];
 }).filter((path) => {
   const rel = relative(root, path).replaceAll("\\", "/");
-  return ![...DOCUMENTS, ...NOT_YET].some((doc) => rel.startsWith(doc));
+  return !DOCUMENTS.some((doc) => rel.startsWith(doc));
 });
 
 describe("product text comes from @fleettrust/copy", () => {
-  it("scans the migrated pages and components", () => {
-    expect(files.length).toBeGreaterThan(35);
+  it("scans every page and component", () => {
+    expect(files.length).toBeGreaterThan(80);
   });
 
   it("has no inline user-visible text", () => {

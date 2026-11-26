@@ -1,3 +1,4 @@
+import { webAdmin } from "./web-admin.js";
 import { webApp } from "./web-app.js";
 import { webOrg } from "./web-org.js";
 
@@ -514,4 +515,7 @@ export const web = {
 
   /** Organisation pages (src/app/app/o/[orgId]). */
   org: webOrg,
+
+  /** Admin console (src/app/app/admin, lib/admin.ts). */
+  admin: webAdmin,
 } as const;

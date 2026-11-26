@@ -1,5 +1,6 @@
 "use client";
 
+import { copy, fill } from "@fleettrust/copy";
 import { errorMessage } from "@fleettrust/sdk";
 import { type AuditEntryDto, formatDateTime } from "@fleettrust/types";
 import { type SubmitEvent, useState } from "react";
@@ -14,6 +15,8 @@ import {
   EMPTY_AUDIT_FILTERS as EMPTY,
 } from "@/lib/admin";
 import { useSession } from "@/lib/session";
+
+const t = copy.web.admin.audit;
 
 /**
  * Audit search. Each staff role sees only its own area (super admins see everything), and
@@ -35,7 +38,7 @@ export default function AuditPage() {
       const page = await api.auditSearch(auditQueryFrom(filters, next));
       setItems((current) => (next && current ? [...current, ...page.items] : page.items));
       setCursor(page.nextCursor);
-      setScope(page.scope === "all" ? "everything" : page.scope.join(", "));
+      setScope(page.scope === "all" ? t.everything : page.scope.join(", "));
     } catch (failure) {
       setError(errorMessage(failure));
     } finally {
@@ -56,11 +59,8 @@ export default function AuditPage() {
 
   return (
     <>
-      <PageHeader
-        title="Audit log"
-        description="Who did what, and when. Searches are recorded too."
-      />
-      <Card title="Search">
+      <PageHeader title={t.title} description={t.description} />
+      <Card title={t.search}>
         <form
           className="stack"
           onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
@@ -69,18 +69,16 @@ export default function AuditPage() {
           }}
         >
           <div className="grid">
-            {field("action", "Action", {
-              hint: 'Exact, or a family ending in "." such as verification.',
-            })}
-            {field("actorEmail", "Done by (email)", { type: "email" })}
-            {field("targetType", "Target type", { hint: "For example user, support_case" })}
-            {field("targetId", "Target ID")}
-            {field("from", "From", { type: "date" })}
-            {field("to", "To", { type: "date" })}
+            {field("action", t.action, { hint: t.actionHint })}
+            {field("actorEmail", t.doneBy, { type: "email" })}
+            {field("targetType", t.targetType, { hint: t.targetTypeHint })}
+            {field("targetId", t.targetId)}
+            {field("from", t.from, { type: "date" })}
+            {field("to", t.to, { type: "date" })}
           </div>
           <div className="cluster">
             <Button type="submit" busy={busy && items === null}>
-              Search
+              {t.submit}
             </Button>
             <Button
               variant="ghost"
@@ -88,7 +86,7 @@ export default function AuditPage() {
                 setFilters(EMPTY);
               }}
             >
-              Clear
+              {t.clear}
             </Button>
           </div>
         </form>
@@ -100,20 +98,20 @@ export default function AuditPage() {
       ) : null}
       {items !== null ? (
         <>
-          <p className="small muted">Your roles can search: {scope}.</p>
+          <p className="small muted">{fill(t.scope, { scope })}</p>
           {items.length === 0 ? (
-            <EmptyState title="No matching entries" />
+            <EmptyState title={t.empty} />
           ) : (
-            <div className="table-wrap" tabIndex={0} role="region" aria-label="Audit entries">
+            <div className="table-wrap" tabIndex={0} role="region" aria-label={t.entries}>
               <table className="table">
-                <caption className="visually-hidden">Audit entries, newest first</caption>
+                <caption className="visually-hidden">{t.caption}</caption>
                 <thead>
                   <tr>
-                    <th scope="col">When</th>
-                    <th scope="col">Action</th>
-                    <th scope="col">By</th>
-                    <th scope="col">Target</th>
-                    <th scope="col">Details</th>
+                    <th scope="col">{t.when}</th>
+                    <th scope="col">{t.action}</th>
+                    <th scope="col">{t.by}</th>
+                    <th scope="col">{t.target}</th>
+                    <th scope="col">{t.details}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -143,7 +141,7 @@ export default function AuditPage() {
           )}
           {cursor ? (
             <Button variant="secondary" busy={busy} onClick={() => void run(cursor)}>
-              Load older entries
+              {t.older}
             </Button>
           ) : null}
         </>
