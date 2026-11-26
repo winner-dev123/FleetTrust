@@ -1,0 +1,108 @@
+import { createHash, createVerify, generateKeyPairSync } from "node:crypto";
+
+import { Storage } from "@google-cloud/storage";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { GcsObjectStorage } from "./gcs-storage.js";
+
+/**
+ * V4 signed upload URLs from the real client library, signed offline with a throwaway key.
+ * The emulator doesn't verify signatures (ADR-0012), so this test checks the signature the
+ * way Cloud Storage does: rebuild the canonical request, then verify it with the public key.
+ * It guards client library upgrades that change how URLs are signed.
+ */
+describe("GcsObjectStorage signed upload URLs", () => {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const clientEmail = "api@demo-fleettrust.iam.gserviceaccount.com";
+
+  beforeEach(() => {
+    vi.stubEnv("STORAGE_EMULATOR_HOST", undefined);
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  const adapter = () =>
+    new GcsObjectStorage(
+      { quarantine: "ft-quarantine", sensitive: "ft-sensitive", public_media: "ft-media" },
+      new Storage({
+        projectId: "demo-fleettrust",
+        credentials: {
+          client_email: clientEmail,
+          private_key: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+        },
+      }),
+    );
+
+  /** Whether Cloud Storage would accept this PUT (V4 signing process, rebuilt by hand). */
+  const accepts = (signedUrl: string, headers: { contentType: string; range: string }) => {
+    const url = new URL(signedUrl);
+    const params = url.searchParams;
+    const query = url.search
+      .slice(1)
+      .split("&")
+      .filter((pair) => !pair.startsWith("X-Goog-Signature="))
+      .sort()
+      .join("&");
+    const canonicalRequest = [
+      "PUT",
+      url.pathname,
+      query,
+      `content-type:${headers.contentType}`,
+      `host:${url.host}`,
+      `x-goog-content-length-range:${headers.range}`,
+      "",
+      params.get("X-Goog-SignedHeaders") ?? "",
+      "UNSIGNED-PAYLOAD",
+    ].join("\n");
+    const stringToSign = [
+      "GOOG4-RSA-SHA256",
+      params.get("X-Goog-Date") ?? "",
+      (params.get("X-Goog-Credential") ?? "").split("/").slice(1).join("/"),
+      createHash("sha256").update(canonicalRequest).digest("hex"),
+    ].join("\n");
+    const signature = Buffer.from(params.get("X-Goog-Signature") ?? "", "hex");
+    return createVerify("RSA-SHA256").update(stringToSign).verify(publicKey, signature);
+  };
+
+  it("signs a PUT to the right bucket and key, bound to the type and size limit", async () => {
+    const upload = await adapter().createUploadUrl("quarantine", "uploads/abc/licence.pdf", {
+      contentType: "application/pdf",
+      maxBytes: 10_000_000,
+      expiresInSeconds: 600,
+    });
+
+    expect(upload.method).toBe("PUT");
+    expect(upload.headers).toEqual({
+      "Content-Type": "application/pdf",
+      "x-goog-content-length-range": "1,10000000",
+    });
+    const url = new URL(upload.url);
+    expect(url.origin).toBe("https://storage.googleapis.com");
+    expect(url.pathname).toBe("/ft-quarantine/uploads/abc/licence.pdf");
+    const params = url.searchParams;
+    expect(params.get("X-Goog-Algorithm")).toBe("GOOG4-RSA-SHA256");
+    expect(params.get("X-Goog-Credential")).toMatch(
+      new RegExp(`^${clientEmail}/\\d{8}/auto/storage/goog4_request$`),
+    );
+    expect(params.get("X-Goog-SignedHeaders")).toBe(
+      "content-type;host;x-goog-content-length-range",
+    );
+    const expires = Number(params.get("X-Goog-Expires"));
+    expect(expires).toBeGreaterThanOrEqual(599);
+    expect(expires).toBeLessThanOrEqual(600);
+
+    expect(accepts(upload.url, { contentType: "application/pdf", range: "1,10000000" })).toBe(true);
+  });
+
+  it("is rejected if the size limit or the file type is changed", async () => {
+    const upload = await adapter().createUploadUrl("quarantine", "k", {
+      contentType: "image/jpeg",
+      maxBytes: 100,
+      expiresInSeconds: 60,
+    });
+    expect(accepts(upload.url, { contentType: "image/jpeg", range: "1,100" })).toBe(true);
+    expect(accepts(upload.url, { contentType: "image/jpeg", range: "1,999999999" })).toBe(false);
+    expect(accepts(upload.url, { contentType: "text/html", range: "1,100" })).toBe(false);
+  });
+});
