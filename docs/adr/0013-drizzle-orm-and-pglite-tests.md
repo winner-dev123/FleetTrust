@@ -27,7 +27,7 @@ Separately, Docker isn't available on the development machine (KC-04), and CI ru
 
 ## Consequences
 
-- **Version skew:** PGlite 0.5 embeds **Postgres 18.6** (PostGIS 3.6.2), while Cloud SQL and the local container run **17**. Code must not use features newer than 17. Example: the app generates UUIDv7 values because `uuidv7()` is built into Postgres 18 only. `pnpm test:db` against Postgres 17 is the authority before a migration ships, and CI should run it once a database service is available (Prompt 05).
+- **Version skew:** PGlite 0.5 embeds **Postgres 18** (18.7 in 0.5.17; PostGIS 3.6.2), while Cloud SQL and the local container run **17**. PGlite 0.6 moves to Postgres 19; stay on 0.5 until production moves past 17, so the skew stays one major version. Code must not use features newer than 17. Example: the app generates UUIDv7 values because `uuidv7()` is built into Postgres 18 only. `pnpm test:db` against Postgres 17 is the authority before a migration ships, and CI should run it once a database service is available (Prompt 05).
 - PGlite is single-connection, so it can't test concurrency (e.g. atomic quota counters in Prompt 08). Those tests must run against real Postgres.
 - Drizzle is pre-1.0 (1.0 is in beta). Upgrades may need code changes; versions are pinned exactly.
 - There are no down migrations. Rollback follows the expand/contract strategy in [docs/development/database.md](../development/database.md#rollback-strategy).
