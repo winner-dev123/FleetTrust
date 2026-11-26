@@ -26,7 +26,7 @@ export const APPROXIMATE_M = 1_000;
 export function LocationPicker({
   value,
   onChange,
-  label = "Location",
+  label = copy.location.label,
   hint,
 }: {
   value: PickedLocation | null;

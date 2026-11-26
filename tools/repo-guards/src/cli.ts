@@ -11,6 +11,7 @@ import {
   type SourceFile,
   type Violation,
 } from "./rules.ts";
+import { checkCopyUsage } from "./copy-usage.ts";
 import { checkRollbackSafety, ROLLBACK_BASELINE } from "./rollback.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..", "..");
@@ -80,6 +81,33 @@ if (violations.length === 0) {
   console.error(
     "\nThese modules are specification-only (docs/adr/0011-future-modules-spec-only.md).\n" +
       "If this is a false positive, add `guard-allow: <reason>` on that line and get it reviewed.",
+  );
+  process.exitCode = 1;
+}
+
+// Catalog drift (RFC-0006): every message in @fleettrust/copy is used by a screen.
+const catalogFiles = files
+  .filter((file) => /^packages\/copy\/src\/[^/]+\.ts$/.test(file) && !file.endsWith(".test.ts"))
+  .map(read);
+const screens = files
+  .filter(
+    (file) =>
+      /^(apps|packages)\/.+\.tsx?$/.test(file) &&
+      !file.startsWith("packages/copy/") &&
+      !/(\.(test|spec|e2e-spec)\.tsx?$|\/test\/|\/e2e\/)/.test(file),
+  )
+  .map(read)
+  .filter((source) => source.content.includes("@fleettrust/copy"));
+const unused = checkCopyUsage(catalogFiles, screens);
+if (unused.length === 0) {
+  console.log(
+    `Copy guard: every message in @fleettrust/copy is used (${String(screens.length)} files read).`,
+  );
+} else {
+  console.error("Copy guard: these catalog messages are not used by any screen:\n");
+  for (const v of unused) console.error(`  ${v.path}:${String(v.line)}  ${v.detail}`);
+  console.error(
+    "\nRemove them, or end the line with `// copy-unused: <reason>` and get it reviewed.",
   );
   process.exitCode = 1;
 }

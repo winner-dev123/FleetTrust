@@ -14,7 +14,6 @@ export const en = {
     search: "Search",
     tryAgain: "Try again",
     cancel: "Cancel",
-    save: "Save",
     loading: "Loading…",
   },
 
@@ -426,6 +425,7 @@ export const en = {
   },
 
   location: {
+    label: "Location",
     current: "Your current location",
     gpsFailed: "We couldn't get your position. Check that location is on, or type a place.",
     placeTooShort: "Type a town, suburb or landmark.",

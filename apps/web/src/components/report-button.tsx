@@ -21,7 +21,7 @@ export function ReportButton({
 }: {
   targetType: ReportTargetType;
   targetId: string;
-  /** "article", "job listing", "comment": used in the button text. */
+  /** What is reported, from `copy.web.reportWhat` ("article", "job listing"): used in the button text. */
   what: string;
 }) {
   const { api, status } = useSession();

@@ -1,3 +1,4 @@
+import { copy } from "@fleettrust/copy";
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -471,7 +472,7 @@ export function Badge({
   );
 }
 
-export function Loading({ label = "Loading…" }: { label?: string }) {
+export function Loading({ label = copy.common.loading }: { label?: string }) {
   const theme = useTheme();
   return (
     <View
