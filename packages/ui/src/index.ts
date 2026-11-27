@@ -5,6 +5,7 @@ export {
   layout,
   motion,
   radii,
+  shadows,
   spacing,
   touchTarget,
   typography,

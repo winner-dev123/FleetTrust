@@ -13,9 +13,7 @@ export default function HomePage() {
         <h1 id="hero-heading" className="hero__title">
           {copy.web.home.title}
         </h1>
-        <p className="muted" style={{ fontSize: "var(--font-lg)" }}>
-          {copy.web.home.intro}
-        </p>
+        <p className="muted lead">{copy.web.home.intro}</p>
         <form className="card stack" action="/search" method="get" role="search">
           <div className="grid">
             <div className="field">
