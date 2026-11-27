@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Manrope } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { Motion } from "@/components/motion";
 import { SkipLink } from "@/components/site-chrome";
 import { FirebaseSessionProvider } from "@/lib/session";
 
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <body>
         <SkipLink />
         <FirebaseSessionProvider>{children}</FirebaseSessionProvider>
+        <Motion />
       </body>
     </html>
   );

@@ -12,6 +12,10 @@ import {
  * Every page, on a desktop and a 320-pixel phone (two Playwright projects): axe WCAG 2.2 A/AA
  * checks, contrast included, and no sideways scrolling.
  */
+// Axe checks the settled page: with reduced motion the entrance animations finish at once, so
+// contrast is never measured on half-faded text. The journeys run with motion on.
+test.use({ reducedMotion: "reduce" });
+
 const PUBLIC_PAGES = [
   "/",
   "/search?q=brakes&where=Cape+Town&lat=-33.92490&lng=18.42410",

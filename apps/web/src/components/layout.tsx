@@ -13,7 +13,7 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="cluster cluster--between" style={{ alignItems: "flex-start" }}>
+    <header className="cluster cluster--between page-header" style={{ alignItems: "flex-start" }}>
       <title>{`${title} · FleetTrust`}</title>
       <div>
         <h1>{title}</h1>

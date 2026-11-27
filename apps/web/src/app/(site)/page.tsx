@@ -142,7 +142,7 @@ export default function HomePage() {
         </div>
         <ul className={cls("serviceGrid")}>
           {SERVICES.map((item) => (
-            <li key={item.category}>
+            <li key={item.category} data-reveal>
               <Link className={cls("serviceCard")} href={`/search?category=${item.category}`}>
                 <span className={cls("serviceIcon")}>
                   <Icon name={item.icon} size={26} />
@@ -162,7 +162,7 @@ export default function HomePage() {
 
       <section className={cls("howSection")} id="how" aria-labelledby="how-heading">
         <div className={`${cls("container")} ${cls("howGrid")}`}>
-          <div className={cls("photoStack")}>
+          <div className={cls("photoStack")} data-reveal>
             <Image
               className={cls("mechanicPhoto")}
               src={mechanicImage}
@@ -179,7 +179,7 @@ export default function HomePage() {
               </span>
             </div>
           </div>
-          <div className={cls("howCopy")}>
+          <div className={cls("howCopy")} data-reveal>
             <span className={cls("kicker")}>{t.howKicker}</span>
             <h2 id="how-heading">{t.howTitle}</h2>
             <p>{t.howIntro}</p>
@@ -208,11 +208,12 @@ export default function HomePage() {
       >
         <Image
           className={cls("roadsideImage")}
+          data-reveal
           src={roadsideImage}
           alt={t.roadsideImageAlt}
           sizes="(max-width: 760px) 100vw, 45vw"
         />
-        <div className={cls("roadsideCopy")}>
+        <div className={cls("roadsideCopy")} data-reveal>
           <span className={cls("kicker")}>{t.roadsideKicker}</span>
           <h2 id="roadside-heading">{t.roadsideTitle}</h2>
           <p>{t.roadsideBody}</p>
@@ -242,7 +243,7 @@ export default function HomePage() {
         </div>
         <div className={cls("storyGrid")}>
           {READS.map((read) => (
-            <article key={read.query}>
+            <article key={read.query} data-reveal>
               <span className={`${cls("storyArt")} ${read.art ? cls(read.art) : ""}`}>
                 <Icon name={read.icon} size={56} />
               </span>
@@ -261,6 +262,7 @@ export default function HomePage() {
       <section
         className={`${cls("providerBanner")} ${cls("container")}`}
         id="providers"
+        data-reveal
         aria-labelledby="providers-heading"
       >
         <div>
