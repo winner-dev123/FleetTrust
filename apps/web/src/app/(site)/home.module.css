@@ -170,10 +170,45 @@
   font-size: 15px;
 }
 
-.inputWrap:focus-within {
-  border-radius: 8px;
-  outline: var(--focus-width) solid var(--color-focus);
-  outline-offset: 4px;
+/*
+ * Focus inside the search panel: no box around the field. The active field gets a soft tint,
+ * a blue label and a short accent line under it, and the whole panel glows (.searchPanel
+ * :focus-within), so keyboard users still see where they are (WCAG 2.4.7).
+ */
+.searchField {
+  position: relative;
+  border-radius: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.searchField::after {
+  content: "";
+  position: absolute;
+  left: 40px;
+  right: 14px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.searchField:focus-within {
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+
+.searchField:focus-within::after {
+  transform: scaleX(1);
+}
+
+.searchField:focus-within label {
+  color: color-mix(in srgb, var(--color-primary) 72%, var(--color-text));
+}
+
+.searchField label {
+  transition: color 0.2s ease;
 }
 
 .inputWrap input::placeholder {

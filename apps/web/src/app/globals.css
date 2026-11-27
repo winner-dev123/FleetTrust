@@ -2587,3 +2587,143 @@ body {
 .notice {
   border-radius: 16px;
 }
+
+/*
+ * Focused form fields: no outline frame around the field. The field's own border turns blue
+ * with a very soft halo and tint, which is enough to see which field is active (WCAG 2.4.7)
+ * without a heavy double box. Invalid fields keep their red border while focused.
+ */
+.input:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 3%, var(--color-surface));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.input[aria-invalid="true"]:focus-visible {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+/* Windows high-contrast mode drops shadows and tints: keep a real outline there. */
+@media (forced-colors: active) {
+  .input:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 1px;
+  }
+}
+
+/*
+ * Dropdowns (<select class="input">): a styled list where the browser supports customizable
+ * selects (Chrome and Edge 135+); other browsers keep their own list. Keyboard use, labels and
+ * form values are unchanged: it is still a native <select>.
+ */
+@supports (appearance: base-select) {
+  select.input,
+  select.input::picker(select) {
+    appearance: base-select;
+  }
+
+  select.input {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    cursor: pointer;
+  }
+
+  select.input::picker-icon {
+    content: "";
+    width: 8px;
+    height: 8px;
+    margin: 0 4px 4px 0;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    color: var(--color-text-muted);
+    transform: rotate(45deg);
+    transition: transform 0.25s var(--ease-out);
+  }
+
+  select.input:open::picker-icon {
+    margin-bottom: -4px;
+    color: var(--color-primary);
+    transform: rotate(-135deg);
+  }
+
+  select.input::picker(select) {
+    margin-top: 8px;
+    padding: 6px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+    border-radius: 16px;
+    background: var(--color-surface);
+    box-shadow:
+      0 28px 60px -24px rgb(16 33 61 / 38%),
+      0 6px 16px -8px rgb(16 33 61 / 12%);
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    transform-origin: top center;
+    transition:
+      opacity 0.18s ease,
+      transform 0.22s var(--ease-out),
+      overlay 0.22s allow-discrete,
+      display 0.22s allow-discrete;
+  }
+
+  select.input:open::picker(select) {
+    opacity: 1;
+    transform: none;
+  }
+
+  @starting-style {
+    select.input:open::picker(select) {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.98);
+    }
+  }
+
+  select.input option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: var(--color-text);
+    font-size: 15px;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  select.input option:hover {
+    background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+  }
+
+  /* Keyboard: the highlighted row keeps a clear edge, not just a tint (WCAG 2.4.7). */
+  select.input option:focus-visible {
+    outline: none;
+    background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface));
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+  }
+
+  select.input option:checked {
+    font-weight: 700;
+    color: color-mix(in srgb, var(--color-primary) 72%, var(--color-text));
+    background: color-mix(in srgb, var(--color-primary) 11%, var(--color-surface));
+  }
+
+  select.input option::checkmark {
+    content: "✓";
+    order: 1;
+    margin-left: auto;
+    color: var(--color-primary);
+    font-weight: 800;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    select.input::picker(select),
+    select.input::picker-icon,
+    select.input option {
+      transition: none;
+    }
+  }
+}
