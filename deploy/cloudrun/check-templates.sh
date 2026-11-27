@@ -15,8 +15,10 @@ export STORAGE_PUBLIC_MEDIA_BUCKET=m DOCUMENT_KMS_KEY=k
 export JOBS_QUEUE=projects/p/locations/europe-west1/queues/fleettrust-jobs
 export WORKER_URL=https://fleettrust-worker-1.europe-west1.run.app JOBS_SERVICE_ACCOUNT=j@p
 
+# Renders are captured into variables before grep: "grep -q" stops reading early, and with
+# pipefail the renderer's broken pipe would then count as a failure (a flaky check).
 check() {
-  local label="$1"
+  local label="$1" rendered
   for template in "$here"/*.service.yaml; do
     rendered="$(bash "$here/deploy.sh" render "$template")"
     if grep -q '# when:' <<< "$rendered"; then
@@ -35,7 +37,8 @@ check() {
 export CLOUDSQL_CONNECTION_NAME="" REDIS_SECRET="" CLAMAV_HOST="" MALWARE_SCANNER=clamav-http
 export CLAMAV_URL=https://scanner.example.test
 check "low cost"
-if bash "$here/deploy.sh" render "$here/api.service.yaml" | grep -Eq 'cloudsql-instances|REDIS_URL|CLAMAV_HOST'; then
+low="$(bash "$here/deploy.sh" render "$here/api.service.yaml")"
+if grep -Eq 'cloudsql-instances|REDIS_URL|CLAMAV_HOST' <<< "$low"; then
   echo "::error::the low-cost render still contains Cloud SQL, Redis or a ClamAV VM"
   exit 1
 fi
@@ -43,7 +46,7 @@ fi
 export CLOUDSQL_CONNECTION_NAME=p:r:i REDIS_SECRET=fleettrust-redis-url CLAMAV_HOST=10.0.0.5
 export MALWARE_SCANNER=clamav CLAMAV_URL=""
 check "managed"
+managed="$(bash "$here/deploy.sh" render "$here/api.service.yaml")"
 for expected in cloudsql-instances REDIS_URL CLAMAV_HOST; do
-  bash "$here/deploy.sh" render "$here/api.service.yaml" | grep -q "$expected" \
-    || { echo "::error::the managed render lacks $expected"; exit 1; }
+  grep -q "$expected" <<< "$managed" || { echo "::error::the managed render lacks $expected"; exit 1; }
 done
