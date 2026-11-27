@@ -9,6 +9,7 @@ import {
   signInWithPopup,
 } from "@firebase/auth";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { type SubmitEvent, useState } from "react";
 
 import { Button } from "@/components/button";
@@ -20,6 +21,8 @@ import { apiClient, firebaseAuth } from "@/lib/firebase";
 import { afterSignInPath } from "@/lib/pending-invitation";
 import { emailLinkSettings, normaliseEmail, rememberPendingEmail } from "@/lib/email-link";
 import { type PendingMfa, pendingMfa } from "@/lib/mfa";
+import { Icon } from "@/components/icon";
+import heroImage from "../../../../public/images/fleettrust-hero.webp";
 
 type Status =
   | { kind: "idle" }
@@ -100,46 +103,64 @@ export default function SignInPage() {
   apple.addScope("email");
 
   return (
-    <div className="container stack" style={{ maxWidth: 460 }}>
-      <title>{copy.web.signIn.pageTitle}</title>
-      <h1>{copy.web.signIn.title}</h1>
-      <p className="muted">{copy.web.signIn.intro}</p>
-
-      {status.kind === "sent" ? (
-        <Notice tone="success" live="polite" title={copy.web.signIn.sentTitle}>
-          <p>
-            {copy.web.signIn.sentBefore} <strong>{status.email}</strong>.{" "}
-            {copy.web.signIn.sentAfter}
-          </p>
-        </Notice>
-      ) : (
-        <form className="stack" onSubmit={(event) => void sendLink(event)} noValidate>
-          <TextField
-            label={copy.web.signIn.emailLabel}
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            error={status.kind === "error" ? status.message : null}
-            onChange={(event) => {
-              setEmail(event.target.value);
-            }}
-          />
-          <Button type="submit" block busy={status.kind === "sending"}>
-            {status.kind === "sending" ? copy.web.signIn.sending : copy.web.signIn.sendLink}
-          </Button>
-        </form>
-      )}
-
-      <div className="stack" style={{ marginTop: 16 }}>
-        <Button variant="secondary" block onClick={() => void signInWith(new GoogleAuthProvider())}>
-          {copy.web.signIn.google}
-        </Button>
-        <Button variant="secondary" block onClick={() => void signInWith(apple)}>
-          {copy.web.signIn.apple}
-        </Button>
+    <div className="auth-page">
+      <div className="auth-page__visual">
+        <Image src={heroImage} alt="" fill sizes="(max-width: 760px) 100vw, 50vw" priority />
+        <div>
+          <p className="auth-page__kicker">{copy.web.signIn.visualKicker}</p>
+          <p className="auth-page__headline">{copy.web.signIn.visualTitle}</p>
+        </div>
       </div>
-      <p className="small muted">{copy.web.signIn.responsible}</p>
+      <div className="auth-page__panel">
+        <div className="auth-page__card stack">
+          <title>{copy.web.signIn.pageTitle}</title>
+          <span className="auth-page__icon" aria-hidden="true">
+            <Icon name="user" size={28} />
+          </span>
+          <h1>{copy.web.signIn.title}</h1>
+          <p className="muted">{copy.web.signIn.intro}</p>
+
+          {status.kind === "sent" ? (
+            <Notice tone="success" live="polite" title={copy.web.signIn.sentTitle}>
+              <p>
+                {copy.web.signIn.sentBefore} <strong>{status.email}</strong>.{" "}
+                {copy.web.signIn.sentAfter}
+              </p>
+            </Notice>
+          ) : (
+            <form className="stack" onSubmit={(event) => void sendLink(event)} noValidate>
+              <TextField
+                label={copy.web.signIn.emailLabel}
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                error={status.kind === "error" ? status.message : null}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                }}
+              />
+              <Button type="submit" block busy={status.kind === "sending"}>
+                {status.kind === "sending" ? copy.web.signIn.sending : copy.web.signIn.sendLink}
+              </Button>
+            </form>
+          )}
+
+          <div className="stack" style={{ marginTop: 16 }}>
+            <Button
+              variant="secondary"
+              block
+              onClick={() => void signInWith(new GoogleAuthProvider())}
+            >
+              {copy.web.signIn.google}
+            </Button>
+            <Button variant="secondary" block onClick={() => void signInWith(apple)}>
+              {copy.web.signIn.apple}
+            </Button>
+          </div>
+          <p className="small muted">{copy.web.signIn.responsible}</p>
+        </div>
+      </div>
     </div>
   );
 }

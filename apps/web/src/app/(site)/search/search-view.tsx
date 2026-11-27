@@ -28,6 +28,7 @@ import {
   toApiQuery,
 } from "@/lib/search-query";
 import { useSession } from "@/lib/session";
+import { PageHero } from "@/components/page-hero";
 
 type Results =
   | { status: "idle" }
@@ -52,7 +53,7 @@ function ResultCard({
 }) {
   return (
     <article
-      className="card"
+      className="card result-card"
       id={`result-${result.branchId}`}
       style={selected ? { borderColor: "var(--color-focus)", borderWidth: 3 } : undefined}
     >
@@ -99,6 +100,14 @@ function ResultCard({
           ))}
         </ul>
       ) : null}
+      <Link
+        className="result-card__cta"
+        href={`/providers/${result.slug}`}
+        tabIndex={-1}
+        aria-hidden="true"
+      >
+        {copy.web.search.viewProfile}
+      </Link>
     </article>
   );
 }
@@ -267,222 +276,226 @@ export function SearchView() {
   const resultCount = results.status === "ready" ? results.items.length : 0;
 
   return (
-    <div className="container stack stack--lg">
-      <header>
-        <h1>{copy.web.search.title}</h1>
-        <p className="muted">{copy.web.search.intro}</p>
-      </header>
-
-      <form className="card stack" onSubmit={(event) => void submit(event)} role="search">
-        <div className="grid">
-          <TextField
-            label={copy.web.search.whatLabel}
-            hint={copy.web.search.whatHint}
-            value={draft.q}
-            maxLength={100}
-            onChange={(event) => {
-              setDraft({ ...draft, q: event.target.value });
-            }}
-          />
-          <TextField
-            label={copy.web.search.whereLabel}
-            hint={copy.web.search.whereHint}
-            required
-            value={draft.where}
-            maxLength={100}
-            autoComplete="address-level2"
-            error={formError}
-            onChange={(event) => {
-              setDraft({ ...draft, where: event.target.value, lat: null, lng: null });
-            }}
-          />
-        </div>
-        <div className="grid">
-          <SelectField
-            label={copy.web.search.category}
-            value={draft.category ?? ""}
-            onChange={(event) => {
-              const value = event.target.value;
-              setDraft({
-                ...draft,
-                category: PROVIDER_CATEGORIES.find((category) => category === value) ?? null,
-              });
-            }}
-            options={[
-              { value: "", label: copy.web.search.anyCategory },
-              ...PROVIDER_CATEGORIES.map((category) => ({
-                value: category,
-                label: CATEGORY_LABELS[category],
-              })),
-            ]}
-          />
-          <SelectField
-            label={copy.web.search.distanceLabel}
-            required
-            value={String(draft.radiusKm)}
-            onChange={(event) => {
-              setDraft({ ...draft, radiusKm: Number(event.target.value) });
-            }}
-            options={RADIUS_OPTIONS.map((km) => ({
-              value: String(km),
-              label: fill(copy.web.search.within, { km }),
-            }))}
-          />
-        </div>
-        <div className="cluster">
-          <Checkbox
-            label={copy.web.search.openNow}
-            checked={draft.openNow}
-            onChange={(event) => {
-              setDraft({ ...draft, openNow: event.target.checked });
-            }}
-          />
-          <Checkbox
-            label={copy.web.search.verifiedOnly}
-            checked={draft.verifiedOnly}
-            onChange={(event) => {
-              setDraft({ ...draft, verifiedOnly: event.target.checked });
-            }}
-          />
-        </div>
-        <div className="cluster">
-          <Button type="submit">{copy.web.search.search}</Button>
-          <Button variant="ghost" onClick={useMyLocation} busy={locating}>
-            {locating ? copy.web.search.finding : copy.web.search.useLocation}
-          </Button>
-        </div>
-        <p className="small muted">{copy.web.search.locationNote}</p>
-      </form>
-
-      {places.length > 0 ? (
-        <nav aria-label={copy.web.search.otherPlaces} className="cluster">
-          <span className="small">{copy.web.search.didYouMean}</span>
-          {places.map((place) => (
-            <button
-              key={`${place.label}-${String(place.location.lat)}`}
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => {
-                setPlaces([]);
-                navigate({
-                  ...state,
-                  where: place.label,
-                  lat: place.location.lat,
-                  lng: place.location.lng,
+    <>
+      <PageHero
+        kicker={copy.web.nav.findServices}
+        title={copy.web.search.title}
+        intro={copy.web.search.intro}
+      />
+      <div className="container stack stack--lg">
+        <form className="card stack" onSubmit={(event) => void submit(event)} role="search">
+          <div className="grid">
+            <TextField
+              label={copy.web.search.whatLabel}
+              hint={copy.web.search.whatHint}
+              value={draft.q}
+              maxLength={100}
+              onChange={(event) => {
+                setDraft({ ...draft, q: event.target.value });
+              }}
+            />
+            <TextField
+              label={copy.web.search.whereLabel}
+              hint={copy.web.search.whereHint}
+              required
+              value={draft.where}
+              maxLength={100}
+              autoComplete="address-level2"
+              error={formError}
+              onChange={(event) => {
+                setDraft({ ...draft, where: event.target.value, lat: null, lng: null });
+              }}
+            />
+          </div>
+          <div className="grid">
+            <SelectField
+              label={copy.web.search.category}
+              value={draft.category ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
+                setDraft({
+                  ...draft,
+                  category: PROVIDER_CATEGORIES.find((category) => category === value) ?? null,
                 });
               }}
-            >
-              {place.label}
-            </button>
-          ))}
-        </nav>
-      ) : null}
-
-      <section aria-labelledby="results-heading" className="stack">
-        <div className="cluster cluster--between">
-          <h2 id="results-heading">
-            {state.lat === null
-              ? copy.web.search.results
-              : fill(copy.web.search.resultsNear, {
-                  place: state.where || copy.web.search.chosenPoint,
-                })}
-          </h2>
-          {state.lat !== null ? (
-            <Button
-              variant="secondary"
-              aria-pressed={state.view === "map"}
-              onClick={() => {
-                navigate({ ...state, view: state.view === "map" ? "list" : "map" });
+              options={[
+                { value: "", label: copy.web.search.anyCategory },
+                ...PROVIDER_CATEGORIES.map((category) => ({
+                  value: category,
+                  label: CATEGORY_LABELS[category],
+                })),
+              ]}
+            />
+            <SelectField
+              label={copy.web.search.distanceLabel}
+              required
+              value={String(draft.radiusKm)}
+              onChange={(event) => {
+                setDraft({ ...draft, radiusKm: Number(event.target.value) });
               }}
-            >
-              {state.view === "map" ? copy.web.search.hideMap : copy.web.search.showMap}
+              options={RADIUS_OPTIONS.map((km) => ({
+                value: String(km),
+                label: fill(copy.web.search.within, { km }),
+              }))}
+            />
+          </div>
+          <div className="cluster">
+            <Checkbox
+              label={copy.web.search.openNow}
+              checked={draft.openNow}
+              onChange={(event) => {
+                setDraft({ ...draft, openNow: event.target.checked });
+              }}
+            />
+            <Checkbox
+              label={copy.web.search.verifiedOnly}
+              checked={draft.verifiedOnly}
+              onChange={(event) => {
+                setDraft({ ...draft, verifiedOnly: event.target.checked });
+              }}
+            />
+          </div>
+          <div className="cluster">
+            <Button type="submit">{copy.web.search.search}</Button>
+            <Button variant="ghost" onClick={useMyLocation} busy={locating}>
+              {locating ? copy.web.search.finding : copy.web.search.useLocation}
             </Button>
-          ) : null}
-        </div>
+          </div>
+          <p className="small muted">{copy.web.search.locationNote}</p>
+        </form>
 
-        <p role="status" aria-live="polite" className="small muted">
-          {results.status === "ready"
-            ? plural(
-                resultCount,
-                results.nextCursor ? copy.web.search.resultCountSoFar : copy.web.search.resultCount,
-              )
-            : ""}
-        </p>
+        {places.length > 0 ? (
+          <nav aria-label={copy.web.search.otherPlaces} className="cluster">
+            <span className="small">{copy.web.search.didYouMean}</span>
+            {places.map((place) => (
+              <button
+                key={`${place.label}-${String(place.location.lat)}`}
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => {
+                  setPlaces([]);
+                  navigate({
+                    ...state,
+                    where: place.label,
+                    lat: place.location.lat,
+                    lng: place.location.lng,
+                  });
+                }}
+              >
+                {place.label}
+              </button>
+            ))}
+          </nav>
+        ) : null}
 
-        {results.status === "idle" && state.lat === null && state.where && !formError ? (
-          <Loading label={copy.web.search.findingPlace} />
-        ) : null}
-        {results.status === "idle" && (state.lat === null ? !state.where || formError : false) ? (
-          <EmptyState title={copy.web.search.whereTitle}>
-            <p>{copy.web.search.whereBody}</p>
-          </EmptyState>
-        ) : null}
-        {results.status === "loading" ? <Loading label={copy.web.search.searching} /> : null}
-        {results.status === "error" ? <ErrorNotice error={results.error} /> : null}
-        {results.status === "ready" ? (
-          <>
-            <Notice>
-              <p className="small">{results.disclaimer}</p>
-              {!signedIn ? (
-                <p className="small">
-                  {copy.web.search.approximateBefore}{" "}
-                  <Link href="/sign-in">{copy.web.search.approximateLink}</Link>.
-                </p>
-              ) : null}
-            </Notice>
-            {results.items.length === 0 ? (
-              <EmptyState title={copy.web.search.noneTitle}>
-                <p>{copy.web.search.noneBody}</p>
-              </EmptyState>
-            ) : (
-              <div className={state.view === "map" ? "search-layout" : undefined}>
-                <ol className="list-plain" aria-label={copy.web.search.providers}>
-                  {results.items.map((result, index) => (
-                    <li key={result.branchId}>
-                      <ResultCard
-                        result={result}
-                        number={index + 1}
-                        selected={selected === result.branchId}
-                      />
-                    </li>
-                  ))}
-                </ol>
-                {state.view === "map" && state.lat !== null && state.lng !== null ? (
-                  <ProviderMap
-                    center={{ lat: state.lat, lng: state.lng }}
-                    config={mapConfig}
-                    selectedId={selected}
-                    onSelect={(id) => {
-                      setSelected(id);
-                      document
-                        .getElementById(`result-${id}`)
-                        ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-                    }}
-                    pins={results.items.map((result, index) => ({
-                      id: result.branchId,
-                      number: index + 1,
-                      label: fill(copy.web.search.pinLabel, {
-                        name: result.tradingName,
-                        distance: formatDistance(result.distanceKm * 1000),
-                      }),
-                      location: result.location,
-                    }))}
-                  />
-                ) : null}
-              </div>
-            )}
-            {results.nextCursor ? (
+        <section aria-labelledby="results-heading" className="stack">
+          <div className="cluster cluster--between">
+            <h2 id="results-heading">
+              {state.lat === null
+                ? copy.web.search.results
+                : fill(copy.web.search.resultsNear, {
+                    place: state.where || copy.web.search.chosenPoint,
+                  })}
+            </h2>
+            {state.lat !== null ? (
               <Button
                 variant="secondary"
-                busy={results.loadingMore}
-                onClick={() => void loadMore()}
+                aria-pressed={state.view === "map"}
+                onClick={() => {
+                  navigate({ ...state, view: state.view === "map" ? "list" : "map" });
+                }}
               >
-                {results.loadingMore ? copy.web.search.loading : copy.web.search.showMore}
+                {state.view === "map" ? copy.web.search.hideMap : copy.web.search.showMap}
               </Button>
             ) : null}
-          </>
-        ) : null}
-      </section>
-    </div>
+          </div>
+
+          <p role="status" aria-live="polite" className="small muted">
+            {results.status === "ready"
+              ? plural(
+                  resultCount,
+                  results.nextCursor
+                    ? copy.web.search.resultCountSoFar
+                    : copy.web.search.resultCount,
+                )
+              : ""}
+          </p>
+
+          {results.status === "idle" && state.lat === null && state.where && !formError ? (
+            <Loading label={copy.web.search.findingPlace} />
+          ) : null}
+          {results.status === "idle" && (state.lat === null ? !state.where || formError : false) ? (
+            <EmptyState title={copy.web.search.whereTitle}>
+              <p>{copy.web.search.whereBody}</p>
+            </EmptyState>
+          ) : null}
+          {results.status === "loading" ? <Loading label={copy.web.search.searching} /> : null}
+          {results.status === "error" ? <ErrorNotice error={results.error} /> : null}
+          {results.status === "ready" ? (
+            <>
+              <Notice>
+                <p className="small">{results.disclaimer}</p>
+                {!signedIn ? (
+                  <p className="small">
+                    {copy.web.search.approximateBefore}{" "}
+                    <Link href="/sign-in">{copy.web.search.approximateLink}</Link>.
+                  </p>
+                ) : null}
+              </Notice>
+              {results.items.length === 0 ? (
+                <EmptyState title={copy.web.search.noneTitle}>
+                  <p>{copy.web.search.noneBody}</p>
+                </EmptyState>
+              ) : (
+                <div className={state.view === "map" ? "search-layout" : undefined}>
+                  <ol className="list-plain" aria-label={copy.web.search.providers}>
+                    {results.items.map((result, index) => (
+                      <li key={result.branchId}>
+                        <ResultCard
+                          result={result}
+                          number={index + 1}
+                          selected={selected === result.branchId}
+                        />
+                      </li>
+                    ))}
+                  </ol>
+                  {state.view === "map" && state.lat !== null && state.lng !== null ? (
+                    <ProviderMap
+                      center={{ lat: state.lat, lng: state.lng }}
+                      config={mapConfig}
+                      selectedId={selected}
+                      onSelect={(id) => {
+                        setSelected(id);
+                        document
+                          .getElementById(`result-${id}`)
+                          ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                      }}
+                      pins={results.items.map((result, index) => ({
+                        id: result.branchId,
+                        number: index + 1,
+                        label: fill(copy.web.search.pinLabel, {
+                          name: result.tradingName,
+                          distance: formatDistance(result.distanceKm * 1000),
+                        }),
+                        location: result.location,
+                      }))}
+                    />
+                  ) : null}
+                </div>
+              )}
+              {results.nextCursor ? (
+                <Button
+                  variant="secondary"
+                  busy={results.loadingMore}
+                  onClick={() => void loadMore()}
+                >
+                  {results.loadingMore ? copy.web.search.loading : copy.web.search.showMore}
+                </Button>
+              ) : null}
+            </>
+          ) : null}
+        </section>
+      </div>
+    </>
   );
 }
