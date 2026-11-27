@@ -153,3 +153,18 @@ variable "deletion_protection" {
   type        = bool
   default     = true
 }
+
+# --- Malware scanner -------------------------------------------------------------------------------
+
+variable "malware_scanner" {
+  description = <<-EOT
+    "cloudrun": ClamAV on Cloud Run, scaled to zero (low cost; deployed by the release workflow).
+    "vm": clamd on an always-on e2-medium VM with Cloud NAT (fixed monthly cost).
+  EOT
+  type        = string
+  default     = "cloudrun"
+  validation {
+    condition     = contains(["cloudrun", "vm"], var.malware_scanner)
+    error_message = "malware_scanner must be \"cloudrun\" or \"vm\"."
+  }
+}

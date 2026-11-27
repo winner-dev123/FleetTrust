@@ -10,4 +10,5 @@ web_host        = "" # e.g. staging.example.com, after the first deploy
 # Low cost (default): database on Neon, no Redis. "cloudsql" / "memorystore" have a fixed monthly cost.
 database_provider = "external" # or "cloudsql"
 redis_provider    = "none"     # or "external" (Upstash) or "memorystore"
+malware_scanner   = "cloudrun" # or "vm" (always-on ClamAV VM and Cloud NAT)
 api_domain      = "" # e.g. api.staging.example.com: creates the load balancer, certificate and Cloud Armor

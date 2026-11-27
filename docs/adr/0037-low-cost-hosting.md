@@ -1,6 +1,6 @@
 # ADR-0037: Low-cost hosting for the pilot: website on Vercel, database on Neon, optional Redis, no fixed-cost cloud parts
 
-- Status: Accepted (step 1 of 3 done: see "Plan")
+- Status: Accepted (steps 1 and 2 of 3 done: see "Plan")
 - Date: 2026-11-27
 - Amends: [ADR-0003](0003-postgresql-postgis-system-of-record.md) (where Postgres runs), [ADR-0004](0004-firebase-hybrid-platform.md) (website hosting, Cloud SQL, Memorystore), [ADR-0007](0007-jobs-and-realtime.md) (worker), [ADR-0036](0036-staging-production-and-launch.md) (sizing)
 
@@ -28,15 +28,15 @@ Firebase Blaze and Google Cloud share one billing account. Cloud Run, Cloud Stor
 
 Keep the architecture (modular monolith API, Postgres + PostGIS, Firebase), but host it so that **nothing has a fixed monthly fee**:
 
-| Part                       | Before                                    | Now                                                                                                                       |
-| -------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Website                    | Firebase App Hosting                      | **Vercel** (already paid), project root `apps/web`, [vercel.json](../../apps/web/vercel.json)                             |
-| Database                   | Cloud SQL (fixed hourly cost)             | **Neon** free plan (Postgres with PostGIS and `btree_gist`), URL in the secret `fleettrust-database-url`                  |
-| Redis                      | Memorystore (fixed hourly cost), required | **Optional**: none at first, or Upstash's free plan (`rediss://`)                                                         |
-| API                        | Cloud Run, 0–4 instances (staging)        | Unchanged: Cloud Run scales to zero; production also starts at 0 instances                                                |
-| Virus scanning             | ClamAV on an always-on VM, plus Cloud NAT | Step 2: ClamAV on Cloud Run that scales to zero                                                                           |
-| Worker (jobs, emergencies) | Cloud Run, one instance always on         | Step 3: woken on demand by Cloud Tasks (exact times for emergency escalation) and Cloud Scheduler (hourly and daily jobs) |
-| Load balancer, Cloud Armor | With `api_domain`                         | Not used: leave `api_domain` empty and map the API domain directly to Cloud Run                                           |
+| Part                       | Before                                    | Now                                                                                                                                    |
+| -------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Website                    | Firebase App Hosting                      | **Vercel** (already paid), project root `apps/web`, [vercel.json](../../apps/web/vercel.json)                                          |
+| Database                   | Cloud SQL (fixed hourly cost)             | **Neon** free plan (Postgres with PostGIS and `btree_gist`), URL in the secret `fleettrust-database-url`                               |
+| Redis                      | Memorystore (fixed hourly cost), required | **Optional**: none at first, or Upstash's free plan (`rediss://`)                                                                      |
+| API                        | Cloud Run, 0–4 instances (staging)        | Unchanged: Cloud Run scales to zero; production also starts at 0 instances                                                             |
+| Virus scanning             | ClamAV on an always-on VM, plus Cloud NAT | **ClamAV on Cloud Run, scaled to zero** ([apps/scanner](../../apps/scanner)); the API calls it over HTTPS with a Google identity token |
+| Worker (jobs, emergencies) | Cloud Run, one instance always on         | Step 3: woken on demand by Cloud Tasks (exact times for emergency escalation) and Cloud Scheduler (hourly and daily jobs)              |
+| Load balancer, Cloud Armor | With `api_domain`                         | Not used: leave `api_domain` empty and map the API domain directly to Cloud Run                                                        |
 
 Terraform gets two settings:
 
@@ -74,10 +74,17 @@ With an external database or Redis, Terraform creates only the empty secret. The
    - deploy templates and workflows without the Cloud SQL link and Redis secret when they aren't used;
    - Vercel configuration;
    - documentation.
-2. **Next:** ClamAV as a scale-to-zero Cloud Run service. The API calls it over HTTPS with a Google identity token; it still fails closed. The ClamAV VM and Cloud NAT are then removed.
-3. **Then:** the worker on demand. Cloud Tasks wakes it when an emergency delivery or escalation is due (keeping today's 120-second escalation and 5 s / 15 s / 45 s retries), when the outbox has messages, and Cloud Scheduler runs the hourly and daily jobs. The always-on worker is then removed.
+2. **Done:** ClamAV as a scale-to-zero Cloud Run service (`apps/scanner`: clamd behind a dependency-free Node HTTP server).
+   - The API's `clamav-http` scanner calls it over HTTPS with a Google identity token and still fails closed.
+   - Only the API's runtime account may call it (`roles/run.invoker`).
+   - The release deploys it (`deploy/cloudrun/scanner.sh`).
+   - Signatures come baked into the image, and freshclam fetches the day's updates at start-up.
+   - CI builds the image and checks that real ClamAV finds the EICAR test file.
+   - The ClamAV VM and Cloud NAT are created only with `malware_scanner = "vm"`.
+   - The first scan after a quiet period waits for ClamAV to load (about 20–60 s), so that upload takes longer.
+3. **Next:** the worker on demand. Cloud Tasks wakes it when an emergency delivery or escalation is due (keeping today's 120-second escalation and 5 s / 15 s / 45 s retries), when the outbox has messages, and Cloud Scheduler runs the hourly and daily jobs. The always-on worker is then removed.
 
-Until steps 2 and 3 are done, the ClamAV VM, Cloud NAT and the always-on worker are the remaining fixed costs (roughly USD 70–80 a month together). Don't apply staging or production until then, unless the owner accepts that cost.
+Until step 3 is done, the always-on worker is the remaining fixed cost (about USD 45 a month). Don't apply staging or production until then, unless the owner accepts that cost.
 
 ## Alternatives considered
 

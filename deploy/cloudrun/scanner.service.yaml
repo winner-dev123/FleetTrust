@@ -1,0 +1,48 @@
+# Cloud Run service template for the FleetTrust malware scanner (apps/scanner: ClamAV behind a
+# small HTTP server; ADR-0037 step 2). It scales to zero, so it costs nothing while no files are
+# uploaded. After a quiet period the first scan waits for ClamAV to load its signatures (20–60 s);
+# the API's timeout allows for that.
+#
+# Not public: only identities with roles/run.invoker on this service (the API's runtime account,
+# granted by the deploy workflow) can call it, with a Google identity token. Ingress is "all"
+# because the API reaches it over its run.app URL; IAM is the gate.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: fleettrust-scanner
+  labels:
+    app: fleettrust
+    role: scanner
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    metadata:
+      name: ${REVISION}
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "2"
+        run.googleapis.com/execution-environment: gen2
+        # Loading the signatures is CPU-bound: boost start-up.
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      serviceAccountName: ${SCANNER_SERVICE_ACCOUNT}
+      # clamd scans several streams in parallel (MaxThreads 4).
+      containerConcurrency: 4
+      timeoutSeconds: 300
+      containers:
+        - name: scanner
+          image: ${SCANNER_IMAGE}
+          ports:
+            - containerPort: 8080
+          env:
+            - { name: MAX_SCAN_BYTES, value: "52428800" }
+          resources:
+            # The signature database needs about 1.5–3 GB in memory.
+            limits: { cpu: "1", memory: 4Gi }
+          startupProbe:
+            # The HTTP server starts at once; /healthz turns ready when clamd answers. Allow 4 min.
+            httpGet: { path: /healthz, port: 8080 }
+            periodSeconds: 5
+            failureThreshold: 48

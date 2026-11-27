@@ -14,8 +14,9 @@ Setup and checks for the document pipeline ([ADR-0016](../adr/0016-verification-
 | `DOCUMENT_KEY_PROVIDER`                | `kms` (required)                                                             | `local`                               |
 | `DOCUMENT_KMS_KEY`                     | `projects/<p>/locations/<region>/keyRings/documents/cryptoKeys/verification` | —                                     |
 | `DOCUMENT_LOCAL_KEK`                   | **must not be set**                                                          | optional; random per process if unset |
-| `MALWARE_SCANNER`                      | `clamav` (required)                                                          | `eicar-only`                          |
-| `CLAMAV_HOST` / `CLAMAV_PORT`          | internal clamd host, port 3310                                               | —                                     |
+| `MALWARE_SCANNER`                      | `clamav-http` (the scanner service) or `clamav` (a ClamAV VM); required      | `eicar-only`                          |
+| `CLAMAV_URL`                           | the scanner service's `https://…run.app` URL (set by the release workflow)   | —                                     |
+| `CLAMAV_HOST` / `CLAMAV_PORT`          | only with a ClamAV VM: internal clamd host, port 3310                        | —                                     |
 | `PUBLIC_API_URL`                       | the API's public origin (reviewer links point here)                          | `http://localhost:8080`               |
 | `VERIFICATION_DOCUMENT_RETENTION_DAYS` | 90 until OQ-14 is answered                                                   | 90                                    |
 
@@ -64,7 +65,7 @@ gcloud kms keys add-iam-policy-binding verification --keyring=documents --locati
   --member=serviceAccount:$API_SA --role=roles/cloudkms.cryptoKeyEncrypterDecrypter
 ```
 
-**ClamAV:** the official `clamav/clamav` image runs on a small internal VM created by Terraform ([clamav.tf](../../infra/terraform/modules/fleettrust/clamav.tf)); the API reaches it over Direct VPC egress. It can't be a Cloud Run service: clamd speaks its own TCP protocol on port 3310, and Cloud Run only serves HTTP, gRPC and WebSockets. It needs about 3 GB of memory for the signature database. `freshclam` keeps signatures current. If clamd is unreachable, uploads stay in quarantine and the complete call fails (fail closed). Monitor its error rate.
+**ClamAV:** by default ClamAV runs as the scanner service on Cloud Run ([apps/scanner](../../apps/scanner), [ADR-0037](../adr/0037-low-cost-hosting.md)): clamd behind a small HTTP server, scaled to zero, callable only by the API's runtime account with a Google identity token. It needs about 3 GB of memory for the signature database, which is baked into the image; freshclam fetches the day's updates when an instance starts. After a quiet period the first scan waits about 20–60 s while clamd loads. The older setup, clamd on a small internal VM ([clamav.tf](../../infra/terraform/modules/fleettrust/clamav.tf), `malware_scanner = "vm"`), still works with `MALWARE_SCANNER=clamav`. Either way, if the scanner is unreachable or answers anything unexpected, uploads stay in quarantine and the complete call fails (fail closed). Monitor its error rate.
 
 ## Granting reviewers
 

@@ -53,7 +53,9 @@ jobs:
       STORAGE_SENSITIVE_BUCKET: ${{ vars.SENSITIVE_BUCKET }}
       STORAGE_PUBLIC_MEDIA_BUCKET: ${{ vars.PUBLIC_MEDIA_BUCKET }}
       DOCUMENT_KMS_KEY: ${{ vars.DOCUMENT_KMS_KEY }}
+      # Malware scanner (ADR-0037): empty CLAMAV_HOST = the scanner service on Cloud Run.
       CLAMAV_HOST: ${{ vars.CLAMAV_HOST }}
+      SCANNER_SERVICE_ACCOUNT: ${{ vars.GCP_SCANNER_SERVICE_ACCOUNT }}
       OTEL_COLLECTOR_IMAGE: otel/opentelemetry-collector-contrib:0.165.0@sha256:e40d61f10c9a617cca1ffd1be4d7e2b3a4b0f0001798ff07e58cabe82e618cea
     steps:
       - name: Check the staging environment variables
@@ -66,7 +68,7 @@ jobs:
           for name in GCP_PROJECT_ID GCP_REGION WIF_PROVIDER DEPLOYER RUNTIME_SERVICE_ACCOUNT \
             VPC_NETWORK VPC_SUBNET PUBLIC_API_URL WEB_URL \
             STORAGE_QUARANTINE_BUCKET STORAGE_SENSITIVE_BUCKET STORAGE_PUBLIC_MEDIA_BUCKET \
-            DOCUMENT_KMS_KEY CLAMAV_HOST; do
+            DOCUMENT_KMS_KEY; do
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
@@ -92,6 +94,12 @@ jobs:
             --metadata-file /tmp/build.json --push .
           digest=$(jq -r '."containerimage.digest"' /tmp/build.json)
           echo "API_IMAGE=${REGISTRY}/api@${digest}" >> "$GITHUB_ENV"
+          if [ -z "$CLAMAV_HOST" ]; then
+            docker buildx build -f apps/scanner/Dockerfile -t "${REGISTRY}/scanner:${RELEASE}" \
+              --metadata-file /tmp/scanner.json --push .
+            digest=$(jq -r '."containerimage.digest"' /tmp/scanner.json)
+            echo "SCANNER_IMAGE=${REGISTRY}/scanner@${digest}" >> "$GITHUB_ENV"
+          fi
 
       - name: Migrate the database (expand-only; the serving release keeps working)
         run: |
@@ -102,6 +110,11 @@ jobs:
             --command node --args node_modules/@fleettrust/db/dist/cli/migrate.js \
             --max-retries 0 --task-timeout 600 --quiet
           gcloud run jobs execute fleettrust-migrate --region "$GCP_REGION" --wait
+
+      - name: Deploy the malware scanner (scale to zero) or use the ClamAV VM
+        env:
+          REVISION: fleettrust-scanner-${{ github.run_number }}-${{ github.run_attempt }}
+        run: bash deploy/cloudrun/scanner.sh
 
       - name: Deploy the new API revision with no traffic
         env:

@@ -4,6 +4,7 @@
 #   deploy.sh candidate <template.yaml> <service>  new revision with 0 % traffic, tagged "candidate"
 #   deploy.sh direct    <template.yaml> <service>  new revision takes 100 % (the internal worker)
 #   deploy.sh promote   <service> <revision> <percent>   move traffic to a revision
+#   deploy.sh render    <template.yaml>                print the rendered template (CI check, no gcloud)
 #
 # Template lines tagged "# when:NAME" are kept only when the environment variable NAME is set
 # (for example the Cloud SQL link and the Redis secret, which the low-cost setup doesn't use).
@@ -70,6 +71,9 @@ EOF
       echo "CANDIDATE_URL=${url}"
     } >> "$out"
     echo "Deployed ${REVISION} (previous: ${previous:-none}); candidate URL: ${url}"
+    ;;
+  render)
+    envsubst < "${2:?template}" | keep_when_set
     ;;
   promote)
     service="${2:?service}"

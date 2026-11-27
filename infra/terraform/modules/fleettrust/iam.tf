@@ -1,7 +1,7 @@
 # Identities (least privilege) and keyless deployment from GitHub Actions.
 #
 #   fleettrust-runtime  the API, the worker and the migration job (Cloud Run)
-#   fleettrust-clamav   the malware scanner VM (no Google API access)
+#   fleettrust-clamav   the malware scanner: the Cloud Run service or the VM (no Google API access)
 #   github-deployer     GitHub Actions only, through Workload Identity Federation (no JSON keys)
 
 resource "google_service_account" "runtime" {
@@ -100,6 +100,13 @@ resource "google_artifact_registry_repository_iam_member" "deployer_push" {
 # The deployer may start services as the runtime identity, and nothing else.
 resource "google_service_account_iam_member" "deployer_acts_as_runtime" {
   service_account_id = google_service_account.runtime.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = google_service_account.deployer.member
+}
+
+# The release workflow deploys the scanner service (deploy/cloudrun/scanner.sh) as fleettrust-clamav.
+resource "google_service_account_iam_member" "deployer_acts_as_scanner" {
+  service_account_id = google_service_account.clamav.name
   role               = "roles/iam.serviceAccountUser"
   member             = google_service_account.deployer.member
 }
