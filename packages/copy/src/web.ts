@@ -38,11 +38,14 @@ export const web = {
 
   errors: {
     pageNotFound: "Page not found",
-    pageGone: "This page doesn't exist, or it's no longer published.",
+    pageGone:
+      "The page may have moved, or it's no longer published. We can help you get back on track.",
     pageMissing: "This page doesn't exist. Go to the",
     findServices: "Find vehicle services",
-    orGoToThe: "or go to the",
     homePage: "home page",
+    notFoundKicker: "404 · Wrong turn",
+    notFoundTitle: "This road doesn’t go anywhere.",
+    returnHome: "Return home",
     loadFailedTitle: "This page couldn't load",
     loadFailedBody: "Something went wrong while loading this page. Please try again in a moment.",
     roadHelpBefore: "If you need help on the road now, see",
@@ -108,6 +111,8 @@ export const web = {
     findServices: "Find services",
     knowledgeHub: "Knowledge hub",
     jobs: "Jobs",
+    howItWorks: "How it works",
+    forProviders: "For providers",
     you: "You",
     emergency: "Emergency",
     dashboard: "Dashboard",
@@ -199,7 +204,7 @@ export const web = {
   },
 
   article: {
-    hub: "Knowledge hub",
+    backToHub: "Back to the knowledge hub",
     by: "By {name}",
     byOrg: "By {name} ({organization})",
     edited: "edited {date}",
@@ -286,6 +291,70 @@ export const web = {
       "Publish services, respond to quote requests and manage your team in one simple place.",
     createAccount: "Create a free account",
     environment: "Environment: {name}",
+  },
+
+  howItWorks: {
+    title: "How it works",
+    description:
+      "How FleetTrust helps you find vehicle services, understand what was checked and connect directly with providers.",
+    kicker: "A clearer way to get vehicle help",
+    heroTitle: "From “what now?” to your next step.",
+    heroIntro:
+      "FleetTrust helps you find options, understand the evidence and connect directly with providers.",
+    findService: "Find a service",
+    stepsKicker: "Three straightforward steps",
+    stepsTitle: "You stay in control from start to finish.",
+    step1Title: "Share what you need",
+    step1Body: "Search by service, issue or part and add your location.",
+    step2Title: "Compare clear information",
+    step2Body: "Review services, indicative prices and verification evidence.",
+    step3Title: "Choose and connect",
+    step3Body: "Request a quote, ask questions and arrange service directly.",
+    evidenceKicker: "Evidence, not popularity",
+    evidenceTitle: "Know what was checked.",
+    evidenceCardTitle: "What verification can cover",
+    evidenceBusiness: "Business registration",
+    evidenceLocation: "Business location",
+    evidenceRanking: "Never bought with a plan, never used to rank results",
+    directKicker: "Direct and transparent",
+    directTitle: "You choose the provider. You agree the price.",
+    directBody:
+      "Prices are indicative and are not a binding offer. Confirm the final price with the provider. FleetTrust does not process payments.",
+    browseProviders: "Browse providers",
+  },
+
+  forProviders: {
+    title: "For providers",
+    description:
+      "Publish your vehicle services, answer quote requests and keep your team organised on FleetTrust.",
+    kicker: "For workshops, roadside teams and parts suppliers",
+    heroTitle: "More time doing the work that moves people.",
+    heroIntro:
+      "Publish your services, respond to quote requests and keep your team organised in one simple workspace.",
+    plansNote: "Plans change limits only. They never buy verification or search position.",
+    workspaceTitle: "In your workspace",
+    workspaceRequests: "Quote requests",
+    workspaceRequestsBody: "Answer customers and keep each conversation in one place",
+    workspaceServices: "Services and prices",
+    workspaceServicesBody: "Indicative prices customers can compare",
+    workspaceBranches: "Branches and hours",
+    workspaceBranchesBody: "Where you work and when you're open",
+    workspaceTeam: "Team members",
+    workspaceTeamBody: "Invite staff with the right permissions",
+    benefitsKicker: "One place for the everyday work",
+    benefitsTitle: "Simple tools. Clear limits. No paid ranking.",
+    benefitFindTitle: "Be easier to find",
+    benefitFindBody: "Publish services, branches, hours and indicative prices.",
+    benefitAdminTitle: "Respond with less admin",
+    benefitAdminBody: "Manage quote requests and conversations from one place.",
+    benefitEvidenceTitle: "Show checked evidence",
+    benefitEvidenceBody: "Verification labels explain exactly which evidence was checked.",
+    joinKicker: "Get started",
+    joinTitle: "Set up your business in three steps.",
+    joinIntro: "It's free to start. Finish your public profile when you're ready.",
+    joinStep1: "Sign in with your email. No password needed.",
+    joinStep2: "Choose “I run a vehicle service business” and enter your business name.",
+    joinStep3: "Add your services, branches and hours, then publish your profile.",
   },
 
   emergency: {
@@ -402,6 +471,10 @@ export const web = {
     closed: "Closed",
     localTimes: "Times are local ({timeZone}).",
     published: "Profile published {date}.",
+    serviceArea: "Service area",
+    openingHours: "Opening hours",
+    details: "Provider details",
+    evidenceChecked: "Evidence checked",
     days: {
       mon: "Monday",
       tue: "Tuesday",
@@ -414,7 +487,7 @@ export const web = {
   },
 
   job: {
-    jobs: "Jobs",
+    backToJobs: "Back to jobs",
     businessVerified: "Business verified",
     businessNotVerified: "Business not verified",
     staySafe: "Stay safe",

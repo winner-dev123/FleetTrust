@@ -55,7 +55,7 @@ export function SiteHeader() {
         <div className="site-header__nav">
           <NavMenu
             label={copy.web.site.mainNav}
-            items={PUBLIC_NAV.filter((item) => !item.emergency)}
+            items={PUBLIC_NAV.filter((item) => !item.emergency && !item.footerOnly)}
           />
         </div>
         <div className="site-header__account">

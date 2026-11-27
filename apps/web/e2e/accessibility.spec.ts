@@ -22,6 +22,8 @@ const PUBLIC_PAGES = [
   "/jobs",
   "/jobs/0190a000-0000-7000-8000-00000000d001",
   "/emergency",
+  "/how-it-works",
+  "/for-providers",
   "/accessibility",
   "/sign-in",
   "/providers/no-such-provider",

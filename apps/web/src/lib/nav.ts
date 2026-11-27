@@ -6,6 +6,8 @@ export interface NavItem {
   label: string;
   /** Emergency entry: styled with the danger colour and always listed first. */
   emergency?: boolean;
+  /** Listed in the footer only, to keep the header short (Figma Make header). */
+  footerOnly?: boolean;
 }
 
 export interface NavSection {
@@ -19,8 +21,10 @@ const can = (org: MyOrganization, permission: Permission) => org.permissions.inc
 export const PUBLIC_NAV: readonly NavItem[] = [
   { href: "/emergency", label: copy.web.nav.emergencyHelp, emergency: true },
   { href: "/search", label: copy.web.nav.findServices },
+  { href: "/how-it-works", label: copy.web.nav.howItWorks },
   { href: "/articles", label: copy.web.nav.knowledgeHub },
-  { href: "/jobs", label: copy.web.nav.jobs },
+  { href: "/for-providers", label: copy.web.nav.forProviders },
+  { href: "/jobs", label: copy.web.nav.jobs, footerOnly: true },
 ];
 
 /**
