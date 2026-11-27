@@ -165,7 +165,8 @@ test.describe("admin console", () => {
     await page.getByRole("button", { name: "Grant Support agent…" }).click();
 
     const dialog = page.getByRole("alertdialog", { name: "Grant Support agent?" });
-    await expect(dialog).toContainText("can't be undone");
+    await expect(dialog).toContainText("You can revoke it later");
+    await expect(dialog).not.toContainText("can't be undone");
     const confirm = dialog.getByRole("button", { name: "Grant Support agent" });
     await expect(confirm).toBeDisabled();
     await dialog.getByLabel(`Type ${target} to confirm`).fill("someone-else@example.test");

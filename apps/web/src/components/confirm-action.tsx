@@ -9,14 +9,15 @@ import { TextField } from "./field";
 import { Notice } from "./feedback";
 
 /**
- * Irreversible staff actions (Prompt 26): the person types a phrase (usually the thing being
+ * Sensitive staff actions (Prompt 26): the person types a phrase (usually the thing being
  * changed) before the action button works. Only then does the console send the action's
- * confirmation to the API, which refuses irreversible actions without it.
+ * confirmation to the API, which refuses these actions without it.
  */
 export function ConfirmAction({
   label,
   phrase,
   consequence,
+  undoNote = copy.web.controls.cannotBeUndone,
   onConfirm,
 }: {
   /** Button text, e.g. "Revoke badge". */
@@ -25,6 +26,8 @@ export function ConfirmAction({
   phrase: string;
   /** What happens, in one or two sentences. */
   consequence: string;
+  /** Whether and how it can be reversed. Defaults to "This can't be undone." */
+  undoNote?: string;
   onConfirm: () => Promise<void>;
 }) {
   const headingId = useId();
@@ -73,7 +76,7 @@ export function ConfirmAction({
         {fill(copy.web.controls.confirmQuestion, { label })}
       </h3>
       <p style={{ margin: 0 }}>
-        {consequence} <strong>{copy.web.controls.cannotBeUndone}</strong>
+        {consequence} <strong>{undoNote}</strong>
       </p>
       <TextField
         label={fill(copy.web.controls.typeToConfirm, { phrase })}

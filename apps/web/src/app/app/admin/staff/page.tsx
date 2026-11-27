@@ -45,6 +45,7 @@ export default function StaffPage() {
           <TextField
             label={t.email}
             type="email"
+            required
             value={email}
             onChange={(event) => {
               setEmail(event.target.value);
@@ -53,6 +54,7 @@ export default function StaffPage() {
           <SelectField
             label={t.role}
             options={ROLE_OPTIONS}
+            required
             value={role}
             hint={STAFF_ROLE_SCOPES[role]}
             onChange={(event) => {
@@ -68,6 +70,7 @@ export default function StaffPage() {
               email: email.trim(),
               scope: STAFF_ROLE_SCOPES[role],
             })}
+            undoNote={t.grantUndo}
             onConfirm={async () => {
               staff.setData(
                 await api.grantStaffRole(email.trim().toLowerCase(), role, "staff.grant"),
@@ -116,6 +119,7 @@ export default function StaffPage() {
                             consequence={fill(t.revokeConsequence, {
                               who: member.email ?? t.thisPerson,
                             })}
+                            undoNote={t.revokeUndo}
                             onConfirm={async () => {
                               staff.setData(
                                 await api.revokeStaffRole(member.userId, held.role, "staff.revoke"),
