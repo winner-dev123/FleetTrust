@@ -1030,3 +1030,173 @@
     min-height: 0;
   }
 }
+
+/* --- Entrance and hover motion (runs once; "reduce motion" switches it off) ------------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes imageIn {
+  from {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes shapeIn {
+  from {
+    opacity: 0;
+    transform: rotate(-6deg) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow:
+      0 0 0 5px #e3f5eb,
+      0 0 0 5px rgb(53 164 106 / 45%);
+  }
+  100% {
+    box-shadow:
+      0 0 0 5px #e3f5eb,
+      0 0 0 16px rgb(53 164 106 / 0%);
+  }
+}
+
+.heroCopy > * {
+  animation: rise 0.85s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.heroCopy > :nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.heroCopy > :nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+.heroCopy > :nth-child(4) {
+  animation-delay: 0.24s;
+}
+
+.heroCopy > :nth-child(5) {
+  animation-delay: 0.32s;
+}
+
+.heroShape {
+  animation: shapeIn 1.3s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.heroImage {
+  animation: imageIn 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s backwards;
+}
+
+.verifiedCard {
+  animation: cardIn 0.8s cubic-bezier(0.34, 1.4, 0.64, 1) 0.55s backwards;
+}
+
+.alertsCard {
+  animation: cardIn 0.8s cubic-bezier(0.34, 1.4, 0.64, 1) 0.75s backwards;
+}
+
+/* Three pulses, then still (WCAG 2.2.2: stops within five seconds). */
+.statusDot {
+  animation: pulse 1.4s ease-out 1.2s 3;
+}
+
+.floatingCard {
+  transition:
+    transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 0.4s ease;
+}
+
+.floatingCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 45px rgb(23 52 81 / 22%);
+}
+
+.heroGlow {
+  animation: rise 1.6s ease-out backwards;
+}
+
+.searchPanel {
+  transition:
+    box-shadow 0.3s ease,
+    border-color 0.3s ease,
+    transform 0.3s ease;
+}
+
+.searchPanel:focus-within {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--color-primary) 12%, transparent),
+    0 24px 50px -24px rgb(23 52 81 / 35%);
+}
+
+.searchButton,
+.bannerButton,
+.helpButton {
+  position: relative;
+  overflow: hidden;
+}
+
+.searchButton svg,
+.bannerButton svg,
+.helpButton svg,
+.sectionHeading > a svg {
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.searchButton:hover svg,
+.bannerButton:hover svg,
+.helpButton:hover svg,
+.sectionHeading > a:hover svg {
+  transform: translateX(4px);
+}
+
+.serviceIcon {
+  transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.serviceCard:hover .serviceIcon {
+  transform: rotate(-6deg) scale(1.08);
+}
+
+.mechanicPhoto,
+.roadsideImage {
+  transition:
+    transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 0.6s ease;
+}
+
+.mechanicPhoto:hover,
+.roadsideImage:hover {
+  transform: translateY(-4px);
+}

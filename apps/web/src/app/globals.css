@@ -71,7 +71,10 @@ a {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
     scroll-behavior: auto !important;
   }
 }
@@ -1944,4 +1947,643 @@ fieldset.field {
     width: 64px;
     height: 64px;
   }
+}
+
+/* ==== Premium finish and motion ========================================================== */
+/*
+ * Layered on top of the Make styles: richer buttons and surfaces, a header that lifts on
+ * scroll, soft light in the banners, and short one-off entrance animations. Every animation
+ * runs once and settles in under five seconds (WCAG 2.2.2); "reduce motion" turns them off
+ * (the rule near the top of this file), and the reveal script hides nothing in that case.
+ */
+
+:root {
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --lift-shadow:
+    0 1px 2px rgb(16 33 61 / 4%), 0 18px 40px -18px rgb(16 33 61 / 22%),
+    0 4px 12px -6px rgb(16 33 61 / 8%);
+  --rest-shadow: 0 1px 2px rgb(16 33 61 / 4%), 0 8px 24px -16px rgb(16 33 61 / 14%);
+}
+
+html {
+  /* Anchors and focus land below the sticky header (WCAG 2.4.11). */
+  scroll-padding-top: 96px;
+}
+
+body {
+  background:
+    radial-gradient(
+      1100px 520px at 92% -8%,
+      color-mix(in srgb, var(--color-primary) 6%, transparent),
+      transparent 70%
+    ),
+    var(--color-background);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+/* --- Keyframes ------------------------------------------------------------------------- */
+
+@keyframes ft-rise {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ft-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ft-zoom {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ft-glow {
+  from {
+    opacity: 0;
+    transform: translate3d(40px, -30px, 0) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ft-sheen {
+  from {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(220%) skewX(-18deg);
+  }
+}
+
+/* --- Scroll reveal (components/motion.tsx) --------------------------------------------- */
+
+.reveal {
+  transition:
+    opacity 0.75s var(--ease-out) var(--reveal-delay, 0ms),
+    transform 0.75s var(--ease-out) var(--reveal-delay, 0ms);
+}
+
+.reveal:not(.is-in) {
+  opacity: 0;
+  transform: translateY(26px);
+}
+
+/* --- Header ---------------------------------------------------------------------------- */
+
+@media (min-width: 1024px) {
+  .site-header {
+    position: sticky;
+    top: 0;
+  }
+}
+
+.site-header {
+  transition:
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.site-header.is-scrolled {
+  border-bottom-color: transparent;
+  box-shadow: 0 10px 30px -18px rgb(16 33 61 / 35%);
+}
+
+.brand__mark {
+  background: linear-gradient(145deg, #2f7cf0, #1768e5 55%, #0f56c4);
+  box-shadow:
+    0 6px 14px -6px rgb(23 104 229 / 70%),
+    inset 0 1px 0 rgb(255 255 255 / 25%);
+  transition: transform 0.4s var(--ease-spring);
+}
+
+.brand:hover .brand__mark {
+  transform: rotate(-9deg) scale(1.06);
+}
+
+.site-header .nav__link {
+  position: relative;
+}
+
+.site-header .nav__link::after {
+  content: "";
+  position: absolute;
+  left: var(--space-md);
+  right: var(--space-md);
+  bottom: 9px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s var(--ease-out);
+}
+
+.site-header .nav__link:hover::after,
+.site-header .nav__link[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+.pill-link {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.pill-link:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  box-shadow: 0 8px 20px -12px rgb(23 104 229 / 55%);
+  transform: translateY(-1px);
+}
+
+/* --- Buttons --------------------------------------------------------------------------- */
+
+.btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s var(--ease-out);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+/*
+ * Primary and danger buttons darken towards the text colour (light theme) or lighten towards it
+ * (dark theme), so the label keeps at least the contrast of the flat colour.
+ */
+.btn--primary {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    color-mix(in srgb, var(--color-primary) 80%, var(--color-text))
+  );
+  box-shadow:
+    0 10px 22px -12px color-mix(in srgb, var(--color-primary) 85%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 18%);
+}
+
+.btn--danger {
+  background: linear-gradient(
+    135deg,
+    var(--color-danger),
+    color-mix(in srgb, var(--color-danger) 82%, var(--color-text))
+  );
+  box-shadow:
+    0 10px 22px -12px color-mix(in srgb, var(--color-danger) 85%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 16%);
+}
+
+.btn--primary:hover:not(:disabled),
+.btn--danger:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 30px -14px color-mix(in srgb, var(--color-primary) 90%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 22%);
+}
+
+.btn--danger:hover:not(:disabled) {
+  box-shadow:
+    0 16px 30px -14px color-mix(in srgb, var(--color-danger) 90%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 20%);
+}
+
+.btn--primary:hover {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-primary) 92%, var(--color-text)),
+    color-mix(in srgb, var(--color-primary) 72%, var(--color-text))
+  );
+}
+
+/* A light sweeps across filled buttons on hover. */
+.btn--primary::after,
+.btn--danger::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: -1;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 22%), transparent);
+  transform: translateX(-120%) skewX(-18deg);
+  pointer-events: none;
+}
+
+.btn--primary:hover::after,
+.btn--danger:hover::after {
+  animation: ft-sheen 0.9s var(--ease-out);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-border-strong));
+  background: var(--color-surface);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -16px rgb(16 33 61 / 40%);
+}
+
+.btn svg,
+.text-link svg,
+.back-link span,
+.result-card__cta {
+  transition: transform 0.3s var(--ease-out);
+}
+
+.btn:hover svg,
+.text-link:hover svg {
+  transform: translateX(4px);
+}
+
+.back-link:hover span {
+  transform: translateX(-4px);
+}
+
+/* --- Surfaces -------------------------------------------------------------------------- */
+
+.card {
+  border-color: color-mix(in srgb, var(--color-border) 85%, transparent);
+  box-shadow: var(--rest-shadow);
+  transition:
+    box-shadow 0.35s ease,
+    transform 0.35s var(--ease-out),
+    border-color 0.35s ease;
+}
+
+.result-card:hover,
+.feature-card:hover,
+.grid > .card:hover,
+.join-band__card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  box-shadow: var(--lift-shadow);
+}
+
+.feature-card {
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--rest-shadow);
+  transition:
+    box-shadow 0.35s ease,
+    transform 0.35s var(--ease-out),
+    border-color 0.35s ease;
+}
+
+/* A thin gradient edge appears along the top of a feature card on hover. */
+.feature-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.45s var(--ease-out);
+}
+
+.feature-card:hover::before {
+  transform: scaleX(1);
+}
+
+.feature-card__icon,
+.evidence-card__icon,
+.workspace-card__icon {
+  transition: transform 0.4s var(--ease-spring);
+}
+
+.feature-card:hover .feature-card__icon,
+.workspace-card__row:hover .workspace-card__icon {
+  transform: rotate(-6deg) scale(1.08);
+}
+
+.workspace-card__row {
+  transition: transform 0.3s var(--ease-out);
+}
+
+.workspace-card__row:hover {
+  transform: translateX(4px);
+}
+
+.evidence-card,
+.workspace-card,
+.join-band__card,
+.emergency-page__card,
+.auth-page__card {
+  box-shadow:
+    0 1px 2px rgb(16 33 61 / 4%),
+    0 30px 60px -30px rgb(16 33 61 / 30%);
+}
+
+.input {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.input:hover:not(:focus-visible) {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border-strong));
+}
+
+/* --- Banners: soft light and entrance -------------------------------------------------- */
+
+.page-hero,
+.feature-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.page-hero::before,
+.feature-hero::before,
+.page-hero::after,
+.feature-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: ft-glow 1.6s var(--ease-out) backwards;
+}
+
+.page-hero::before,
+.feature-hero::before {
+  top: -180px;
+  right: -120px;
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--color-primary) 16%, transparent),
+    transparent
+  );
+}
+
+.page-hero::after,
+.feature-hero::after {
+  bottom: -220px;
+  left: -160px;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(closest-side, rgb(255 196 112 / 18%), transparent);
+  animation-delay: 0.15s;
+}
+
+/* Subtle dot texture over the banners. */
+.page-hero__inner,
+.feature-hero__grid {
+  position: relative;
+}
+
+.page-hero__kicker,
+.feature-hero .page-hero__kicker,
+.emergency-page__kicker,
+.auth-page__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-hero__kicker::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+}
+
+.page-hero__inner > *,
+.feature-hero__grid > div:first-child > *,
+.emergency-page__copy > *,
+.article-page__header > *,
+.not-found > *,
+.profile-header > *,
+.auth-page__card > * {
+  animation: ft-rise 0.8s var(--ease-out) backwards;
+}
+
+.page-hero__inner > :nth-child(2),
+.feature-hero__grid > div:first-child > :nth-child(2),
+.emergency-page__copy > :nth-child(2),
+.article-page__header > :nth-child(2),
+.not-found > :nth-child(2),
+.profile-header > :nth-child(2),
+.auth-page__card > :nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.page-hero__inner > :nth-child(3),
+.feature-hero__grid > div:first-child > :nth-child(3),
+.emergency-page__copy > :nth-child(3),
+.article-page__header > :nth-child(3),
+.not-found > :nth-child(3),
+.profile-header > :nth-child(3),
+.auth-page__card > :nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+.page-hero__inner > :nth-child(n + 4),
+.feature-hero__grid > div:first-child > :nth-child(n + 4),
+.emergency-page__copy > :nth-child(n + 4),
+.article-page__header > :nth-child(n + 4),
+.not-found > :nth-child(n + 4),
+.auth-page__card > :nth-child(n + 4) {
+  animation-delay: 0.24s;
+}
+
+.feature-hero__image,
+.auth-page__visual img {
+  animation: ft-zoom 1.2s var(--ease-out) backwards;
+}
+
+.workspace-card,
+.emergency-page__card {
+  animation: ft-pop 0.9s var(--ease-out) 0.2s backwards;
+}
+
+.feature-hero__image,
+.split-section__image {
+  transition:
+    transform 0.6s var(--ease-out),
+    box-shadow 0.6s ease;
+}
+
+.feature-hero__image:hover,
+.split-section__image:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 34px 70px -30px rgb(25 65 100 / 40%);
+}
+
+.not-found__icon {
+  animation: ft-pop 0.9s var(--ease-spring) backwards;
+}
+
+/* --- Footer ---------------------------------------------------------------------------- */
+
+.site-footer {
+  position: relative;
+}
+
+.site-footer::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-primary) 70%, transparent),
+    transparent
+  );
+}
+
+.site-footer nav a {
+  transition:
+    color 0.2s ease,
+    transform 0.25s var(--ease-out);
+}
+
+.site-footer nav a:hover {
+  transform: translateX(3px);
+}
+
+/* --- Signed-in area -------------------------------------------------------------------- */
+
+@media (min-width: 1024px) {
+  .app-nav {
+    padding-top: var(--space-lg);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-primary) 4%, var(--color-background)),
+      var(--color-background) 60%
+    );
+  }
+}
+
+.app-nav .nav__link {
+  position: relative;
+  font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.25s var(--ease-out);
+}
+
+.app-nav .nav__link:hover {
+  transform: translateX(3px);
+}
+
+.app-nav .nav__link[aria-current="page"] {
+  background: color-mix(in srgb, var(--color-primary) 11%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.app-nav .nav__link[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--color-primary), var(--color-accent));
+}
+
+.app-layout > main {
+  padding-block: var(--space-xl) var(--space-xxl);
+}
+
+.page-header {
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+
+.page-header h1 {
+  font-size: clamp(30px, 3.4vw, 40px);
+  letter-spacing: -0.04em;
+}
+
+.app-layout > main > *,
+.app-layout > main > .page-header ~ * {
+  animation: ft-rise 0.7s var(--ease-out) backwards;
+}
+
+.app-layout > main > :nth-child(2) {
+  animation-delay: 0.06s;
+}
+
+.app-layout > main > :nth-child(3) {
+  animation-delay: 0.12s;
+}
+
+.app-layout > main > :nth-child(n + 4) {
+  animation-delay: 0.18s;
+}
+
+.stat__value {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 40px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--color-primary) 72%, var(--color-text));
+}
+
+.grid > .card {
+  position: relative;
+  overflow: hidden;
+}
+
+.grid > .card::after {
+  content: "";
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--color-primary) 10%, transparent),
+    transparent
+  );
+  pointer-events: none;
+  transition: transform 0.6s var(--ease-out);
+}
+
+.grid > .card:hover::after {
+  transform: scale(1.5);
+}
+
+.notice {
+  border-radius: 16px;
 }
