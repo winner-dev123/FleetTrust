@@ -439,6 +439,8 @@ export const web = {
   },
 
   signIn: {
+    visualKicker: "Your journeys, in one place",
+    visualTitle: "Save providers. Manage requests. Alert people you trust.",
     title: "Sign in to FleetTrust",
     pageTitle: "Sign in · FleetTrust",
     mfaPageTitle: "Two-step sign-in · FleetTrust",
@@ -469,6 +471,7 @@ export const web = {
   },
 
   search: {
+    viewProfile: "View profile",
     title: "Find vehicle services",
     intro:
       "Workshops, towing, tyres, parts and more. Results are sorted by relevance (text match, distance, service area and opening hours). Plans never change the order.",

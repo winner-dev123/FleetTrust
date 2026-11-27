@@ -53,7 +53,7 @@ export default async function ProviderPage(props: PageProps<"/providers/[slug]">
 
   return (
     <div className="container stack stack--lg">
-      <header className="stack">
+      <header className="stack profile-hero">
         <div className="cluster">
           {logo ? (
             // Provider media is served from signed storage URLs, not Next image optimisation.
