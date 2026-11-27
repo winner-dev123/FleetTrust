@@ -128,6 +128,27 @@ export const apiEnvSchema = z
     /** How long computed routes are cached (0 disables). Check the vendor's caching terms (OQ-13). */
     /** Push notifications: `fcm` (Firebase Cloud Messaging) or `log` (recorded, never sent; local only). */
     PUSH_PROVIDER: z.enum(["log", "fcm"]).default("log"),
+    /**
+     * Worker role. `loop` (local, CI, an always-on worker): timers poll the outbox and emergencies.
+     * `on-demand` (Cloud Run scaled to zero, ADR-0037): no timers; Cloud Tasks wakes the worker after
+     * writes, and while an emergency is active each run hands over to the next, so the same
+     * EMERGENCY_TICK_MS and OUTBOX_RELAY_INTERVAL_MS polling applies whenever there is work.
+     */
+    WORKER_MODE: z.enum(["loop", "on-demand"]).default("loop"),
+    /** on-demand: Cloud Tasks queue for wake-ups, `projects/<p>/locations/<r>/queues/<q>`. */
+    JOBS_QUEUE: z
+      .string()
+      .regex(
+        /^projects\/[^/]+\/locations\/[^/]+\/queues\/[^/]+$/,
+        "must be a Cloud Tasks queue path",
+      )
+      .optional(),
+    /** on-demand: the worker service URL that wake-ups call (https when deployed). */
+    WORKER_URL: envFields.httpUrl().optional(),
+    /** on-demand: service account whose identity token the wake-ups carry (may invoke the worker). */
+    JOBS_SERVICE_ACCOUNT: z.email().optional(),
+    /** on-demand: how long one worker run keeps polling before it hands over to the next. */
+    WORKER_RUN_MS: z.coerce.number().int().min(5_000).max(600_000).default(50_000),
     /** Worker role: how often the outbox relay looks for new events (notifications and push). */
     OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().min(200).max(60_000).default(2_000),
     /** Transactional email (emergency fallback). Vendor pending (OQ-06): `log` records only. */
@@ -212,6 +233,14 @@ export const apiEnvSchema = z
     }
     if (env.MALWARE_SCANNER === "clamav" && env.CLAMAV_HOST === undefined) {
       issue("CLAMAV_HOST", "is required with MALWARE_SCANNER=clamav");
+    }
+    if (env.WORKER_MODE === "on-demand") {
+      for (const name of ["JOBS_QUEUE", "WORKER_URL", "JOBS_SERVICE_ACCOUNT"] as const) {
+        if (env[name] === undefined) issue(name, "is required with WORKER_MODE=on-demand");
+      }
+      if (deployed && env.WORKER_URL !== undefined && !env.WORKER_URL.startsWith("https://")) {
+        issue("WORKER_URL", "must be https in staging and production");
+      }
     }
     if (deployed && env.DATABASE_URL === undefined) {
       ctx.addIssue({

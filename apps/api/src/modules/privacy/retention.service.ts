@@ -132,7 +132,8 @@ export class RetentionJob implements OnApplicationBootstrap, OnApplicationShutdo
   ) {}
 
   onApplicationBootstrap(): void {
-    if (this.env.APP_ROLE !== "worker") return;
+    // WORKER_MODE=on-demand: Cloud Scheduler calls the worker endpoint instead (WorkerJobsController).
+    if (this.env.APP_ROLE !== "worker" || this.env.WORKER_MODE !== "loop") return;
     this.timer = setInterval(() => {
       if (this.running) return;
       this.running = this.retention

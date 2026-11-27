@@ -67,6 +67,10 @@ jobs:
       # Malware scanner (ADR-0037): empty CLAMAV_HOST = the scanner service on Cloud Run.
       CLAMAV_HOST: ${{ vars.CLAMAV_HOST }}
       SCANNER_SERVICE_ACCOUNT: ${{ vars.GCP_SCANNER_SERVICE_ACCOUNT }}
+      # On-demand worker (ADR-0037 step 3): terraform output release_variables.
+      JOBS_QUEUE: ${{ vars.JOBS_QUEUE }}
+      WORKER_URL: ${{ vars.WORKER_URL }}
+      JOBS_SERVICE_ACCOUNT: ${{ vars.GCP_JOBS_SERVICE_ACCOUNT }}
       OTEL_COLLECTOR_IMAGE: otel/opentelemetry-collector-contrib:0.165.0@sha256:e40d61f10c9a617cca1ffd1be4d7e2b3a4b0f0001798ff07e58cabe82e618cea
     steps:
       - name: Check the input and the production environment variables
@@ -85,7 +89,7 @@ jobs:
           for name in GCP_PROJECT_ID GCP_REGION WIF_PROVIDER DEPLOYER STAGING_REGISTRY \
             RUNTIME_SERVICE_ACCOUNT VPC_NETWORK VPC_SUBNET PUBLIC_API_URL \
             WEB_URL STORAGE_QUARANTINE_BUCKET STORAGE_SENSITIVE_BUCKET STORAGE_PUBLIC_MEDIA_BUCKET \
-            DOCUMENT_KMS_KEY; do
+            DOCUMENT_KMS_KEY JOBS_QUEUE WORKER_URL JOBS_SERVICE_ACCOUNT; do
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then

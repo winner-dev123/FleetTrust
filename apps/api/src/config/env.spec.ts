@@ -46,6 +46,8 @@ describe("loadApiEnv", () => {
       DOCUMENT_KEY_PROVIDER: "local",
       MALWARE_SCANNER: "eicar-only",
       CLAMAV_PORT: 3310,
+      WORKER_MODE: "loop",
+      WORKER_RUN_MS: 50_000,
       VERIFICATION_DOCUMENT_RETENTION_DAYS: 90,
       MAP_PROVIDER: "stub",
       ROUTING_PROVIDER: "none",
@@ -121,6 +123,25 @@ describe("loadApiEnv", () => {
       loadApiEnv({ MALWARE_SCANNER: "clamav-http", CLAMAV_URL: "http://localhost:8090" })
         .CLAMAV_URL,
     ).toBe("http://localhost:8090");
+  });
+
+  it("runs the worker on demand with a queue, a worker URL and a jobs account (ADR-0037)", () => {
+    const onDemand = {
+      ...production,
+      WORKER_MODE: "on-demand",
+      JOBS_QUEUE: "projects/p/locations/europe-west1/queues/fleettrust-jobs",
+      WORKER_URL: "https://fleettrust-worker-123.europe-west1.run.app",
+      JOBS_SERVICE_ACCOUNT: "fleettrust-jobs@p.iam.gserviceaccount.com",
+    } as const;
+    expect(loadApiEnv(onDemand).WORKER_MODE).toBe("on-demand");
+    expect(loadApiEnv({}).WORKER_MODE).toBe("loop");
+    for (const name of ["JOBS_QUEUE", "WORKER_URL", "JOBS_SERVICE_ACCOUNT"] as const) {
+      expect(() => loadApiEnv({ ...onDemand, [name]: undefined })).toThrow(new RegExp(name));
+    }
+    expect(() => loadApiEnv({ ...onDemand, JOBS_QUEUE: "fleettrust-jobs" })).toThrow(/JOBS_QUEUE/);
+    expect(() => loadApiEnv({ ...onDemand, WORKER_URL: "http://worker.internal" })).toThrow(
+      /WORKER_URL[\s\S]*https/,
+    );
   });
 
   it("requires real storage, KMS encryption and ClamAV for documents when deployed", () => {

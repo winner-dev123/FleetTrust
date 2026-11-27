@@ -34,6 +34,8 @@ resource "google_project_service" "apis" {
     "monitoring.googleapis.com",
     "redis.googleapis.com",
     "run.googleapis.com",
+    "cloudtasks.googleapis.com",
+    "cloudscheduler.googleapis.com",
     "secretmanager.googleapis.com",
     "servicenetworking.googleapis.com",
     "sqladmin.googleapis.com",

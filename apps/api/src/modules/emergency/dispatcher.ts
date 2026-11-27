@@ -76,7 +76,14 @@ export class EmergencyDispatcher implements OnApplicationBootstrap, OnApplicatio
   }
 
   onApplicationBootstrap(): void {
-    if (this.env.APP_ROLE !== "worker" || this.database === null) return;
+    // WORKER_MODE=on-demand: WorkerRunner calls drain()/tick() when Cloud Tasks wakes the worker.
+    if (
+      this.env.APP_ROLE !== "worker" ||
+      this.env.WORKER_MODE !== "loop" ||
+      this.database === null
+    ) {
+      return;
+    }
     this.timer = setInterval(() => {
       if (this.running) return;
       this.running = this.tick()

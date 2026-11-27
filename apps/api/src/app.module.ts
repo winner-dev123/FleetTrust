@@ -23,6 +23,8 @@ import { CommunityModule } from "./modules/community/index.js";
 import { MessagingModule } from "./modules/messaging/index.js";
 import { NotificationsModule } from "./modules/notifications/index.js";
 import { EmergencyModule } from "./modules/emergency/index.js";
+import { WorkerModule } from "./modules/worker/index.js";
+import { WorkerWakeModule } from "./platform/worker-wake/index.js";
 import { VehiclesModule } from "./modules/vehicles/index.js";
 import { SearchModule } from "./modules/search/index.js";
 import { VerificationModule } from "./modules/verification/index.js";
@@ -75,6 +77,8 @@ export class AppModule {
         // Routing adapter for route-corridor search (degrades to point search).
         RoutingModule.forRoot(env),
         RealtimeModule.forRoot(env),
+        // Wakes the on-demand worker (Cloud Tasks) after writes; a no-op in loop mode (ADR-0037).
+        WorkerWakeModule.forRoot(env),
         PushModule.forRoot(env),
         EmailModule.forRoot(env),
         // Admin feature and service-category settings, read by several modules.
@@ -112,6 +116,8 @@ export class AppModule {
         // Consent, data export, account deletion and retention.
         PrivacyModule,
         HealthModule,
+        // On-demand worker endpoints (worker role, WORKER_MODE=on-demand).
+        ...(env.APP_ROLE === "worker" && env.WORKER_MODE === "on-demand" ? [WorkerModule] : []),
       ],
     };
   }

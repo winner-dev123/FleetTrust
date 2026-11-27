@@ -1,7 +1,11 @@
 # Cloud Run service template for the FleetTrust worker (same image as the API, APP_ROLE=worker):
-# outbox relay, emergency dispatcher and retention jobs. Internal only, always one instance warm,
-# CPU always allocated so its loops keep running between requests. Several instances are safe
-# (FOR UPDATE SKIP LOCKED). Deployed by deploy/cloudrun/deploy.sh after the API is promoted.
+# outbox relay, emergency dispatcher, reminders and retention. WORKER_MODE=on-demand (ADR-0037
+# step 3): it scales to zero and is woken by Cloud Tasks after writes, and by Cloud Scheduler
+# (safety net every 15 minutes, hourly reminders, daily retention). While an emergency is active,
+# each run hands over to the next, so emergencies are processed every second as before.
+# Internal ingress, and only the jobs service account may invoke it. One instance is enough (and
+# lets concurrent wake-ups join one run); several would still be safe (FOR UPDATE SKIP LOCKED).
+# Deployed by deploy/cloudrun/deploy.sh after the API is promoted.
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -18,9 +22,10 @@ spec:
       # Unique per release attempt, so traffic can be moved between named revisions.
       name: ${REVISION}
       annotations:
-        autoscaling.knative.dev/minScale: "1"
-        autoscaling.knative.dev/maxScale: "2"
-        run.googleapis.com/cpu-throttling: "false"
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "1"
+        # CPU only during requests (a run is a request): no cost while idle.
+        run.googleapis.com/cpu-throttling: "true"
         # Only with Cloud SQL; the low-cost setup reaches its database (Neon) over the internet.
         run.googleapis.com/cloudsql-instances: ${CLOUDSQL_CONNECTION_NAME} # when:CLOUDSQL_CONNECTION_NAME
         run.googleapis.com/execution-environment: gen2
@@ -32,8 +37,9 @@ spec:
         run.googleapis.com/container-dependencies: '{"api":["otel-collector"]}'
     spec:
       serviceAccountName: ${RUNTIME_SERVICE_ACCOUNT}
-      # Serves only health probes; the work happens in background loops.
+      # Wake-ups arriving during a run join it (WorkerRunner), so a few at once is fine.
       containerConcurrency: 10
+      # A run polls for up to WORKER_RUN_MS (50 s); Cloud Tasks waits up to 300 s.
       timeoutSeconds: 300
       containers:
         - name: api
@@ -71,6 +77,11 @@ spec:
             - { name: MAP_PROVIDER, value: stub }
             # Routing vendor pending (OQ-13): route search degrades to point search around stops.
             - { name: ROUTING_PROVIDER, value: none }
+            # On-demand worker (ADR-0037 step 3): wake-ups through Cloud Tasks.
+            - { name: WORKER_MODE, value: on-demand }
+            - { name: JOBS_QUEUE, value: "${JOBS_QUEUE}" }
+            - { name: WORKER_URL, value: "${WORKER_URL}" }
+            - { name: JOBS_SERVICE_ACCOUNT, value: "${JOBS_SERVICE_ACCOUNT}" }
             # Push notifications through Firebase Cloud Messaging (docs/architecture/messaging.md).
             - { name: PUSH_PROVIDER, value: fcm }
             - name: DATABASE_URL

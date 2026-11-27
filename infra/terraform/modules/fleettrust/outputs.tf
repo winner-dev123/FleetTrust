@@ -69,3 +69,16 @@ output "clamav_host" {
 output "scanner_service_account" {
   value = google_service_account.clamav.email
 }
+
+# On-demand worker (GitHub variables WORKER_URL, JOBS_QUEUE and GCP_JOBS_SERVICE_ACCOUNT).
+output "worker_url" {
+  value = local.worker_url
+}
+
+output "jobs_queue" {
+  value = google_cloud_tasks_queue.jobs.id
+}
+
+output "jobs_service_account" {
+  value = google_service_account.jobs.email
+}
