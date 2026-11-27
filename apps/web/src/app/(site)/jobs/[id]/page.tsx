@@ -32,11 +32,12 @@ export async function generateMetadata(props: PageProps<"/jobs/[id]">): Promise<
 export default async function JobPage(props: PageProps<"/jobs/[id]">) {
   const job = await loadJob((await props.params).id);
   return (
-    <div className="container container--readable stack stack--lg">
+    <div className="container container--readable stack stack--lg detail-page">
+      <Link className="back-link" href="/jobs">
+        <span aria-hidden="true">←</span> {copy.web.job.backToJobs}
+      </Link>
       <header className="stack" style={{ gap: 8 }}>
-        <p className="small">
-          <Link href="/jobs">{copy.web.job.jobs}</Link>
-        </p>
+        <p className="page-hero__kicker">{titleCase(job.role)}</p>
         <h1>{job.title}</h1>
         <p className="muted" style={{ margin: 0 }}>
           {job.employer.name} · {job.locality}, {job.countryCode}

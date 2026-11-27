@@ -268,7 +268,7 @@ export default function HomePage() {
           <h2 id="providers-heading">{t.providersTitle}</h2>
           <p>{t.providersBody}</p>
         </div>
-        <Link className={cls("bannerButton")} href="/sign-in">
+        <Link className={cls("bannerButton")} href="/for-providers">
           {t.createAccount} <Icon name="arrow" size={18} />
         </Link>
       </section>
