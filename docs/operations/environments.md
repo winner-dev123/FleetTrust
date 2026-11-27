@@ -37,20 +37,20 @@ FleetTrust runs in three kinds of environment. Each deployed environment is a se
 
 FleetTrust uses the **low-cost setup** ([ADR-0037](../adr/0037-low-cost-hosting.md)): the owner pays only for Vercel, domains and the Firebase Blaze plan, so nothing may have a fixed monthly fee.
 
-| Item            | Low-cost setup (default, staging and production)                                                                                         | Cost at pilot size                                 |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Website         | Vercel project, root `apps/web` ([vercel.json](../../apps/web/vercel.json)), functions in `cdg1`                                         | Vercel plan (already paid)                         |
-| API             | Cloud Run, 0–4 instances (staging), 0–10 (production); scales to zero                                                                    | Usually within Cloud Run's free tier               |
-| Database        | Neon free plan, Postgres with PostGIS, European region                                                                                   | Free (watch storage and compute hours)             |
-| Redis           | None; add Upstash's free plan when the API often runs more than one instance                                                             | Free                                               |
-| Storage, KMS    | Cloud Storage buckets, one KMS key, two secrets                                                                                          | Cents                                              |
-| ClamAV          | Scanner service on Cloud Run ([apps/scanner](../../apps/scanner)), scaled to zero; `malware_scanner = "vm"` brings back the always-on VM | Cents per cold start (about 40 s at 1 vCPU / 4 GB) |
-| Worker          | Still one instance with CPU always on until ADR-0037 step 3                                                                              | About USD 45 a month until then                    |
-| Load balancer   | None: leave `api_domain` empty and map the API domain to Cloud Run                                                                       | Free                                               |
-| Budget alert    | USD 200 a month (alerts at 50, 90 and 100 %)                                                                                             | Free                                               |
-| Budget currency | The billing account's own (`budget_currency`; Google rejects any other). For example, BRL 1100 ≈ USD 200                                 |                                                    |
+| Item            | Low-cost setup (default, staging and production)                                                                                                                           | Cost at pilot size                                                            |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Website         | Vercel project, root `apps/web` ([vercel.json](../../apps/web/vercel.json)), functions in `cdg1`                                                                           | Vercel plan (already paid)                                                    |
+| API             | Cloud Run, 0–4 instances (staging), 0–10 (production); scales to zero                                                                                                      | Usually within Cloud Run's free tier                                          |
+| Database        | Neon free plan, Postgres with PostGIS, European region                                                                                                                     | Free (watch storage and compute hours)                                        |
+| Redis           | None; add Upstash's free plan when the API often runs more than one instance                                                                                               | Free                                                                          |
+| Storage, KMS    | Cloud Storage buckets, one KMS key, two secrets                                                                                                                            | Cents                                                                         |
+| ClamAV          | Scanner service on Cloud Run ([apps/scanner](../../apps/scanner)), scaled to zero; `malware_scanner = "vm"` brings back the always-on VM                                   | Cents per cold start (about 40 s at 1 vCPU / 4 GB)                            |
+| Worker          | Cloud Run, scaled to zero, woken by Cloud Tasks after writes and by Cloud Scheduler (every 15 minutes, hourly, daily); runs continuously only while an emergency is active | Usually within the free tiers; about USD 2 a day while an emergency is active |
+| Load balancer   | None: leave `api_domain` empty and map the API domain to Cloud Run                                                                                                         | Free                                                                          |
+| Budget alert    | USD 200 a month (alerts at 50, 90 and 100 %)                                                                                                                               | Free                                                                          |
+| Budget currency | The billing account's own (`budget_currency`; Google rejects any other). For example, BRL 1100 ≈ USD 200                                                                   |                                                                               |
 
-Once ADR-0037's step 3 is done, the cost on top of Vercel, domains and Firebase is close to zero until real usage grows. Until then, the always-on worker is the remaining fixed cost (about USD 45 a month): don't apply an environment before then unless the owner accepts that. Free plans have limits, so check them before launch and when usage grows. Creating cloud resources starts billing (owner decision).
+With all three ADR-0037 steps done, nothing has a fixed monthly fee: the cost on top of Vercel, domains and Firebase is close to zero until real usage grows. Free plans have limits, so check them before launch and when usage grows, and keep the budget alert on. Creating cloud resources starts billing (owner decision).
 
 **Managed setup (later, if needed):** `database_provider = "cloudsql"` (staging 1 vCPU / 3.75 GB zonal; production 2 vCPU / 7.5 GB regional) and `redis_provider = "memorystore"` (Basic 1 GB / Standard HA 1 GB). It costs about USD 150–200 a month for staging alone, more for production. Then set `CLOUDSQL_CONNECTION_NAME` and `REDIS_SECRET` from `release_variables`.
 
@@ -116,6 +116,9 @@ Set these on the `staging` and `production` environments. The `terraform output 
 | `DOCUMENT_KMS_KEY`               | `document_kms_key`                                                                                     |
 | `CLAMAV_HOST`                    | Leave empty: the release deploys the scanner service. `clamav_host` only with `malware_scanner = "vm"` |
 | `GCP_SCANNER_SERVICE_ACCOUNT`    | `scanner_service_account`                                                                              |
+| `WORKER_URL`                     | `worker_url`                                                                                           |
+| `JOBS_QUEUE`                     | `jobs_queue`                                                                                           |
+| `GCP_JOBS_SERVICE_ACCOUNT`       | `jobs_service_account`                                                                                 |
 | `PUBLIC_API_URL`                 | `https://api.<domain>` (or the `run.app` URL before DNS)                                               |
 | `WEB_URL`                        | `https://<website domain>` (also the allowed CORS origin)                                              |
 | `APP_HOSTING_BACKEND`            | Leave empty: Vercel deploys the website from Git                                                       |

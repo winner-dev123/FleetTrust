@@ -12,6 +12,8 @@ export VPC_NETWORK=n VPC_SUBNET=s CORS_ORIGINS=https://w PUBLIC_API_URL=https://
 export API_MIN_INSTANCES=0 API_MAX_INSTANCES=4 TRACE_SAMPLE_RATIO=1 FIREBASE_PROJECT_ID=p
 export APP_CHECK_MODE=monitor STORAGE_QUARANTINE_BUCKET=q STORAGE_SENSITIVE_BUCKET=s
 export STORAGE_PUBLIC_MEDIA_BUCKET=m DOCUMENT_KMS_KEY=k
+export JOBS_QUEUE=projects/p/locations/europe-west1/queues/fleettrust-jobs
+export WORKER_URL=https://fleettrust-worker-1.europe-west1.run.app JOBS_SERVICE_ACCOUNT=j@p
 
 check() {
   local label="$1"

@@ -30,18 +30,18 @@ This runbook covers security and privacy incidents: suspected attacks, leaks, co
 
 ## Containment levers
 
-| Lever                         | How                                                                             | Effect                                                              |
-| ----------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Pause new sign-ups            | Admin console → Feature settings → `signups.paused`                             | Stops new accounts (spam or fraud waves); existing users unaffected |
-| Lower the auto-hide threshold | `community.auto_hide_reporters` = 2                                             | Reported content disappears faster                                  |
-| Site notice                   | `site.notice`                                                                   | Tell users what's happening                                         |
-| Sign a person out everywhere  | Support case → Sign out everywhere; or the user's own "Sign out on all devices" | Revokes refresh tokens                                              |
-| Suspend a member              | Moderation → New sanction                                                       | Blocks the account (appealable)                                     |
-| Remove a staff role           | Staff roles → Revoke (super admin)                                              | Immediate; the next request gets 404                                |
-| Disable a Firebase account    | Firebase console → Authentication                                               | Blocks sign-in entirely                                             |
-| Enforce App Check             | `APP_CHECK_MODE=enforce`                                                        | Rejects requests from non-genuine clients                           |
-| Stop the worker               | Scale the worker service to 0                                                   | Pauses push, email and retention jobs                               |
-| Block traffic                 | Cloud Armor rule (after Prompt 29)                                              | Edge blocking by IP or region                                       |
+| Lever                         | How                                                                                                                              | Effect                                                              |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Pause new sign-ups            | Admin console → Feature settings → `signups.paused`                                                                              | Stops new accounts (spam or fraud waves); existing users unaffected |
+| Lower the auto-hide threshold | `community.auto_hide_reporters` = 2                                                                                              | Reported content disappears faster                                  |
+| Site notice                   | `site.notice`                                                                                                                    | Tell users what's happening                                         |
+| Sign a person out everywhere  | Support case → Sign out everywhere; or the user's own "Sign out on all devices"                                                  | Revokes refresh tokens                                              |
+| Suspend a member              | Moderation → New sanction                                                                                                        | Blocks the account (appealable)                                     |
+| Remove a staff role           | Staff roles → Revoke (super admin)                                                                                               | Immediate; the next request gets 404                                |
+| Disable a Firebase account    | Firebase console → Authentication                                                                                                | Blocks sign-in entirely                                             |
+| Enforce App Check             | `APP_CHECK_MODE=enforce`                                                                                                         | Rejects requests from non-genuine clients                           |
+| Stop the worker               | Pause the Cloud Tasks queue `fleettrust-jobs` and the `fleettrust-*` Cloud Scheduler jobs (the worker scales to zero on its own) | Pauses push, email, emergency escalation and retention jobs         |
+| Block traffic                 | Cloud Armor rule (after Prompt 29)                                                                                               | Edge blocking by IP or region                                       |
 
 ## Playbooks
 

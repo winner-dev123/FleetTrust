@@ -18,6 +18,9 @@ output "release_variables" {
     document_kms_key           = module.fleettrust.document_kms_key
     clamav_host                = module.fleettrust.clamav_host
     scanner_service_account    = module.fleettrust.scanner_service_account
+    worker_url                 = module.fleettrust.worker_url
+    jobs_queue                 = module.fleettrust.jobs_queue
+    jobs_service_account       = module.fleettrust.jobs_service_account
   }
 }
 

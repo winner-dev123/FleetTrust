@@ -1,6 +1,6 @@
 # ADR-0037: Low-cost hosting for the pilot: website on Vercel, database on Neon, optional Redis, no fixed-cost cloud parts
 
-- Status: Accepted (steps 1 and 2 of 3 done: see "Plan")
+- Status: Accepted (all three steps done: see "Plan")
 - Date: 2026-11-27
 - Amends: [ADR-0003](0003-postgresql-postgis-system-of-record.md) (where Postgres runs), [ADR-0004](0004-firebase-hybrid-platform.md) (website hosting, Cloud SQL, Memorystore), [ADR-0007](0007-jobs-and-realtime.md) (worker), [ADR-0036](0036-staging-production-and-launch.md) (sizing)
 
@@ -35,7 +35,7 @@ Keep the architecture (modular monolith API, Postgres + PostGIS, Firebase), but 
 | Redis                      | Memorystore (fixed hourly cost), required | **Optional**: none at first, or Upstash's free plan (`rediss://`)                                                                      |
 | API                        | Cloud Run, 0–4 instances (staging)        | Unchanged: Cloud Run scales to zero; production also starts at 0 instances                                                             |
 | Virus scanning             | ClamAV on an always-on VM, plus Cloud NAT | **ClamAV on Cloud Run, scaled to zero** ([apps/scanner](../../apps/scanner)); the API calls it over HTTPS with a Google identity token |
-| Worker (jobs, emergencies) | Cloud Run, one instance always on         | Step 3: woken on demand by Cloud Tasks (exact times for emergency escalation) and Cloud Scheduler (hourly and daily jobs)              |
+| Worker (jobs, emergencies) | Cloud Run, one instance always on         | **On demand** (`WORKER_MODE=on-demand`): scaled to zero, woken by Cloud Tasks and Cloud Scheduler; emergencies keep their timing       |
 | Load balancer, Cloud Armor | With `api_domain`                         | Not used: leave `api_domain` empty and map the API domain directly to Cloud Run                                                        |
 
 Terraform gets two settings:
@@ -82,9 +82,17 @@ With an external database or Redis, Terraform creates only the empty secret. The
    - CI builds the image and checks that real ClamAV finds the EICAR test file.
    - The ClamAV VM and Cloud NAT are created only with `malware_scanner = "vm"`.
    - The first scan after a quiet period waits for ClamAV to load (about 20–60 s), so that upload takes longer.
-3. **Next:** the worker on demand. Cloud Tasks wakes it when an emergency delivery or escalation is due (keeping today's 120-second escalation and 5 s / 15 s / 45 s retries), when the outbox has messages, and Cloud Scheduler runs the hourly and daily jobs. The always-on worker is then removed.
+3. **Done:** the worker on demand (`WORKER_MODE=on-demand`). The worker service scales to zero, with CPU only during requests.
+   - **Wake-ups:** after every successful write, the API asks Cloud Tasks to start a worker run. It waits for that call before answering, because Cloud Run gives almost no CPU after a response. At most one call per instance every 2 s, except emergency routes, which always call.
+   - **A run** (`WorkerRunner`) does exactly what the timers do in `loop` mode: the emergency pass every `EMERGENCY_TICK_MS` (1 s) and the outbox relay, for up to `WORKER_RUN_MS` (50 s). It ends after three quiet passes.
+   - **While an emergency is active**, each run books the next one right away. Escalation after 120 s, email fallback and the 5 s / 15 s / 45 s retries keep their timing.
+   - **Future work:** otherwise the run books a wake-up at the next delivery or outbox retry.
+   - **Cloud Scheduler** runs a safety-net run every 15 minutes (for a lost wake-up), reminders hourly and retention daily.
+   - **Access:** only `fleettrust-jobs` may invoke the worker (internal ingress, identity token).
+   - **Cost:** the worker costs nothing while idle. While an emergency is active, it runs continuously: about USD 2 a day, at most 12 hours per incident.
+   - **`loop` mode** (always-on timers) is still the default for local development, CI and the release rehearsals.
 
-Until step 3 is done, the always-on worker is the remaining fixed cost (about USD 45 a month). Don't apply staging or production until then, unless the owner accepts that cost.
+If a wake-up can't be created, the API logs an error and the next safety-net run (at most 15 minutes later) catches up. An emergency already active keeps its own chain of runs. The first push of a new alert is still sent inline by the API, as before.
 
 ## Alternatives considered
 

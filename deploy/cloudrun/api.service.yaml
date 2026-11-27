@@ -71,6 +71,11 @@ spec:
             - { name: MAP_PROVIDER, value: stub }
             # Routing vendor pending (OQ-13): route search degrades to point search around stops.
             - { name: ROUTING_PROVIDER, value: none }
+            # On-demand worker (ADR-0037 step 3): wake-ups through Cloud Tasks.
+            - { name: WORKER_MODE, value: on-demand }
+            - { name: JOBS_QUEUE, value: "${JOBS_QUEUE}" }
+            - { name: WORKER_URL, value: "${WORKER_URL}" }
+            - { name: JOBS_SERVICE_ACCOUNT, value: "${JOBS_SERVICE_ACCOUNT}" }
             # Push notifications through Firebase Cloud Messaging (docs/architecture/messaging.md).
             - { name: PUSH_PROVIDER, value: fcm }
             - name: DATABASE_URL
