@@ -20,6 +20,8 @@ describe("website security headers", () => {
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-src https://fleettrust-prod.firebaseapp.com;");
+    // Google sign-in: Firebase loads this script for the popup; no other third-party scripts.
+    expect(csp).toContain("script-src 'self' 'unsafe-inline' https://apis.google.com;");
     expect(csp).toContain("upgrade-insecure-requests");
     expect(csp).not.toContain("unsafe-eval");
     expect(csp).not.toContain("127.0.0.1");
