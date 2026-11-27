@@ -244,7 +244,8 @@ a {
 
 .nav__link[aria-current="page"] {
   font-weight: 600;
-  color: var(--color-primary);
+  /* Darker than the primary blue so it keeps 4.5:1 on the tinted background. */
+  color: color-mix(in srgb, var(--color-primary) 72%, var(--color-text));
   background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
@@ -920,7 +921,7 @@ fieldset.field {
 }
 
 .site-header .nav__link[aria-current="page"] {
-  color: var(--color-primary);
+  color: color-mix(in srgb, var(--color-primary) 72%, var(--color-text));
   background: transparent;
 }
 

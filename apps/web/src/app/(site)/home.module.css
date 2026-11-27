@@ -64,6 +64,8 @@
 }
 
 .eyebrow {
+  /* Darker blue on the tinted pill keeps 4.5:1 (WCAG 1.4.3). */
+  color: color-mix(in srgb, var(--color-primary) 72%, var(--color-text));
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -607,6 +609,11 @@
   object-fit: cover;
 }
 
+.roadsideCopy h2 {
+  /* The band stays light in dark mode, so its heading stays dark. */
+  color: #10213d;
+}
+
 .roadsideCopy {
   padding: 56px 60px;
   align-self: center;
@@ -754,7 +761,7 @@
 }
 
 .providerBanner .kicker {
-  color: #e3efff;
+  color: #fff;
 }
 
 .providerBanner h2 {
@@ -763,7 +770,7 @@
 }
 
 .providerBanner p {
-  color: #eaf2ff;
+  color: #fff;
   margin: 12px 0 0;
 }
 
