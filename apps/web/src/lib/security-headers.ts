@@ -5,16 +5,19 @@ export interface Header {
   value: string;
 }
 
+/** Script origin Firebase Auth needs for popup sign-in (Firebase docs: CSP for Auth). */
+export const GOOGLE_SIGN_IN_LOADER = "https://apis.google.com";
+
 const origin = (url: string) => /^(https?:\/\/[^/]+)/i.exec(url)?.[1] ?? url;
 
 /**
  * Content-Security-Policy for the website (Prompt 27, OWASP ASVS V14.4). Scripts load only
- * from this site; data goes only to the FleetTrust API and Firebase Auth; nothing may frame
- * the site.
+ * from this site and Google's sign-in loader; data goes only to the FleetTrust API and Firebase
+ * Auth; nothing may frame the site.
  *
  * Accepted risk: `'unsafe-inline'` for scripts and styles. Next.js inlines its bootstrap
  * scripts and the components use style attributes; nonces would make every page dynamic.
- * The rest of the policy (no third-party scripts, no framing, no plugins, fixed connect
+ * The rest of the policy (no other third-party scripts, no framing, no plugins, fixed connect
  * targets) still limits what injected markup could do, and React escapes all output.
  */
 export function contentSecurityPolicy(env: WebEnv, options: { development: boolean }): string {
@@ -30,7 +33,13 @@ export function contentSecurityPolicy(env: WebEnv, options: { development: boole
   ];
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "'unsafe-inline'", ...(options.development ? ["'unsafe-eval'"] : [])],
+    // apis.google.com: Firebase Auth loads it to open the Google and Apple sign-in popups.
+    "script-src": [
+      "'self'",
+      "'unsafe-inline'",
+      GOOGLE_SIGN_IN_LOADER,
+      ...(options.development ? ["'unsafe-eval'"] : []),
+    ],
     "style-src": ["'self'", "'unsafe-inline'"],
     // Map tiles (vendor set by the API, OQ-13), provider media and data: placeholders.
     "img-src": ["'self'", "data:", "blob:", "https:", api],
