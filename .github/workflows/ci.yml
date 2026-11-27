@@ -227,6 +227,8 @@ jobs:
           docker run -d --name scanner -p 8090:8080 -e FRESHCLAM=false fleettrust-scanner:ci
           for _ in $(seq 1 120); do curl -sf http://127.0.0.1:8090/healthz > /dev/null && break; sleep 2; done
           curl -sf http://127.0.0.1:8090/healthz
+          # The EICAR string must stay literal ($ included).
+          # shellcheck disable=SC2016
           printf '%s' 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > /tmp/eicar.txt
           curl -sf --data-binary @/tmp/eicar.txt http://127.0.0.1:8090/scan | tee /tmp/infected.json
           jq -e '.clean == false and (.signature | test("Eicar"; "i"))' /tmp/infected.json
