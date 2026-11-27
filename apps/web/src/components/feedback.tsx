@@ -54,7 +54,7 @@ export function Loading({ label = copy.common.loading }: { label?: string }) {
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="card card--muted">
+    <div className="card card--muted empty-state">
       <p className="card__title">{title}</p>
       {children}
     </div>
