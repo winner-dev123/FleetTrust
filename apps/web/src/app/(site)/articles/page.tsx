@@ -86,7 +86,7 @@ export default async function ArticlesPage(props: PageProps<"/articles">) {
           <ul className="list-plain">
             {page.items.map((article) => (
               <li key={article.id}>
-                <article className="card">
+                <article className="card list-card">
                   <h2 className="card__title">
                     <Link href={`/articles/${article.slug}`}>{article.title}</Link>
                   </h2>

@@ -117,7 +117,7 @@ export default async function JobsPage(props: PageProps<"/jobs">) {
           <ul className="list-plain">
             {page.items.map((job) => (
               <li key={job.id}>
-                <article className="card stack" style={{ gap: 8 }}>
+                <article className="card stack list-card" style={{ gap: 8 }}>
                   <h2 className="card__title">
                     <Link href={`/jobs/${job.id}`}>{job.title}</Link>
                   </h2>

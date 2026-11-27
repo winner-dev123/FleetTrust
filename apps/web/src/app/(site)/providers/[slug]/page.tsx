@@ -3,7 +3,6 @@ import { ApiError } from "@fleettrust/sdk";
 import {
   CATEGORY_LABELS,
   openingStatusLabel,
-  type ProviderCategory,
   type PublicProviderProfile,
   VEHICLE_TYPE_LABELS,
   verificationLabel,
@@ -15,24 +14,14 @@ import { cache } from "react";
 
 import { ButtonLink } from "@/components/button";
 import { Badge, Notice } from "@/components/feedback";
-import { Icon, type IconName } from "@/components/icon";
+import { Icon } from "@/components/icon";
+import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { formatDate } from "@fleettrust/types";
 import { publicApi } from "@/lib/public-api";
 
 import { ContactDetails } from "./contact-details";
 
 export const dynamic = "force-dynamic";
-
-/** Avatar icon per category (Figma Make provider tiles). */
-const CATEGORY_ICONS: Record<ProviderCategory, IconName> = {
-  workshop: "tools",
-  fuel_station: "fuel",
-  towing: "tow",
-  tyres: "tyre",
-  parts: "wrench",
-  parking: "car",
-  mobile_mechanic: "wrench",
-};
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const DAY_NAMES: Record<(typeof DAYS)[number], string> = copy.web.provider.days;

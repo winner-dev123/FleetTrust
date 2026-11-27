@@ -28,7 +28,9 @@ import {
   toApiQuery,
 } from "@/lib/search-query";
 import { useSession } from "@/lib/session";
+import { Icon } from "@/components/icon";
 import { PageHero } from "@/components/page-hero";
+import { CATEGORY_ICONS } from "@/lib/category-icons";
 
 type Results =
   | { status: "idle" }
@@ -51,33 +53,60 @@ function ResultCard({
   number: number;
   selected: boolean;
 }) {
+  const firstCategory = result.categories[0];
   return (
     <article
       className="card result-card"
       id={`result-${result.branchId}`}
       style={selected ? { borderColor: "var(--color-focus)", borderWidth: 3 } : undefined}
     >
-      <h3 className="card__title">
-        <span className="muted">{number}. </span>
-        <Link href={`/providers/${result.slug}`}>{result.tradingName}</Link>
-      </h3>
-      <p className="muted small">
-        {[
-          result.branchName,
-          result.locality,
-          fill(
-            result.location.approximate
-              ? copy.web.search.distanceApproximate
-              : copy.web.search.distance,
-            {
-              distance: formatDistance(result.distanceKm * 1000),
-            },
-          ),
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-      </p>
-      <p>{openingStatusLabel(result.hours)}</p>
+      <div className="result-card__head">
+        <span className="result-card__avatar" aria-hidden="true">
+          <Icon name={firstCategory ? CATEGORY_ICONS[firstCategory] : "car"} size={26} />
+        </span>
+        <div className="result-card__name">
+          <h3 className="card__title">
+            <span className="result-card__number">{number}. </span>
+            <Link href={`/providers/${result.slug}`}>{result.tradingName}</Link>
+          </h3>
+          <p className="result-card__meta">
+            <Icon name="pin" size={15} />
+            {[
+              result.branchName,
+              result.locality,
+              fill(
+                result.location.approximate
+                  ? copy.web.search.distanceApproximate
+                  : copy.web.search.distance,
+                {
+                  distance: formatDistance(result.distanceKm * 1000),
+                },
+              ),
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+        <Link
+          className="result-card__cta"
+          href={`/providers/${result.slug}`}
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          {copy.web.search.viewProfile} <Icon name="arrow" size={16} />
+        </Link>
+      </div>
+      <div className="result-card__facts">
+        <p>
+          <Icon name="clock" size={16} />
+          {openingStatusLabel(result.hours)}
+        </p>
+        <p>
+          <Icon name="tools" size={16} />
+          {result.categories.map((category) => CATEGORY_LABELS[category]).join(", ")}
+          {result.coversSearchLocation ? ` · ${copy.web.search.travelsToYou}` : ""}
+        </p>
+      </div>
       <ul className="cluster list-plain" aria-label={copy.web.search.verification}>
         {result.verification.map((badge) => (
           <li key={badge.badgeType} style={{ marginTop: 0 }}>
@@ -87,12 +116,8 @@ function ResultCard({
           </li>
         ))}
       </ul>
-      <p className="small">
-        {result.categories.map((category) => CATEGORY_LABELS[category]).join(", ")}
-        {result.coversSearchLocation ? ` · ${copy.web.search.travelsToYou}` : ""}
-      </p>
       {result.priceHighlights.length > 0 ? (
-        <ul className="small">
+        <ul className="result-card__prices list-plain">
           {result.priceHighlights.map((price) => (
             <li key={price.name}>
               {fill(copy.web.search.priceLine, { name: price.name, price: price.label })}
@@ -100,14 +125,6 @@ function ResultCard({
           ))}
         </ul>
       ) : null}
-      <Link
-        className="result-card__cta"
-        href={`/providers/${result.slug}`}
-        tabIndex={-1}
-        aria-hidden="true"
-      >
-        {copy.web.search.viewProfile}
-      </Link>
     </article>
   );
 }
@@ -283,7 +300,11 @@ export function SearchView() {
         intro={copy.web.search.intro}
       />
       <div className="container stack stack--lg">
-        <form className="card stack" onSubmit={(event) => void submit(event)} role="search">
+        <form
+          className="card stack search-form"
+          onSubmit={(event) => void submit(event)}
+          role="search"
+        >
           <div className="grid">
             <TextField
               label={copy.web.search.whatLabel}
