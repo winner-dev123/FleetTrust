@@ -44,4 +44,4 @@ const sizes = [
 export const themeCss = `:root { color-scheme: light dark; ${sizes} ${toCssVariables(colors.light)} }
 @media (prefers-color-scheme: dark) { :root { ${toCssVariables(colors.dark)} } }
 html, body { margin: 0; background: var(--color-background); color: var(--color-text); }
-body { font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased; }`;
+body { font-family: var(--font-body), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }`;

@@ -36,22 +36,23 @@ export interface ColorTokens {
 export type ColorScheme = "light" | "dark";
 
 export const colors: Readonly<Record<ColorScheme, ColorTokens>> = {
+  // Figma Make design palette (cream canvas, FleetTrust blue, navy ink).
   light: {
-    background: "#f7f8fa",
+    background: "#fffdf8",
     surface: "#ffffff",
-    surfaceSunken: "#eef1f5",
-    text: "#0b1726",
-    textMuted: "#4a5868",
-    border: "#dde3ea",
+    surfaceSunken: "#f3f5f8",
+    text: "#10213d",
+    textMuted: "#5a6a80",
+    border: "#e0e6ed",
     borderStrong: "#6b7a89",
-    focus: "#0a5bd3",
-    primary: "#0a5bd3",
+    focus: "#1768e5",
+    primary: "#1768e5",
     onPrimary: "#ffffff",
-    danger: "#b42318",
+    danger: "#c43932",
     onDanger: "#ffffff",
     verified: "#16703f",
     caution: "#8a5300",
-    brand: "#0b2a4a",
+    brand: "#10213d",
     accent: "#0e7c66",
   },
   dark: {
