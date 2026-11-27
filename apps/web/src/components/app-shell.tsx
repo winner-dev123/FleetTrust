@@ -26,7 +26,7 @@ function TopBar() {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <Brand href="/app" />
+        <Brand />
         <div className="cluster">
           <Link className="nav__link" href="/search">
             {copy.web.shell.findServices}
