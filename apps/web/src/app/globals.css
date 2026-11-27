@@ -2587,3 +2587,28 @@ body {
 .notice {
   border-radius: 16px;
 }
+
+/*
+ * Focused form fields: no outline frame around the field. The field's own border turns blue
+ * with a very soft halo and tint, which is enough to see which field is active (WCAG 2.4.7)
+ * without a heavy double box. Invalid fields keep their red border while focused.
+ */
+.input:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 3%, var(--color-surface));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.input[aria-invalid="true"]:focus-visible {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+/* Windows high-contrast mode drops shadows and tints: keep a real outline there. */
+@media (forced-colors: active) {
+  .input:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 1px;
+  }
+}
