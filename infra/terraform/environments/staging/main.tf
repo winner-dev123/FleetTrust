@@ -45,6 +45,11 @@ module "fleettrust" {
   web_host          = var.web_host
   api_domain        = var.api_domain
 
+  # Low-cost setup by default (docs/operations/environments.md): the Cloud SQL and Redis
+  # settings below apply only with database_provider = "cloudsql" / redis_provider = "memorystore".
+  database_provider = var.database_provider
+  redis_provider    = var.redis_provider
+
   db_tier              = "db-custom-1-3840"
   db_high_availability = false
   redis_tier           = "BASIC"

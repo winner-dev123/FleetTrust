@@ -47,8 +47,8 @@ class RedisLifecycle implements OnApplicationShutdown {
 
 /**
  * Provides RATE_LIMITER: Redis-backed (shared across instances) when REDIS_URL is set,
- * otherwise in-memory, and CACHE on the same connection. Env validation requires REDIS_URL in
- * staging and production.
+ * otherwise in-memory, and CACHE on the same connection. REDIS_URL is optional everywhere: a
+ * deployed API without it logs a warning once, because limits are then per instance (ADR-0037).
  */
 @Module({})
 export class RateLimitModule {
@@ -59,8 +59,15 @@ export class RateLimitModule {
       providers: [
         {
           provide: REDIS_CLIENT,
-          useFactory: (): RedisHandle =>
-            env.REDIS_URL === undefined ? null : connectRedis(env.REDIS_URL),
+          useFactory: (): RedisHandle => {
+            if (env.REDIS_URL !== undefined) return connectRedis(env.REDIS_URL);
+            if (env.APP_ENV === "staging" || env.APP_ENV === "production") {
+              new Logger("RateLimit").warn(
+                "REDIS_URL is not set: rate limits and the route cache are per instance",
+              );
+            }
+            return null;
+          },
         },
         {
           provide: RATE_LIMITER,

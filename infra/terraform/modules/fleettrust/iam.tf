@@ -28,8 +28,7 @@ resource "google_service_account" "deployer" {
 # --- Runtime -----------------------------------------------------------------------------------------
 
 resource "google_project_iam_member" "runtime" {
-  for_each = toset([
-    "roles/cloudsql.client",
+  for_each = toset(concat(local.cloud_sql ? ["roles/cloudsql.client"] : [], [
     "roles/cloudtrace.agent",
     "roles/logging.logWriter",
     "roles/monitoring.metricWriter",
@@ -37,17 +36,17 @@ resource "google_project_iam_member" "runtime" {
     # Firebase: send pushes (FCM) and delete Auth accounts on erasure (Prompt 27).
     "roles/firebasecloudmessaging.admin",
     "roles/firebaseauth.admin",
-  ])
+  ]))
   project = var.project_id
   role    = each.value
   member  = google_service_account.runtime.member
 }
 
 resource "google_secret_manager_secret_iam_member" "runtime" {
-  for_each = {
-    database = google_secret_manager_secret.database_url.id
-    redis    = google_secret_manager_secret.redis_url.id
-  }
+  for_each = merge(
+    { database = google_secret_manager_secret.database_url.id },
+    local.redis ? { redis = google_secret_manager_secret.redis_url[0].id } : {},
+  )
   secret_id = each.value
   role      = "roles/secretmanager.secretAccessor"
   member    = google_service_account.runtime.member

@@ -132,7 +132,9 @@ resource "google_monitoring_alert_policy" "emergency" {
   }
 }
 
+# Cloud SQL only: an external database (Neon) has its own usage alerts in its console.
 resource "google_monitoring_alert_policy" "database" {
+  count                 = local.cloud_sql ? 1 : 0
   project               = var.project_id
   display_name          = "Cloud SQL CPU or disk above 80 %"
   combiner              = "OR"
@@ -163,6 +165,11 @@ resource "google_monitoring_alert_policy" "database" {
       }
     }
   }
+}
+
+moved {
+  from = google_monitoring_alert_policy.database
+  to   = google_monitoring_alert_policy.database[0]
 }
 
 # --- Uptime checks (created once the hosts are known) ----------------------------------------------

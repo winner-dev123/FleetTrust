@@ -5,6 +5,9 @@
 #   deploy.sh direct    <template.yaml> <service>  new revision takes 100 % (the internal worker)
 #   deploy.sh promote   <service> <revision> <percent>   move traffic to a revision
 #
+# Template lines tagged "# when:NAME" are kept only when the environment variable NAME is set
+# (for example the Cloud SQL link and the Redis secret, which the low-cost setup doesn't use).
+#
 # Needs GCP_REGION, REVISION and the template's variables in the environment. Writes
 # PREVIOUS_REVISION, NEW_REVISION and CANDIDATE_URL to $GITHUB_ENV when it is set.
 set -euo pipefail
@@ -12,6 +15,18 @@ set -euo pipefail
 mode="${1:?mode}"
 region="${GCP_REGION:?GCP_REGION}"
 out="${GITHUB_ENV:-/dev/null}"
+
+# Drops lines tagged "# when:NAME" whose NAME is empty, and strips the tag from the others.
+keep_when_set() {
+  awk '{
+    if (match($0, /[ ]*# when:[A-Z_]+$/)) {
+      name = substr($0, RSTART); sub(/^[ ]*# when:/, "", name)
+      if (ENVIRON[name] == "") next
+      $0 = substr($0, 1, RSTART - 1)
+    }
+    print
+  }'
+}
 
 serving_revision() {
   gcloud run services describe "$1" --region "$region" --format=json 2> /dev/null \
@@ -26,7 +41,7 @@ case "$mode" in
     : "${REVISION:?REVISION}"
     previous="$(serving_revision "$service")"
     rendered="$(mktemp)"
-    envsubst < "$template" > "$rendered"
+    envsubst < "$template" | keep_when_set > "$rendered"
     if [ "$mode" = candidate ] && [ -n "$previous" ]; then
       # The serving revision keeps all traffic until the candidate passes its smoke test.
       cat >> "$rendered" <<EOF

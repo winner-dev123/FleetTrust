@@ -1,6 +1,6 @@
 # Web app
 
-Next.js 16 (App Router) in `apps/web`, hosted on Firebase App Hosting. Design: [ADR-0031](../adr/0031-web-app-and-design-system.md).
+Next.js 16 (App Router) in `apps/web`, hosted on Vercel ([vercel.json](../../apps/web/vercel.json), [ADR-0037](../adr/0037-low-cost-hosting.md)). Design: [ADR-0031](../adr/0031-web-app-and-design-system.md).
 
 ## Pages
 

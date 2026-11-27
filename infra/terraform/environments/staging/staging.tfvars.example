@@ -7,4 +7,7 @@ monthly_budget  = 200   # in budget_currency
 web_origins     = ["https://staging.example.com"]
 api_host        = "" # e.g. api.staging.example.com, after the first deploy
 web_host        = "" # e.g. staging.example.com, after the first deploy
+# Low cost (default): database on Neon, no Redis. "cloudsql" / "memorystore" have a fixed monthly cost.
+database_provider = "external" # or "cloudsql"
+redis_provider    = "none"     # or "external" (Upstash) or "memorystore"
 api_domain      = "" # e.g. api.staging.example.com: creates the load balancer, certificate and Cloud Armor

@@ -49,7 +49,12 @@ export const apiEnvSchema = z
       .optional(),
     /** Firebase App Check: off (local), monitor (log only), enforce (reject missing/invalid tokens). */
     APP_CHECK_MODE: z.enum(["off", "monitor", "enforce"]).default("off"),
-    /** Redis for rate limiting (Memorystore when deployed). Without it, an in-memory limiter is used locally. */
+    /**
+     * Redis (Upstash or Memorystore) for shared rate limits, the route cache and realtime fan-out
+     * across API instances. Optional, also when deployed: without it each instance keeps its own
+     * limits and cache, and realtime messages reach other instances only through replay
+     * (the low-cost setup, ADR-0037).
+     */
     REDIS_URL: z
       .string()
       .regex(/^rediss?:\/\//, "must be a redis:// or rediss:// URL")
@@ -196,9 +201,6 @@ export const apiEnvSchema = z
     }
     if (env.MALWARE_SCANNER === "clamav" && env.CLAMAV_HOST === undefined) {
       issue("CLAMAV_HOST", "is required with MALWARE_SCANNER=clamav");
-    }
-    if (deployed && env.REDIS_URL === undefined) {
-      issue("REDIS_URL", "is required in staging and production (shared rate limits)");
     }
     if (deployed && env.DATABASE_URL === undefined) {
       ctx.addIssue({

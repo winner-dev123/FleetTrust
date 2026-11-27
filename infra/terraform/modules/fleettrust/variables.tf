@@ -55,8 +55,21 @@ variable "budget_currency" {
 
 # --- Database ------------------------------------------------------------------------------------
 
+variable "database_provider" {
+  description = <<-EOT
+    "external": an external Postgres + PostGIS such as Neon (low cost, no fixed fee; its URL is added
+    to the fleettrust-database-url secret by hand). "cloudsql": Cloud SQL, created here (fixed monthly cost).
+  EOT
+  type        = string
+  default     = "external"
+  validation {
+    condition     = contains(["external", "cloudsql"], var.database_provider)
+    error_message = "database_provider must be \"external\" or \"cloudsql\"."
+  }
+}
+
 variable "db_tier" {
-  description = "Cloud SQL machine tier."
+  description = "Cloud SQL machine tier (database_provider = \"cloudsql\" only)."
   type        = string
   default     = "db-custom-1-3840"
 }
@@ -80,6 +93,20 @@ variable "db_backup_retention_days" {
 }
 
 # --- Redis ---------------------------------------------------------------------------------------
+
+variable "redis_provider" {
+  description = <<-EOT
+    "none": no Redis (rate limits and realtime fan-out per API instance; fine for a small pilot).
+    "external": a hosted Redis such as Upstash (its rediss:// URL is added to the fleettrust-redis-url
+    secret by hand). "memorystore": Memorystore, created here (fixed monthly cost).
+  EOT
+  type        = string
+  default     = "none"
+  validation {
+    condition     = contains(["none", "external", "memorystore"], var.redis_provider)
+    error_message = "redis_provider must be \"none\", \"external\" or \"memorystore\"."
+  }
+}
 
 variable "redis_tier" {
   description = "BASIC (staging) or STANDARD_HA (production, with a replica and failover)."
