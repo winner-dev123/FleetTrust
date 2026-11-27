@@ -70,7 +70,7 @@ export class WorkerRunner {
     const interval = Math.min(this.env.EMERGENCY_TICK_MS, this.env.OUTBOX_RELAY_INTERVAL_MS);
     let passes = 0;
     let quiet = 0;
-    let pending: PendingWork = { activeIncident: false, nextDueAt: null };
+    let pending: PendingWork;
     for (;;) {
       this.again = false;
       await this.pass();
@@ -78,13 +78,18 @@ export class WorkerRunner {
       pending = await this.pending();
       const now = this.clock.now();
       const dueNow = pending.nextDueAt !== null && pending.nextDueAt <= now;
-      quiet = pending.activeIncident || dueNow || this.again ? 0 : quiet + 1;
+      quiet = pending.activeIncident || dueNow || this.joinedDuringPass() ? 0 : quiet + 1;
       if (quiet >= QUIET_PASSES) break;
       if (now.getTime() - started + interval >= this.env.WORKER_RUN_MS) break;
       await this.sleep(interval);
     }
     await this.handOver(pending);
     return { passes };
+  }
+
+  /** Whether a wake-up arrived (and joined this run) during the last pass. */
+  private joinedDuringPass(): boolean {
+    return this.again;
   }
 
   /** One emergency pass and one outbox pass; a failure in one doesn't skip the other. */

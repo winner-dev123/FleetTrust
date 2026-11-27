@@ -45,7 +45,7 @@ export class CloudTasksJobWaker implements JobWaker {
 
   async wake(options: { at?: Date; dedupeKey?: string } = {}): Promise<void> {
     const audience = new URL(this.workerUrl).origin;
-    const task: Record<string, unknown> = {
+    const task: CloudTask = {
       httpRequest: {
         url: new URL(WORKER_RUN_PATH, this.workerUrl).toString(),
         httpMethod: "POST",
@@ -70,6 +70,18 @@ export class CloudTasksJobWaker implements JobWaker {
       throw error;
     }
   }
+}
+
+/** The fields of a Cloud Tasks task that FleetTrust sets. */
+interface CloudTask {
+  httpRequest: {
+    url: string;
+    httpMethod: "POST";
+    oidcToken: { serviceAccountEmail: string; audience: string };
+  };
+  dispatchDeadline: string;
+  scheduleTime?: string;
+  name?: string;
 }
 
 /** Task IDs allow letters, digits, hyphens and underscores (max 500). */

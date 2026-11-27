@@ -8,7 +8,7 @@ import { WAKE_DEBOUNCE_MS, WakeWorkerAfterWrites } from "./wake-after-writes.int
 const QUEUE = "projects/p/locations/europe-west1/queues/fleettrust-jobs";
 const WORKER = "https://fleettrust-worker-123.europe-west1.run.app";
 
-function recorder(fail?: unknown) {
+function recorder(fail?: Error) {
   const calls: { url: string; data: { task: Record<string, unknown> } }[] = [];
   const client: GoogleRequester = {
     request: (options) => {
@@ -57,11 +57,11 @@ describe("CloudTasksJobWaker", () => {
   });
 
   it("treats an existing task of the same name as done, and passes other errors on", async () => {
-    const dup = recorder({ response: { status: 409 } });
+    const dup = recorder(Object.assign(new Error("exists"), { response: { status: 409 } }));
     await expect(
       new CloudTasksJobWaker(QUEUE, WORKER, "j@p", dup.client).wake({ dedupeKey: "a" }),
     ).resolves.toBeUndefined();
-    const denied = recorder({ response: { status: 403 } });
+    const denied = recorder(Object.assign(new Error("denied"), { response: { status: 403 } }));
     await expect(
       new CloudTasksJobWaker(QUEUE, WORKER, "j@p", denied.client).wake(),
     ).rejects.toBeDefined();

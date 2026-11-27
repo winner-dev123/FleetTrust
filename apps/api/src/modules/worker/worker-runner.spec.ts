@@ -32,7 +32,11 @@ function setup(script: PendingWork[], options: { runMs?: number; tickFails?: boo
     { drain } as unknown as OutboxRelay,
   );
   let i = 0;
-  runner.pending = () => Promise.resolve(script[Math.min(i++, script.length - 1)] as PendingWork);
+  runner.pending = () => {
+    const next = script[Math.min(i++, script.length - 1)];
+    if (!next) throw new Error("empty script");
+    return Promise.resolve(next);
+  };
   runner.sleep = (ms) => {
     now += ms;
     return Promise.resolve();
