@@ -1,5 +1,5 @@
 /*
- * FleetTrust web design system (ADR-0031). Colours, spacing and type come from @fleettrust/ui
+ * FleetTrust web design system (ADR-0031), premium look from the Figma design (2026-11). Colours, spacing and type come from @fleettrust/ui
  * as CSS custom properties (see theme.ts); this file only uses those variables. Mobile-first:
  * every layout works at 320 CSS pixels and widens at the --bp-* breakpoints.
  */
@@ -28,16 +28,19 @@ svg {
 h1,
 h2,
 h3 {
-  line-height: 1.25;
-  margin: 0 0 var(--space-md);
+  font-size: 18px;
+  line-height: 26px;
 }
 
 h1 {
   font-size: var(--font-xl);
+  line-height: var(--leading-xl);
+  letter-spacing: -0.02em;
 }
 
 h2 {
   font-size: var(--font-lg);
+  line-height: var(--leading-lg);
 }
 
 h3 {
@@ -152,8 +155,12 @@ a {
 }
 
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-background);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-e1);
 }
 
 .site-header__inner {
@@ -191,9 +198,11 @@ a {
 .brand {
   display: inline-flex;
   align-items: center;
+  gap: var(--space-sm);
   min-height: var(--touch);
-  font-weight: 700;
-  font-size: var(--font-lg);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.02em;
   color: var(--color-text);
   text-decoration: none;
 }
@@ -226,13 +235,13 @@ a {
 }
 
 .nav__link:hover {
-  background: var(--color-surface);
+  background: var(--color-surface-sunken);
 }
 
 .nav__link[aria-current="page"] {
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .nav__link--danger {
@@ -259,6 +268,7 @@ a {
   margin-top: var(--space-xxl);
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
+  color: var(--color-text-muted);
 }
 
 .app-layout {
@@ -272,12 +282,13 @@ a {
 }
 
 .app-nav__section {
-  margin: var(--space-md) 0 var(--space-xs);
+  margin: var(--space-lg) 0 var(--space-xs);
   padding: 0 var(--space-md);
-  font-size: var(--font-sm);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 .app-nav .nav__list[data-open="true"],
@@ -327,10 +338,10 @@ a {
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
-  min-height: var(--touch);
+  min-height: 48px;
   min-width: var(--touch);
-  padding: var(--space-sm) var(--space-lg);
-  border: 2px solid transparent;
+  padding: var(--space-sm) var(--space-xl);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   font: inherit;
   font-weight: 600;
@@ -338,6 +349,10 @@ a {
   text-align: center;
   text-decoration: none;
   cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .btn:disabled,
@@ -349,24 +364,39 @@ a {
 .btn--primary {
   background: var(--color-primary);
   color: var(--color-on-primary);
+  box-shadow: var(--shadow-e1);
 }
 
 .btn--secondary {
-  background: var(--color-background);
-  color: var(--color-primary);
-  border-color: var(--color-primary);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 
 .btn--ghost {
   background: transparent;
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
+  color: var(--color-primary);
+  border-color: transparent;
 }
 
 /* Emergency actions only (tokens: danger is never used for marketing or upsell). */
 .btn--danger {
   background: var(--color-danger);
   color: var(--color-on-danger);
+  box-shadow: var(--shadow-e1);
+}
+
+.btn--primary:hover {
+  background: color-mix(in srgb, var(--color-primary) 85%, var(--color-text));
+}
+
+.btn--secondary:hover,
+.btn--ghost:hover {
+  background: var(--color-surface-sunken);
+}
+
+.btn--danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 88%, var(--color-text));
 }
 
 .btn--block {
@@ -375,7 +405,8 @@ a {
 
 .btn--lg {
   min-height: 56px;
-  font-size: var(--font-lg);
+  font-size: 18px;
+  padding: var(--space-md) var(--space-xl);
 }
 
 /* --- Forms ------------------------------------------------------------------------------ */
@@ -388,6 +419,7 @@ a {
 
 .field__label {
   font-weight: 600;
+  font-size: var(--font-sm);
 }
 
 .field__hint {
@@ -403,13 +435,21 @@ a {
 
 .input {
   width: 100%;
-  min-height: var(--touch);
+  min-height: 48px;
   padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background: var(--color-background);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.input:focus-visible {
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 25%, transparent);
 }
 
 textarea.input {
@@ -445,19 +485,23 @@ fieldset.field {
 /* --- Surfaces --------------------------------------------------------------------------- */
 
 .card {
-  padding: var(--space-lg);
+  padding: var(--space-xl);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  background: var(--color-background);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-e1);
 }
 
 .card--muted {
-  background: var(--color-surface);
+  background: var(--color-surface-sunken);
+  box-shadow: none;
 }
 
 .card__title {
   margin: 0 0 var(--space-xs);
-  font-size: var(--font-lg);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
 }
 
 .card__title a {
@@ -467,13 +511,22 @@ fieldset.field {
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
-  padding: 2px var(--space-sm);
-  border: 1px solid currentColor;
+  gap: 6px;
+  padding: 3px 10px;
   border-radius: var(--radius-pill);
-  font-size: var(--font-sm);
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
 }
 
 .badge--verified {
@@ -500,10 +553,10 @@ fieldset.field {
 }
 
 .notice {
-  padding: var(--space-md) var(--space-lg);
-  border-left: 4px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  padding: var(--space-lg);
+  border: 1px solid var(--notice-tone, var(--color-primary));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--notice-tone, var(--color-primary)) 6%, var(--color-surface));
 }
 
 .notice > :last-child {
@@ -511,21 +564,22 @@ fieldset.field {
 }
 
 .notice--caution {
-  border-left-color: var(--color-caution);
+  --notice-tone: var(--color-caution);
 }
 
 .notice--danger {
-  border-left-color: var(--color-danger);
+  --notice-tone: var(--color-danger);
+  border-width: 2px;
 }
 
 .notice--success {
-  border-left-color: var(--color-verified);
+  --notice-tone: var(--color-verified);
 }
 
 .notice__title {
   display: block;
   margin-bottom: var(--space-xs);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .list-plain {
@@ -541,7 +595,8 @@ fieldset.field {
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
 }
 
 .table {
@@ -558,8 +613,12 @@ fieldset.field {
 }
 
 .table th {
-  background: var(--color-surface);
-  font-size: var(--font-sm);
+  background: var(--color-surface-sunken);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
 }
 
 .stat {
@@ -569,7 +628,10 @@ fieldset.field {
 
 .stat__value {
   font-size: var(--font-xl);
-  font-weight: 700;
+  line-height: var(--leading-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .meter {
@@ -611,23 +673,54 @@ fieldset.field {
 }
 
 .hero {
-  padding: var(--space-xxl) 0;
+  margin-top: var(--space-xl);
+  padding: var(--space-xxl) var(--space-xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(
+      120% 140% at 100% 0%,
+      color-mix(in srgb, var(--color-primary) 14%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      90% 120% at 0% 100%,
+      color-mix(in srgb, var(--color-accent) 10%, transparent),
+      transparent 60%
+    ),
+    var(--color-surface);
+  box-shadow: var(--shadow-e2);
 }
 
 .hero__title {
   font-size: 32px;
+  line-height: 40px;
+  letter-spacing: -0.02em;
+  color: var(--color-brand);
 }
 
 @media (min-width: 768px) {
+  .hero {
+    padding: 56px 48px;
+  }
+
   .hero__title {
-    font-size: 44px;
+    font-size: 48px;
+    line-height: 54px;
   }
 }
 
+.lead {
+  font-size: 18px;
+  line-height: 28px;
+}
+
 .emergency-panel {
-  padding: var(--space-lg);
+  padding: var(--space-xl);
   border: 2px solid var(--color-danger);
   border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-e1);
 }
 
 /* --- Map -------------------------------------------------------------------------------- */
@@ -636,9 +729,10 @@ fieldset.field {
   position: relative;
   overflow: hidden;
   height: 360px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  background: var(--color-surface-sunken);
+  box-shadow: var(--shadow-e1);
   touch-action: none;
 }
 
@@ -671,18 +765,20 @@ fieldset.field {
   min-width: var(--touch);
   min-height: var(--touch);
   padding: 0 var(--space-sm);
-  border: 2px solid var(--color-on-primary);
+  border: 2px solid var(--color-surface);
   border-radius: var(--radius-pill);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  background: var(--color-brand);
+  color: var(--color-surface);
   font: inherit;
-  font-weight: 700;
+  font-weight: 600;
+  box-shadow: var(--shadow-e2);
   cursor: pointer;
 }
 
 .map__pin[aria-pressed="true"] {
-  background: var(--color-text);
-  color: var(--color-background);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  transform: translate(-50%, -100%) scale(1.15);
 }
 
 .map__controls {
@@ -727,12 +823,51 @@ fieldset.field {
 .message {
   max-width: 85%;
   padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-lg);
+  border-radius: 16px 16px 16px 4px;
+  border: 1px solid var(--color-border);
   background: var(--color-surface);
 }
 
 .message--mine {
   align-self: flex-end;
-  border: 1px solid var(--color-border-strong);
-  background: var(--color-background);
+  border: 0;
+  border-radius: 16px 16px 4px 16px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+/* Text inside your own (primary) chat bubbles keeps contrast. */
+.message--mine .muted,
+.message--mine a {
+  color: color-mix(in srgb, var(--color-on-primary) 88%, var(--color-primary));
+}
+
+/* The menu toggle is for narrow screens only (".btn" would otherwise show it). */
+@media (min-width: 768px) {
+  .btn.nav__toggle {
+    display: none;
+  }
+}
+
+/* Logo mark: road check on brand navy (Figma "Logo"). Decorative: the text is the name. */
+.brand::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cpath d='M7.5 15.5 12 20l8.5-11' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      center / 28px no-repeat,
+    #0b2a4a;
+}
+
+/* Category shortcuts on the home page read as chips. */
+.hero .nav__link {
+  min-height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-size: var(--font-sm);
+  font-weight: 500;
 }

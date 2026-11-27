@@ -4,6 +4,7 @@ import {
   focusRing,
   layout,
   radii,
+  shadows,
   spacing,
   touchTarget,
   typography,
@@ -29,6 +30,12 @@ const sizes = [
   scale("radius", radii),
   scale("font", typography.fontSize),
   scale("layout", layout),
+  Object.entries(shadows)
+    .map(([name, value]) => `--shadow-${name}: ${value};`)
+    .join(" "),
+  Object.entries(typography.lineHeight)
+    .map(([name, value]) => `--leading-${name}: ${String(value)}px;`)
+    .join(" "),
   `--touch: ${String(touchTarget)}px;`,
   `--focus-width: ${String(focusRing.width)}px; --focus-offset: ${String(focusRing.offset)}px;`,
 ].join(" ");
@@ -37,4 +44,4 @@ const sizes = [
 export const themeCss = `:root { color-scheme: light dark; ${sizes} ${toCssVariables(colors.light)} }
 @media (prefers-color-scheme: dark) { :root { ${toCssVariables(colors.dark)} } }
 html, body { margin: 0; background: var(--color-background); color: var(--color-text); }
-body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; }`;
+body { font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased; }`;
