@@ -94,10 +94,15 @@ describe("loadApiEnv", () => {
     expect(loadApiEnv(production).APP_ENV).toBe("production");
   });
 
-  it("requires a real version, NODE_ENV=production, a database and Redis when deployed", () => {
+  it("requires a real version, NODE_ENV=production and a database when deployed", () => {
     expect(() => loadApiEnv({ APP_ENV: "staging" })).toThrow(
-      /REDIS_URL[\s\S]*DATABASE_URL[\s\S]*APP_VERSION[\s\S]*NODE_ENV/,
+      /DATABASE_URL[\s\S]*APP_VERSION[\s\S]*NODE_ENV/,
     );
+  });
+
+  it("runs without Redis when deployed (the low-cost setup)", () => {
+    expect(loadApiEnv({ ...production, REDIS_URL: undefined }).REDIS_URL).toBeUndefined();
+    expect(() => loadApiEnv({ APP_ENV: "staging" })).not.toThrow(/REDIS_URL/);
   });
 
   it("requires real storage, KMS encryption and ClamAV for documents when deployed", () => {

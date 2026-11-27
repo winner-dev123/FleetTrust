@@ -41,7 +41,7 @@ Rulesets are available because the repository is public. Configure them in Setti
 
 - **API / worker → Cloud Run:** `deploy-staging.yml` (every merge to `main`) and `deploy-production.yml` (manual, approved, same image digest, 10 % canary); `rollback.yml` moves traffic back. Migrations run as a Cloud Run job before the new revision starts; each new revision is smoke-tested with no traffic first. Details: [release-and-rollback.md](release-and-rollback.md); setup: [environments.md](environments.md).
 - **Release rehearsal (every PR):** `release-rehearsal.yml` deploys the previous and new images on PostgreSQL + PostGIS, rolls back and forward, smoke testing each step.
-- **Web → Firebase App Hosting:** connected to the repo in the Firebase console; settings in `apps/web/apphosting.yaml`.
+- **Web → Vercel:** the Vercel project (root `apps/web`, settings in `apps/web/vercel.json`) deploys from Git; see [environments.md](environments.md) ([ADR-0037](../adr/0037-low-cost-hosting.md)). `apps/web/apphosting.yaml` is kept for the earlier App Hosting option.
 - **Mobile:** EAS builds arrive with Prompt 25.
 
 ## Running the CI checks locally

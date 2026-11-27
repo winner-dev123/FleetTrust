@@ -61,3 +61,15 @@ variable "api_domain" {
   type        = string
   default     = ""
 }
+
+variable "database_provider" {
+  description = "\"external\" (Neon or another Postgres + PostGIS; low cost) or \"cloudsql\" (fixed monthly cost)."
+  type        = string
+  default     = "external"
+}
+
+variable "redis_provider" {
+  description = "\"none\", \"external\" (Upstash or another hosted Redis) or \"memorystore\" (fixed monthly cost)."
+  type        = string
+  default     = "none"
+}

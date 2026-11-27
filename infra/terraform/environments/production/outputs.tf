@@ -9,6 +9,7 @@ output "release_variables" {
     deploy_service_account     = module.fleettrust.deploy_service_account
     runtime_service_account    = module.fleettrust.runtime_service_account
     cloudsql_connection_name   = module.fleettrust.cloudsql_connection_name
+    redis_secret               = module.fleettrust.redis_secret
     vpc_network                = module.fleettrust.vpc_network
     vpc_subnet                 = module.fleettrust.vpc_subnet
     quarantine_bucket          = module.fleettrust.quarantine_bucket

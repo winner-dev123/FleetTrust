@@ -35,7 +35,10 @@ jobs:
       APP_ENV: staging
       APP_VERSION: ${{ github.sha }}
       RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+      # Optional (docs/operations/environments.md, "Low-cost setup"): leave both empty with an
+      # external database such as Neon and no Redis. Set them only when Cloud SQL or Redis is used.
       CLOUDSQL_CONNECTION_NAME: ${{ vars.CLOUDSQL_CONNECTION_NAME }}
+      REDIS_SECRET: ${{ vars.REDIS_SECRET }}
       VPC_NETWORK: ${{ vars.VPC_NETWORK }}
       VPC_SUBNET: ${{ vars.VPC_SUBNET }}
       CORS_ORIGINS: ${{ vars.WEB_URL }}
@@ -61,7 +64,7 @@ jobs:
         run: |
           missing=""
           for name in GCP_PROJECT_ID GCP_REGION WIF_PROVIDER DEPLOYER RUNTIME_SERVICE_ACCOUNT \
-            CLOUDSQL_CONNECTION_NAME VPC_NETWORK VPC_SUBNET PUBLIC_API_URL WEB_URL \
+            VPC_NETWORK VPC_SUBNET PUBLIC_API_URL WEB_URL \
             STORAGE_QUARANTINE_BUCKET STORAGE_SENSITIVE_BUCKET STORAGE_PUBLIC_MEDIA_BUCKET \
             DOCUMENT_KMS_KEY CLAMAV_HOST; do
             [ -n "${!name}" ] || missing="$missing $name"
@@ -94,7 +97,7 @@ jobs:
         run: |
           gcloud run jobs deploy fleettrust-migrate --region "$GCP_REGION" --image "$API_IMAGE" \
             --service-account "$RUNTIME_SERVICE_ACCOUNT" \
-            --set-cloudsql-instances "$CLOUDSQL_CONNECTION_NAME" \
+            ${CLOUDSQL_CONNECTION_NAME:+--set-cloudsql-instances "$CLOUDSQL_CONNECTION_NAME"} \
             --set-secrets DATABASE_URL=fleettrust-database-url:latest \
             --command node --args node_modules/@fleettrust/db/dist/cli/migrate.js \
             --max-retries 0 --task-timeout 600 --quiet

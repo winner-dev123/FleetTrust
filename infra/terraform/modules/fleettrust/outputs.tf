@@ -26,8 +26,14 @@ output "runtime_service_account" {
   value = google_service_account.runtime.email
 }
 
+# Empty with an external database: the deploy workflows then skip the Cloud SQL link.
 output "cloudsql_connection_name" {
-  value = google_sql_database_instance.main.connection_name
+  value = local.cloud_sql ? google_sql_database_instance.main[0].connection_name : ""
+}
+
+# Secret holding REDIS_URL, or empty when Redis isn't used (GitHub variable REDIS_SECRET).
+output "redis_secret" {
+  value = local.redis ? google_secret_manager_secret.redis_url[0].secret_id : ""
 }
 
 output "vpc_network" {

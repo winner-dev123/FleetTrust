@@ -1,4 +1,18 @@
-# Network, PostgreSQL + PostGIS (Cloud SQL), Redis (Memorystore) and the secrets the API reads.
+# Network, PostgreSQL + PostGIS, Redis and the secrets the API reads.
+#
+# Two setups (docs/operations/environments.md, ADR-0037):
+# - low cost (database_provider = "external", redis_provider = "none" or "external"): the database
+#   is an external Postgres + PostGIS such as Neon, and Redis is optional (Upstash or none).
+#   Terraform creates the empty secrets; their values are added by hand, so they never reach the
+#   Terraform state.
+# - managed (database_provider = "cloudsql", redis_provider = "memorystore"): Cloud SQL and
+#   Memorystore, which have a fixed monthly cost even when idle.
+
+locals {
+  cloud_sql   = var.database_provider == "cloudsql"
+  memorystore = var.redis_provider == "memorystore"
+  redis       = var.redis_provider != "none"
+}
 
 # --- Network: Cloud Run reaches Redis and ClamAV over Direct VPC egress (no connector). ----------
 
@@ -23,6 +37,7 @@ resource "google_compute_subnetwork" "run" {
 # which is what Cloud Run's cloudsql-instances annotation uses. TLS is required.
 
 resource "google_sql_database_instance" "main" {
+  count               = local.cloud_sql ? 1 : 0
   project             = var.project_id
   name                = local.name
   region              = var.region
@@ -76,26 +91,30 @@ resource "google_sql_database_instance" "main" {
 }
 
 resource "google_sql_database" "app" {
+  count    = local.cloud_sql ? 1 : 0
   project  = var.project_id
   name     = "fleettrust"
-  instance = google_sql_database_instance.main.name
+  instance = google_sql_database_instance.main[0].name
 }
 
 resource "random_password" "db" {
+  count   = local.cloud_sql ? 1 : 0
   length  = 32
   special = false
 }
 
 resource "google_sql_user" "app" {
+  count    = local.cloud_sql ? 1 : 0
   project  = var.project_id
   name     = "fleettrust_app"
-  instance = google_sql_database_instance.main.name
-  password = random_password.db.result
+  instance = google_sql_database_instance.main[0].name
+  password = random_password.db[0].result
 }
 
 # --- Redis ----------------------------------------------------------------------------------------
 
 resource "google_redis_instance" "cache" {
+  count              = local.memorystore ? 1 : 0
   project            = var.project_id
   name               = local.name
   region             = var.region
@@ -110,7 +129,10 @@ resource "google_redis_instance" "cache" {
 }
 
 # --- Secrets (values live in Secret Manager, never in the repository or workflow logs) ------------
-# Terraform state contains these values: the state bucket is restricted (README).
+# With Cloud SQL or Memorystore, Terraform writes the values, so the state contains them: the state
+# bucket is restricted (README). With an external database or Redis, Terraform creates only the
+# secret, and the value is added by hand:
+#   printf %s "postgresql://…?sslmode=require" | gcloud secrets versions add fleettrust-database-url --data-file=-
 
 resource "google_secret_manager_secret" "database_url" {
   project   = var.project_id
@@ -123,17 +145,19 @@ resource "google_secret_manager_secret" "database_url" {
 }
 
 resource "google_secret_manager_secret_version" "database_url" {
+  count  = local.cloud_sql ? 1 : 0
   secret = google_secret_manager_secret.database_url.id
   secret_data = format(
     "postgresql://%s:%s@/%s?host=/cloudsql/%s",
-    google_sql_user.app.name,
-    random_password.db.result,
-    google_sql_database.app.name,
-    google_sql_database_instance.main.connection_name,
+    google_sql_user.app[0].name,
+    random_password.db[0].result,
+    google_sql_database.app[0].name,
+    google_sql_database_instance.main[0].connection_name,
   )
 }
 
 resource "google_secret_manager_secret" "redis_url" {
+  count     = local.redis ? 1 : 0
   project   = var.project_id
   secret_id = "fleettrust-redis-url"
   labels    = local.labels
@@ -144,11 +168,46 @@ resource "google_secret_manager_secret" "redis_url" {
 }
 
 resource "google_secret_manager_secret_version" "redis_url" {
-  secret = google_secret_manager_secret.redis_url.id
+  count  = local.memorystore ? 1 : 0
+  secret = google_secret_manager_secret.redis_url[0].id
   secret_data = format(
     "redis://:%s@%s:%d",
-    google_redis_instance.cache.auth_string,
-    google_redis_instance.cache.host,
-    google_redis_instance.cache.port,
+    google_redis_instance.cache[0].auth_string,
+    google_redis_instance.cache[0].host,
+    google_redis_instance.cache[0].port,
   )
+}
+
+# Addresses from before these resources became optional (staging was applied on 2026-11-26).
+moved {
+  from = google_sql_database_instance.main
+  to   = google_sql_database_instance.main[0]
+}
+moved {
+  from = google_sql_database.app
+  to   = google_sql_database.app[0]
+}
+moved {
+  from = random_password.db
+  to   = random_password.db[0]
+}
+moved {
+  from = google_sql_user.app
+  to   = google_sql_user.app[0]
+}
+moved {
+  from = google_redis_instance.cache
+  to   = google_redis_instance.cache[0]
+}
+moved {
+  from = google_secret_manager_secret_version.database_url
+  to   = google_secret_manager_secret_version.database_url[0]
+}
+moved {
+  from = google_secret_manager_secret.redis_url
+  to   = google_secret_manager_secret.redis_url[0]
+}
+moved {
+  from = google_secret_manager_secret_version.redis_url
+  to   = google_secret_manager_secret_version.redis_url[0]
 }

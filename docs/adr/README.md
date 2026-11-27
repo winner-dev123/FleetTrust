@@ -37,6 +37,7 @@ We record significant decisions as short ADRs ([Nygard format](https://cognitect
 | [0034](0034-security-and-privacy-hardening.md)       | Security and privacy: erasure by anonymisation, versioned consent, retention job, route-driven tenant penetration test, security headers                    | Accepted                                                                                        |
 | [0035](0035-performance-and-reliability.md)          | Performance and reliability: SLOs, load harness gating on correctness, 503 load shedding, in-order realtime delivery, restore drill in CI                   | Accepted                                                                                        |
 | [0036](0036-staging-production-and-launch.md)        | Staging, production and launch: one project per environment, Terraform for all but releases, candidate revisions with rehearsed rollback, invite-only pilot | Accepted                                                                                        |
+| [0037](0037-low-cost-hosting.md)                     | Low-cost hosting for the pilot: website on Vercel, database on Neon, optional Redis, no fixed-cost cloud parts                                              | Accepted                                                                                        |
 
 ## Template
 
