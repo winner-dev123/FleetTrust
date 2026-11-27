@@ -60,6 +60,12 @@ output "document_kms_key" {
   value = google_kms_crypto_key.documents.id
 }
 
+# The ClamAV VM's address, or empty with the scanner service (GitHub variable CLAMAV_HOST).
 output "clamav_host" {
-  value = google_compute_address.clamav.address
+  value = local.clamav_vm ? google_compute_address.clamav[0].address : ""
+}
+
+# Identity of the scanner service (GitHub variable GCP_SCANNER_SERVICE_ACCOUNT).
+output "scanner_service_account" {
+  value = google_service_account.clamav.email
 }

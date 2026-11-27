@@ -79,3 +79,9 @@ variable "redis_provider" {
   type        = string
   default     = "none"
 }
+
+variable "malware_scanner" {
+  description = "\"cloudrun\" (ClamAV on Cloud Run, scaled to zero; low cost) or \"vm\" (always-on VM; fixed monthly cost)."
+  type        = string
+  default     = "cloudrun"
+}

@@ -105,6 +105,24 @@ describe("loadApiEnv", () => {
     expect(() => loadApiEnv({ APP_ENV: "staging" })).not.toThrow(/REDIS_URL/);
   });
 
+  it("accepts the ClamAV scanner service over https when deployed (the low-cost setup)", () => {
+    const http = {
+      ...production,
+      MALWARE_SCANNER: "clamav-http",
+      CLAMAV_HOST: undefined,
+      CLAMAV_URL: "https://fleettrust-scanner-abc-ew.a.run.app",
+    } as const;
+    expect(loadApiEnv(http).CLAMAV_URL).toBe("https://fleettrust-scanner-abc-ew.a.run.app");
+    expect(() => loadApiEnv({ ...http, CLAMAV_URL: undefined })).toThrow(/CLAMAV_URL/);
+    expect(() => loadApiEnv({ ...http, CLAMAV_URL: "http://scanner.internal" })).toThrow(
+      /CLAMAV_URL[\s\S]*https/,
+    );
+    expect(
+      loadApiEnv({ MALWARE_SCANNER: "clamav-http", CLAMAV_URL: "http://localhost:8090" })
+        .CLAMAV_URL,
+    ).toBe("http://localhost:8090");
+  });
+
   it("requires real storage, KMS encryption and ClamAV for documents when deployed", () => {
     for (const [field, value] of [
       ["STORAGE_DRIVER", "memory"],

@@ -17,6 +17,7 @@ output "release_variables" {
     public_media_bucket        = module.fleettrust.public_media_bucket
     document_kms_key           = module.fleettrust.document_kms_key
     clamav_host                = module.fleettrust.clamav_host
+    scanner_service_account    = module.fleettrust.scanner_service_account
   }
 }
 

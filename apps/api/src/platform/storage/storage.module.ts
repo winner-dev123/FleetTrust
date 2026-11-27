@@ -23,6 +23,7 @@ import { GoogleAuth } from "google-auth-library";
 import type { ApiEnv } from "../../config/env.js";
 import { Public } from "../../modules/identity/index.js";
 import { KEY_WRAPPER, KmsKeyWrapper, LocalKeyWrapper } from "../crypto/envelope.js";
+import { ClamAvHttpScanner, googleIdTokenAuth } from "../scanning/http-scanner.js";
 import { ClamAvScanner, EicarOnlyScanner, MALWARE_SCANNER } from "../scanning/malware-scanner.js";
 import { GcsObjectStorage, storageClient } from "./gcs-storage.js";
 import { MemoryObjectStorage } from "./memory-storage.js";
@@ -122,10 +123,19 @@ export class StorageModule {
         },
         {
           provide: MALWARE_SCANNER,
-          useFactory: () =>
-            env.MALWARE_SCANNER === "clamav"
-              ? new ClamAvScanner(env.CLAMAV_HOST ?? "", env.CLAMAV_PORT)
-              : new EicarOnlyScanner(),
+          useFactory: () => {
+            switch (env.MALWARE_SCANNER) {
+              case "clamav-http":
+                return new ClamAvHttpScanner(
+                  env.CLAMAV_URL ?? "",
+                  googleIdTokenAuth(new GoogleAuth()),
+                );
+              case "clamav":
+                return new ClamAvScanner(env.CLAMAV_HOST ?? "", env.CLAMAV_PORT);
+              default:
+                return new EicarOnlyScanner();
+            }
+          },
         },
       ],
       exports: [OBJECT_STORAGE, KEY_WRAPPER, MALWARE_SCANNER],

@@ -188,7 +188,7 @@ jobs:
   container:
     name: API container image
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -211,6 +211,33 @@ jobs:
           docker rm -f api
       - name: Image size
         run: docker image ls fleettrust-api:ci --format '{{.Repository}}:{{.Tag}} {{.Size}}'
+      # The malware scanner image (ADR-0037): real ClamAV must find the EICAR test file and pass a
+      # clean one. FRESHCLAM=false: test the signatures in the image, without the network.
+      - name: Build the scanner image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/scanner/Dockerfile
+          tags: fleettrust-scanner:ci
+          load: true
+          push: false
+      - name: Scanner runs as non-root, detects EICAR and passes a clean file
+        run: |
+          test "$(docker run --rm --entrypoint id fleettrust-scanner:ci -u)" != "0"
+          docker run -d --name scanner -p 8090:8080 -e FRESHCLAM=false fleettrust-scanner:ci
+          for _ in $(seq 1 120); do curl -sf http://127.0.0.1:8090/healthz > /dev/null && break; sleep 2; done
+          curl -sf http://127.0.0.1:8090/healthz
+          # The EICAR string must stay literal ($ included).
+          # shellcheck disable=SC2016
+          printf '%s' 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > /tmp/eicar.txt
+          curl -sf --data-binary @/tmp/eicar.txt http://127.0.0.1:8090/scan | tee /tmp/infected.json
+          jq -e '.clean == false and (.signature | test("Eicar"; "i"))' /tmp/infected.json
+          head -c 300000 /dev/urandom > /tmp/clean.bin
+          curl -sf --data-binary @/tmp/clean.bin http://127.0.0.1:8090/scan | tee /tmp/clean.json
+          jq -e '.clean == true' /tmp/clean.json
+          docker logs scanner 2>&1 | tail -5
+          docker rm -f scanner
+          docker image ls fleettrust-scanner:ci --format '{{.Repository}}:{{.Tag}} {{.Size}}'
 
   security:
     name: Dependency audit and secret scan
@@ -260,4 +287,7 @@ jobs:
             rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
           docker run --rm -v "$PWD:/mnt" -w /mnt \
             koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d \
-            deploy/cloudrun/deploy.sh tools/smoke/rehearsal.sh
+            deploy/cloudrun/deploy.sh deploy/cloudrun/scanner.sh deploy/cloudrun/check-templates.sh \
+            tools/smoke/rehearsal.sh
+      - name: Cloud Run templates render (low-cost and managed setups)
+        run: bash deploy/cloudrun/check-templates.sh

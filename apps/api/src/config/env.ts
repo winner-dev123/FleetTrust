@@ -99,10 +99,15 @@ export const apiEnvSchema = z
       .string()
       .regex(/^[A-Za-z0-9+/]{43}=$/, "must be 32 bytes, base64")
       .optional(),
-    /** `clamav` (clamd over TCP) or `eicar-only` (detects only the EICAR test file; local only). */
-    MALWARE_SCANNER: z.enum(["eicar-only", "clamav"]).default("eicar-only"),
+    /**
+     * `clamav-http` (the scanner service on Cloud Run, apps/scanner: ADR-0037), `clamav` (clamd
+     * over TCP, for example on a VM) or `eicar-only` (detects only the EICAR test file; local only).
+     */
+    MALWARE_SCANNER: z.enum(["eicar-only", "clamav", "clamav-http"]).default("eicar-only"),
     CLAMAV_HOST: z.string().min(1).optional(),
     CLAMAV_PORT: envFields.port(3310),
+    /** Scanner service URL for `clamav-http` (https when deployed; called with a Google identity token). */
+    CLAMAV_URL: envFields.httpUrl().optional(),
     /** Verification documents are deleted this many days after the case is decided (OQ-14). */
     VERIFICATION_DOCUMENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
     /**
@@ -196,8 +201,14 @@ export const apiEnvSchema = z
     if (deployed && env.DOCUMENT_LOCAL_KEK !== undefined) {
       issue("DOCUMENT_LOCAL_KEK", "must not be set in staging or production");
     }
-    if (deployed && env.MALWARE_SCANNER !== "clamav") {
-      issue("MALWARE_SCANNER", "must be 'clamav' in staging and production");
+    if (deployed && env.MALWARE_SCANNER === "eicar-only") {
+      issue("MALWARE_SCANNER", "must be 'clamav-http' or 'clamav' in staging and production");
+    }
+    if (env.MALWARE_SCANNER === "clamav-http" && env.CLAMAV_URL === undefined) {
+      issue("CLAMAV_URL", "is required with MALWARE_SCANNER=clamav-http");
+    }
+    if (deployed && env.CLAMAV_URL !== undefined && !env.CLAMAV_URL.startsWith("https://")) {
+      issue("CLAMAV_URL", "must be https in staging and production");
     }
     if (env.MALWARE_SCANNER === "clamav" && env.CLAMAV_HOST === undefined) {
       issue("CLAMAV_HOST", "is required with MALWARE_SCANNER=clamav");

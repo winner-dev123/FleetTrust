@@ -49,6 +49,7 @@ module "fleettrust" {
   # settings below apply only with database_provider = "cloudsql" / redis_provider = "memorystore".
   database_provider = var.database_provider
   redis_provider    = var.redis_provider
+  malware_scanner   = var.malware_scanner
 
   db_tier              = "db-custom-1-3840"
   db_high_availability = false

@@ -24,7 +24,7 @@ spec:
         run.googleapis.com/cloudsql-instances: ${CLOUDSQL_CONNECTION_NAME} # when:CLOUDSQL_CONNECTION_NAME
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/startup-cpu-boost: "true"
-        # Direct VPC egress: Redis (Memorystore) and the ClamAV VM have private addresses only.
+        # Direct VPC egress for private addresses (Memorystore, a ClamAV VM) when those are used.
         run.googleapis.com/network-interfaces: '[{"network":"${VPC_NETWORK}","subnetwork":"${VPC_SUBNET}"}]'
         run.googleapis.com/vpc-access-egress: private-ranges-only
         # Start the app after the collector sidecar is ready.
@@ -63,8 +63,10 @@ spec:
             - { name: STORAGE_PUBLIC_MEDIA_BUCKET, value: "${STORAGE_PUBLIC_MEDIA_BUCKET}" }
             - { name: DOCUMENT_KEY_PROVIDER, value: kms }
             - { name: DOCUMENT_KMS_KEY, value: "${DOCUMENT_KMS_KEY}" }
-            - { name: MALWARE_SCANNER, value: clamav }
-            - { name: CLAMAV_HOST, value: "${CLAMAV_HOST}" }
+            # clamav-http (the scanner service) or clamav (a ClamAV VM): set by deploy/cloudrun/scanner.sh.
+            - { name: MALWARE_SCANNER, value: "${MALWARE_SCANNER}" }
+            - { name: CLAMAV_URL, value: "${CLAMAV_URL}" } # when:CLAMAV_URL
+            - { name: CLAMAV_HOST, value: "${CLAMAV_HOST}" } # when:CLAMAV_HOST
             # Map adapter (docs/architecture/search.md). Vendor pending (OQ-13); production needs MAP_TILE_URL.
             - { name: MAP_PROVIDER, value: stub }
             # Routing vendor pending (OQ-13): route search degrades to point search around stops.
