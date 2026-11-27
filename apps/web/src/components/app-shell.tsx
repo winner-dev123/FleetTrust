@@ -16,6 +16,7 @@ import { ErrorNotice, Loading, Notice } from "./feedback";
 import { ConsentGate } from "./consent-gate";
 import { SiteNotice } from "./site-notice";
 import { NavMenu } from "./nav-menu";
+import { Brand } from "./site-chrome";
 
 /** Pages a suspended member can still use (the API marks them @AllowSuspended). */
 const SUSPENDED_ALLOWED = "/app/appeals";
@@ -25,9 +26,7 @@ function TopBar() {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <Link className="brand" href="/app">
-          {copy.web.site.brand}
-        </Link>
+        <Brand href="/app" />
         <div className="cluster">
           <Link className="nav__link" href="/search">
             {copy.web.shell.findServices}

@@ -1,7 +1,7 @@
 import "./globals.css";
 
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { DM_Sans, Manrope } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { SkipLink } from "@/components/site-chrome";
@@ -10,8 +10,12 @@ import { FirebaseSessionProvider } from "@/lib/session";
 import { themeCss } from "./theme";
 import { copy } from "@fleettrust/copy";
 
-/** Inter (the design system typeface), self-hosted by Next.js: no request to Google at runtime. */
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+/**
+ * Typefaces from the Figma Make design: DM Sans for text, Manrope for headings and the logo.
+ * Self-hosted by Next.js, so pages make no request to Google at runtime.
+ */
+const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
+const manrope = Manrope({ subsets: ["latin"], variable: "--font-display", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: copy.web.site.brand, template: copy.web.site.titleTemplate },
@@ -26,7 +30,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${dmSans.variable} ${manrope.variable}`}>
       <head>
         <style>{themeCss}</style>
       </head>
