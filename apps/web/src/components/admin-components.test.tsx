@@ -58,6 +58,22 @@ describe("ConfirmAction (irreversible staff actions)", () => {
     expect(await screen.findByRole("button", { name: "Revoke badge…" })).toBeTruthy();
   });
 
+  it("says how a reversible action is undone instead of the default warning", () => {
+    render(
+      <ConfirmAction
+        label="Grant Support agent"
+        phrase="a@example.test"
+        consequence="They can help members."
+        undoNote="You can revoke it later under Current staff."
+        onConfirm={() => Promise.resolve()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Grant Support agent…" }));
+    const dialog = screen.getByRole("alertdialog", { name: "Grant Support agent?" });
+    expect(dialog.textContent).toMatch(/You can revoke it later/);
+    expect(dialog.textContent).not.toMatch(/can't be undone/);
+  });
+
   it("shows the API's refusal and stays open", async () => {
     const onConfirm = vi.fn(() => Promise.reject(new Error("boom")));
     render(
