@@ -403,6 +403,7 @@ export const web = {
     description: "Practical articles from drivers, fleets and providers.",
     intro: "Practical tips from drivers, fleets and providers.",
     heroImageAlt: "A driver reading on her phone beside her parked car on the coast",
+    photoBadge: "Practical guidance",
     disclaimer:
       "Articles share personal experience. They are not checked by FleetTrust and are not ratings of any provider.",
     searchLabel: "Search articles",
@@ -548,7 +549,12 @@ export const web = {
 
   search: {
     viewProfile: "View profile",
-    title: "Find vehicle services",
+    heroKicker: "Find help nearby",
+    heroTitle: "Vehicle services, without the guesswork.",
+    filters: "Filters",
+    verificationMeansTitle: "What verification means",
+    verificationMeansBody:
+      "We show the evidence checked for each provider. It isn't a quality rating, and plans can't buy it.",
     intro:
       "Workshops, towing, tyres, parts and more. Results are sorted by relevance (text match, distance, service area and opening hours). Plans never change the order.",
     distance: "{distance} away",

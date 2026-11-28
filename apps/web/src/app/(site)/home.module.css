@@ -1227,3 +1227,41 @@
 .roadsideImage:hover {
   transform: translateY(-4px);
 }
+
+/* Make art direction: soft colour behind the supporting sections. */
+.services,
+.stories {
+  position: relative;
+  isolation: isolate;
+}
+
+.services::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 40px;
+  left: -330px;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: rgb(255 204 126 / 20%);
+  filter: blur(8px);
+}
+
+.stories::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -55px calc(50% - 50vw);
+  background:
+    radial-gradient(
+      circle at 88% 18%,
+      color-mix(in srgb, var(--color-primary) 16%, transparent),
+      transparent 19rem
+    ),
+    linear-gradient(
+      180deg,
+      var(--color-background),
+      color-mix(in srgb, var(--color-primary) 3%, var(--color-background))
+    );
+}

@@ -30,7 +30,7 @@ export default function ForProvidersPage() {
 
   return (
     <>
-      <section className="feature-hero feature-hero--cool" aria-labelledby="providers-title">
+      <section className="feature-hero feature-hero--route-warm" aria-labelledby="providers-title">
         <div className="feature-hero__grid">
           <div>
             <p className="page-hero__kicker">{t.kicker}</p>
@@ -79,7 +79,7 @@ export default function ForProvidersPage() {
           <p className="page-hero__kicker">{t.benefitsKicker}</p>
           <h2 id="benefits-title">{t.benefitsTitle}</h2>
         </div>
-        <ul className="feature-grid list-plain">
+        <ul className="feature-grid feature-grid--offset list-plain">
           {benefits.map(([icon, title, body]) => (
             <li key={title} className="feature-card">
               <span className="feature-card__icon" aria-hidden="true">

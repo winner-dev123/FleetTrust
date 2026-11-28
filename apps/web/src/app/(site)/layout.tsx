@@ -9,7 +9,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
     <>
       <SiteHeader />
       <SiteNotice />
-      <main id="main" tabIndex={-1}>
+      <main id="main" tabIndex={-1} className="site-main">
         {children}
       </main>
       <SiteFooter />
