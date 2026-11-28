@@ -17,6 +17,8 @@ import { publicApi } from "@/lib/public-api";
 import { CommentForm } from "./comment-form";
 
 export const dynamic = "force-dynamic";
+// Room for an API cold start (25 s client timeout, ADR-0037).
+export const maxDuration = 60;
 
 const loadArticle = cache(async (slug: string): Promise<PublicArticle> => {
   try {

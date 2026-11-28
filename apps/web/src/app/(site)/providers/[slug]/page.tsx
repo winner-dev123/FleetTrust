@@ -22,6 +22,8 @@ import { publicApi } from "@/lib/public-api";
 import { ContactDetails } from "./contact-details";
 
 export const dynamic = "force-dynamic";
+// Room for an API cold start (25 s client timeout, ADR-0037).
+export const maxDuration = 60;
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const DAY_NAMES: Record<(typeof DAYS)[number], string> = copy.web.provider.days;

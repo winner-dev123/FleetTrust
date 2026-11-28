@@ -11,6 +11,8 @@ import { Icon } from "@/components/icon";
 import { ARTICLE_COVERS, PHOTOS } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
+// Room for an API cold start (25 s client timeout, ADR-0037).
+export const maxDuration = 60;
 
 export const metadata: Metadata = {
   title: copy.web.articles.title,

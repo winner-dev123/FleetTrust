@@ -14,6 +14,8 @@ import { publicApi } from "@/lib/public-api";
 import { ApplyForm } from "./apply-form";
 
 export const dynamic = "force-dynamic";
+// Room for an API cold start (25 s client timeout, ADR-0037).
+export const maxDuration = 60;
 
 const loadJob = cache(async (id: string): Promise<PublicJob> => {
   try {
