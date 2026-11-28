@@ -3301,3 +3301,16 @@ body {
     margin-top: -60px;
   }
 }
+
+/*
+ * Heading weight from the Figma Make design: every heading is Manrope at medium weight (Make's
+ * reset sets headings to the regular weight, which its font set displays as 500), large and
+ * tightly tracked. This overrides the bolder weights set per component above. Labels, buttons,
+ * the logo and figures stay bold, as in Make.
+ */
+h1,
+h2,
+h3,
+.card__title {
+  font-weight: 500 !important;
+}
