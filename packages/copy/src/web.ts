@@ -332,6 +332,7 @@ export const web = {
     heroIntro:
       "Publish your services, respond to quote requests and keep your team organised in one simple workspace.",
     plansNote: "Plans change limits only. They never buy verification or search position.",
+    portraitAlt: "A workshop owner standing at the entrance of his garage",
     workspaceTitle: "In your workspace",
     workspaceRequests: "Quote requests",
     workspaceRequestsBody: "Answer customers and keep each conversation in one place",
@@ -361,6 +362,7 @@ export const web = {
     title: "Emergency help",
     description: "What to do if you need help on the road, and how FleetTrust alerts can help.",
     dangerTitle: "If anyone is in danger",
+    photoAlt: "A driver stopped in a paved pullout, well clear of moving traffic",
     doThisFirst: "Do this first, before using FleetTrust.",
     alertTitle: "Alert the people you trust",
     alertBody:
@@ -400,6 +402,8 @@ export const web = {
     title: "Knowledge hub",
     description: "Practical articles from drivers, fleets and providers.",
     intro: "Practical tips from drivers, fleets and providers.",
+    heroImageAlt: "A driver reading on her phone beside her parked car on the coast",
+    photoBadge: "Practical guidance",
     disclaimer:
       "Articles share personal experience. They are not checked by FleetTrust and are not ratings of any provider.",
     searchLabel: "Search articles",
@@ -545,7 +549,12 @@ export const web = {
 
   search: {
     viewProfile: "View profile",
-    title: "Find vehicle services",
+    heroKicker: "Find help nearby",
+    heroTitle: "Vehicle services, without the guesswork.",
+    filters: "Filters",
+    verificationMeansTitle: "What verification means",
+    verificationMeansBody:
+      "We show the evidence checked for each provider. It isn't a quality rating, and plans can't buy it.",
     intro:
       "Workshops, towing, tyres, parts and more. Results are sorted by relevance (text match, distance, service area and opening hours). Plans never change the order.",
     distance: "{distance} away",

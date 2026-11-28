@@ -1,10 +1,11 @@
 import { copy, fill } from "@fleettrust/copy";
 import { CATEGORY_LABELS, type ProviderCategory } from "@fleettrust/types";
-import Image from "next/image";
+import Image, { type StaticImageData } from "next/image";
 import Link from "next/link";
 
 import { Icon, type IconName } from "@/components/icon";
 import { webEnv } from "@/env";
+import { PHOTOS } from "@/lib/photos";
 
 import heroImage from "../../../public/images/fleettrust-hero.webp";
 import mechanicImage from "../../../public/images/fleettrust-mechanic.webp";
@@ -25,10 +26,10 @@ const SERVICES: readonly { note: string; icon: IconName; category: ProviderCateg
   { note: t.serviceMobile, icon: "wrench", category: "mobile_mechanic" },
 ];
 
-const READS: readonly { title: string; icon: IconName; art: string; query: string }[] = [
-  { title: t.readTyres, icon: "tyre", art: "", query: "tyre" },
-  { title: t.readKit, icon: "car", art: "carArt", query: "kit" },
-  { title: t.readQuotes, icon: "tools", art: "toolsArt", query: "quote" },
+const READS: readonly { title: string; photo: StaticImageData; query: string }[] = [
+  { title: t.readTyres, photo: PHOTOS.tyrePressure, query: "tyre" },
+  { title: t.readKit, photo: PHOTOS.roadsideKit, query: "kit" },
+  { title: t.readQuotes, photo: PHOTOS.serviceEstimate, query: "quote" },
 ];
 
 /**
@@ -244,9 +245,12 @@ export default function HomePage() {
         <div className={cls("storyGrid")}>
           {READS.map((read) => (
             <article key={read.query} data-reveal>
-              <span className={`${cls("storyArt")} ${read.art ? cls(read.art) : ""}`}>
-                <Icon name={read.icon} size={56} />
-              </span>
+              <Image
+                className={cls("storyPhoto")}
+                src={read.photo}
+                alt=""
+                sizes="(max-width: 760px) 100vw, 33vw"
+              />
               <div>
                 <small>{t.readTopic}</small>
                 <h3>{read.title}</h3>

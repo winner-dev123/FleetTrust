@@ -23,7 +23,7 @@ export default function HowItWorksPage() {
 
   return (
     <>
-      <section className="feature-hero feature-hero--warm" aria-labelledby="how-title">
+      <section className="feature-hero feature-hero--route-light" aria-labelledby="how-title">
         <div className="feature-hero__grid">
           <div>
             <p className="page-hero__kicker">{t.kicker}</p>
@@ -48,7 +48,7 @@ export default function HowItWorksPage() {
           <p className="page-hero__kicker">{t.stepsKicker}</p>
           <h2 id="steps-title">{t.stepsTitle}</h2>
         </div>
-        <ol className="feature-grid list-plain">
+        <ol className="feature-grid feature-grid--tinted list-plain">
           {steps.map(([title, body], index) => (
             <li key={title} className="feature-card">
               <span className="feature-card__number" aria-hidden="true">

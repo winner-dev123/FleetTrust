@@ -1,8 +1,10 @@
 import { copy } from "@fleettrust/copy";
 import type { Metadata } from "next";
+import Image from "next/image";
 
 import { ButtonLink } from "@/components/button";
 import { Icon, type IconName } from "@/components/icon";
+import { PHOTOS } from "@/lib/photos";
 
 const t = copy.web.forProviders;
 
@@ -28,7 +30,7 @@ export default function ForProvidersPage() {
 
   return (
     <>
-      <section className="feature-hero feature-hero--cool" aria-labelledby="providers-title">
+      <section className="feature-hero feature-hero--route-warm" aria-labelledby="providers-title">
         <div className="feature-hero__grid">
           <div>
             <p className="page-hero__kicker">{t.kicker}</p>
@@ -39,27 +41,36 @@ export default function ForProvidersPage() {
             </ButtonLink>
             <p className="feature-hero__note">{t.plansNote}</p>
           </div>
-          <section className="workspace-card" aria-labelledby="workspace-title">
-            <div className="workspace-card__dots" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </div>
-            <h2 id="workspace-title">{t.workspaceTitle}</h2>
-            <ul className="list-plain">
-              {workspace.map(([icon, title, body]) => (
-                <li key={title} className="workspace-card__row">
-                  <span className="workspace-card__icon" aria-hidden="true">
-                    <Icon name={icon} size={22} />
-                  </span>
-                  <span>
-                    <strong>{title}</strong>
-                    <small>{body}</small>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <div className="provider-visual">
+            <Image
+              className="provider-visual__portrait"
+              src={PHOTOS.workshopOwner}
+              alt={t.portraitAlt}
+              sizes="(max-width: 900px) 100vw, 45vw"
+              priority
+            />
+            <section className="workspace-card" aria-labelledby="workspace-title">
+              <div className="workspace-card__dots" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </div>
+              <h2 id="workspace-title">{t.workspaceTitle}</h2>
+              <ul className="list-plain">
+                {workspace.map(([icon, title, body]) => (
+                  <li key={title} className="workspace-card__row">
+                    <span className="workspace-card__icon" aria-hidden="true">
+                      <Icon name={icon} size={22} />
+                    </span>
+                    <span>
+                      <strong>{title}</strong>
+                      <small>{body}</small>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </div>
         </div>
       </section>
 
@@ -68,7 +79,7 @@ export default function ForProvidersPage() {
           <p className="page-hero__kicker">{t.benefitsKicker}</p>
           <h2 id="benefits-title">{t.benefitsTitle}</h2>
         </div>
-        <ul className="feature-grid list-plain">
+        <ul className="feature-grid feature-grid--offset list-plain">
           {benefits.map(([icon, title, body]) => (
             <li key={title} className="feature-card">
               <span className="feature-card__icon" aria-hidden="true">

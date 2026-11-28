@@ -713,26 +713,18 @@
   background: var(--color-surface);
 }
 
-.storyArt {
-  height: 180px;
-  display: grid;
-  place-items: center;
-  background: #dfeeff;
-  color: #1768e5;
+/* Guide card photos (Figma Make: editorial photos instead of icon art). */
+.storyPhoto {
+  display: block;
+  width: 100%;
+  height: clamp(165px, 17vw, 220px);
+  object-fit: cover;
+  background: var(--color-surface-sunken);
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-.storyArt svg {
-  filter: drop-shadow(8px 10px 0 rgb(23 104 229 / 12%));
-}
-
-.carArt {
-  background: #fff0df;
-  color: #c06c28;
-}
-
-.toolsArt {
-  background: #e5f3e1;
-  color: #398149;
+.storyGrid article:hover .storyPhoto {
+  transform: scale(1.04);
 }
 
 .storyGrid article > div {
@@ -996,7 +988,7 @@
     grid-template-columns: 140px 1fr;
   }
 
-  .storyArt {
+  .storyPhoto {
     height: 100%;
     min-height: 180px;
   }
@@ -1060,7 +1052,7 @@
     grid-template-columns: 1fr;
   }
 
-  .storyArt {
+  .storyPhoto {
     height: 150px;
     min-height: 0;
   }
@@ -1234,4 +1226,42 @@
 .mechanicPhoto:hover,
 .roadsideImage:hover {
   transform: translateY(-4px);
+}
+
+/* Make art direction: soft colour behind the supporting sections. */
+.services,
+.stories {
+  position: relative;
+  isolation: isolate;
+}
+
+.services::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 40px;
+  left: -330px;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: rgb(255 204 126 / 20%);
+  filter: blur(8px);
+}
+
+.stories::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -55px calc(50% - 50vw);
+  background:
+    radial-gradient(
+      circle at 88% 18%,
+      color-mix(in srgb, var(--color-primary) 16%, transparent),
+      transparent 19rem
+    ),
+    linear-gradient(
+      180deg,
+      var(--color-background),
+      color-mix(in srgb, var(--color-primary) 3%, var(--color-background))
+    );
 }

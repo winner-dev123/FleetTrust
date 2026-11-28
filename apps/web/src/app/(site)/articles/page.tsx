@@ -1,12 +1,14 @@
 import { copy, plural } from "@fleettrust/copy";
 import { ARTICLE_CATEGORIES, type ArticleCategory } from "@fleettrust/types";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import { Badge, EmptyState, Notice } from "@/components/feedback";
 import { formatDate, titleCase } from "@fleettrust/types";
 import { publicApi } from "@/lib/public-api";
-import { PageHero } from "@/components/page-hero";
+import { Icon } from "@/components/icon";
+import { ARTICLE_COVERS, PHOTOS } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -37,12 +39,46 @@ export default async function ArticlesPage(props: PageProps<"/articles">) {
 
   return (
     <>
-      <PageHero
-        kicker={copy.web.nav.knowledgeHub}
-        title={copy.web.articles.title}
-        intro={copy.web.articles.intro}
-      />
+      <section className="feature-hero feature-hero--ribbons" aria-labelledby="articles-title">
+        <div className="feature-hero__grid">
+          <div>
+            <p className="page-hero__kicker">{copy.web.nav.knowledgeHub}</p>
+            <h1 id="articles-title">{copy.web.articles.title}</h1>
+            <p className="feature-hero__intro">{copy.web.articles.intro}</p>
+          </div>
+          <div className="knowledge-visual">
+            <Image
+              className="knowledge-photo"
+              src={PHOTOS.coastalDriver}
+              alt={copy.web.articles.heroImageAlt}
+              sizes="(max-width: 900px) 100vw, 45vw"
+              priority
+            />
+            <span className="knowledge-visual__badge">
+              <Icon name="shield" size={20} /> {copy.web.articles.photoBadge}
+            </span>
+          </div>
+        </div>
+      </section>
       <div className="container stack stack--lg">
+        <nav className="topic-pills" aria-label={copy.web.articles.topic}>
+          {[undefined, ...ARTICLE_CATEGORIES].map((value) => {
+            const href = new URLSearchParams();
+            if (q) href.set("q", q);
+            if (value) href.set("category", value);
+            const query = href.toString();
+            return (
+              <Link
+                key={value ?? "all"}
+                className="topic-pill"
+                href={query ? `/articles?${query}` : "/articles"}
+                aria-current={value === category ? "page" : undefined}
+              >
+                {value ? titleCase(value) : copy.web.articles.allTopics}
+              </Link>
+            );
+          })}
+        </nav>
         <Notice tone="caution">
           <p>
             <strong>{page.label}.</strong> {copy.web.articles.disclaimer}
@@ -55,24 +91,7 @@ export default async function ArticlesPage(props: PageProps<"/articles">) {
             </label>
             <input id="article-q" name="q" className="input" defaultValue={q} maxLength={200} />
           </div>
-          <div className="field" style={{ flex: "1 1 180px" }}>
-            <label className="field__label" htmlFor="article-category">
-              {copy.web.articles.topic}
-            </label>
-            <select
-              id="article-category"
-              name="category"
-              className="input"
-              defaultValue={category ?? ""}
-            >
-              <option value="">{copy.web.articles.allTopics}</option>
-              {ARTICLE_CATEGORIES.map((value) => (
-                <option key={value} value={value}>
-                  {titleCase(value)}
-                </option>
-              ))}
-            </select>
-          </div>
+          {category ? <input type="hidden" name="category" value={category} /> : null}
           <button type="submit" className="btn btn--primary" style={{ alignSelf: "flex-end" }}>
             {copy.web.articles.search}
           </button>
@@ -83,10 +102,16 @@ export default async function ArticlesPage(props: PageProps<"/articles">) {
             <p>{copy.web.articles.emptyBody}</p>
           </EmptyState>
         ) : (
-          <ul className="list-plain">
+          <ul className="list-plain article-grid">
             {page.items.map((article) => (
               <li key={article.id}>
-                <article className="card list-card">
+                <article className="card list-card article-card">
+                  <Image
+                    className="article-card__cover"
+                    src={ARTICLE_COVERS[article.category]}
+                    alt=""
+                    sizes="(max-width: 760px) 100vw, 33vw"
+                  />
                   <h2 className="card__title">
                     <Link href={`/articles/${article.slug}`}>{article.title}</Link>
                   </h2>
