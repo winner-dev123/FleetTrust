@@ -2,6 +2,7 @@ import { copy, fill } from "@fleettrust/copy";
 import { ApiError } from "@fleettrust/sdk";
 import type { PublicArticle } from "@fleettrust/types";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -10,6 +11,7 @@ import { Notice } from "@/components/feedback";
 import { Icon } from "@/components/icon";
 import { ReportButton } from "@/components/report-button";
 import { formatDate, formatDateTime, titleCase } from "@fleettrust/types";
+import { ARTICLE_COVERS } from "@/lib/photos";
 import { publicApi } from "@/lib/public-api";
 
 import { CommentForm } from "./comment-form";
@@ -72,6 +74,13 @@ export default async function ArticlePage(props: PageProps<"/articles/[slug]">) 
       </header>
 
       <div className="article-page__body stack stack--lg">
+        <Image
+          className="article-page__cover"
+          src={ARTICLE_COVERS[article.category]}
+          alt=""
+          sizes="(max-width: 760px) 100vw, 720px"
+          priority
+        />
         <Notice tone="caution">
           <p className="small">
             <strong>{article.label}.</strong> {copy.web.article.disclaimer}

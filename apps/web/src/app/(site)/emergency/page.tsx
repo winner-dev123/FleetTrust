@@ -1,9 +1,11 @@
 import { copy } from "@fleettrust/copy";
 import { DEFAULT_EMERGENCY_GUIDANCE, EMERGENCY_DISCLAIMER } from "@fleettrust/types";
 import type { Metadata } from "next";
+import Image from "next/image";
 
 import { ButtonLink } from "@/components/button";
 import { Icon } from "@/components/icon";
+import { PHOTOS } from "@/lib/photos";
 
 export const metadata: Metadata = {
   title: copy.web.emergency.title,
@@ -31,6 +33,12 @@ export default function EmergencyPage() {
             </p>
             <p>{EMERGENCY_DISCLAIMER}</p>
           </section>
+          <Image
+            className="emergency-page__photo"
+            src={PHOTOS.safePullout}
+            alt={copy.web.emergency.photoAlt}
+            sizes="(max-width: 760px) 100vw, 45vw"
+          />
         </div>
 
         <section className="emergency-page__card stack" aria-labelledby="alert-heading">

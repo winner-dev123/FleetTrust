@@ -3138,3 +3138,166 @@ body {
   margin-bottom: 0;
   color: var(--color-text-muted);
 }
+
+/* ==== Figma Make photography update ======================================================= */
+
+/* Knowledge hub banner photo. */
+.knowledge-photo {
+  width: 100%;
+  height: clamp(250px, 29vw, 410px);
+  object-fit: cover;
+  object-position: center 44%;
+  border: 1px solid rgb(255 255 255 / 42%);
+  border-radius: 80px 24px 80px 24px;
+  box-shadow: 0 22px 50px -10px rgb(6 27 58 / 35%);
+  animation: ft-zoom 1.2s var(--ease-out) backwards;
+}
+
+/* Articles as photo cards. */
+.article-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 22px;
+}
+
+.article-grid > li + li {
+  margin-top: 0;
+}
+
+.article-card {
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.article-card > :not(.article-card__cover) {
+  margin-inline: 22px;
+}
+
+.article-card .card__title {
+  margin-top: 20px;
+}
+
+.article-card > :last-child {
+  margin-bottom: 22px;
+}
+
+.article-card__cover {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: var(--color-surface-sunken);
+  transition: transform 0.6s var(--ease-out);
+}
+
+.article-card:hover .article-card__cover {
+  transform: scale(1.04);
+}
+
+/* The arrow chip sits on the photo. */
+.article-card::before,
+.article-card::after {
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+}
+
+.article-card::before {
+  background: var(--color-surface);
+  box-shadow: 0 8px 18px -8px rgb(16 33 61 / 35%);
+}
+
+/* Article page: topic photo above the text. */
+.article-page__cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 26px;
+  background: var(--color-surface-sunken);
+  box-shadow: 0 22px 45px -20px rgb(28 68 106 / 30%);
+}
+
+/* For providers: portrait with the workspace card overlapping its corner. */
+.provider-visual__portrait {
+  display: block;
+  width: 100%;
+  height: clamp(250px, 28vw, 370px);
+  object-fit: cover;
+  object-position: center 35%;
+  border: 5px solid color-mix(in srgb, #fff3dc 60%, var(--color-surface));
+  border-radius: 28px;
+  box-shadow: 0 20px 50px -12px rgb(58 46 32 / 28%);
+  animation: ft-zoom 1.2s var(--ease-out) backwards;
+}
+
+.provider-visual .workspace-card {
+  position: relative;
+  width: min(calc(100% - 16px), 380px);
+  margin: -90px 0 0 auto;
+}
+
+/* Emergency: the safe pull-out photo under the guidance. */
+.emergency-page__photo {
+  display: block;
+  width: 100%;
+  height: clamp(125px, 14vw, 190px);
+  margin-top: 22px;
+  object-fit: cover;
+  object-position: center 58%;
+  border-radius: 16px;
+}
+
+/* Footer: bright blue-to-cream gradient with a curved accent and dark text (Make update). */
+.site-footer {
+  border-top: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  background:
+    radial-gradient(
+      circle at 96% -44px,
+      transparent 120px,
+      color-mix(in srgb, var(--color-primary) 16%, var(--color-background)) 121px 151px,
+      transparent 152px
+    ),
+    linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--color-primary) 8%, var(--color-background)),
+      color-mix(in srgb, var(--color-primary) 4%, var(--color-background)) 60%,
+      color-mix(in srgb, #ffd58a 16%, var(--color-background))
+    );
+  color: var(--color-text);
+}
+
+.site-footer .brand {
+  color: var(--color-text);
+}
+
+.site-footer .brand__accent {
+  color: var(--color-primary);
+}
+
+.site-footer__tagline,
+.site-footer__legal {
+  color: var(--color-text-muted);
+}
+
+.site-footer nav a {
+  color: color-mix(in srgb, var(--color-text) 82%, var(--color-background));
+}
+
+.site-footer nav a:hover,
+.site-footer nav a:focus-visible {
+  color: color-mix(in srgb, var(--color-primary) 80%, var(--color-text));
+  text-underline-offset: 3px;
+}
+
+.site-footer__legal {
+  border-top-color: color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
+}
+
+@media (max-width: 900px) {
+  .provider-visual .workspace-card {
+    margin-top: -60px;
+  }
+}

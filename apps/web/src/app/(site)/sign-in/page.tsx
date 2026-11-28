@@ -22,7 +22,7 @@ import { afterSignInPath } from "@/lib/pending-invitation";
 import { emailLinkSettings, normaliseEmail, rememberPendingEmail } from "@/lib/email-link";
 import { type PendingMfa, pendingMfa } from "@/lib/mfa";
 import { Icon } from "@/components/icon";
-import heroImage from "../../../../public/images/fleettrust-hero.webp";
+import { PHOTOS } from "@/lib/photos";
 
 type Status =
   | { kind: "idle" }
@@ -105,7 +105,13 @@ export default function SignInPage() {
   return (
     <div className="auth-page">
       <div className="auth-page__visual">
-        <Image src={heroImage} alt="" fill sizes="(max-width: 760px) 100vw, 50vw" priority />
+        <Image
+          src={PHOTOS.coastalDriver}
+          alt=""
+          fill
+          sizes="(max-width: 760px) 100vw, 50vw"
+          priority
+        />
         <div>
           <p className="auth-page__kicker">{copy.web.signIn.visualKicker}</p>
           <p className="auth-page__headline">{copy.web.signIn.visualTitle}</p>
