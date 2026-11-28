@@ -33,8 +33,9 @@ spec:
         # Direct VPC egress for private addresses (Memorystore, a ClamAV VM) when those are used.
         run.googleapis.com/network-interfaces: '[{"network":"${VPC_NETWORK}","subnetwork":"${VPC_SUBNET}"}]'
         run.googleapis.com/vpc-access-egress: private-ranges-only
-        # Start the app after the collector sidecar is ready.
-        run.googleapis.com/container-dependencies: '{"api":["otel-collector"]}'
+        # No container-dependencies: the app and the collector sidecar start in parallel. Waiting
+        # for the collector added ~11 s to every cold start (scale to zero, ADR-0037); spans sent
+        # before it is up are retried by the exporter or dropped, which is acceptable.
     spec:
       serviceAccountName: ${RUNTIME_SERVICE_ACCOUNT}
       # Wake-ups arriving during a run join it (WorkerRunner), so a few at once is fine.

@@ -35,6 +35,9 @@ export function firebaseAuth(): Auth {
 export function apiClient() {
   return createApiClient({
     baseUrl: webEnv.apiUrl,
+    // The API scales to zero (ADR-0037): the first request after a quiet spell waits for it to
+    // start, so allow well beyond a cold start before reporting "couldn't reach FleetTrust".
+    timeoutMs: 30_000,
     getIdToken: async () => (await firebaseAuth().currentUser?.getIdToken()) ?? null,
   });
 }
